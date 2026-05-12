@@ -118,6 +118,12 @@ export const DBusClient = GObject.registerClass({
     _onAppeared() {
         // Already constructed (re-entrant on owner transition)? Just refresh.
         if (this._proxy !== null) {
+            // Owner-transition orderings can deliver this callback before the
+            // proxy's g-name-owner has propagated. Snapshotting against a
+            // null owner yields NameHasNoOwner; skip and wait for the
+            // notify::g-name-owner path (or the next bus_watch_name appear)
+            // to drive the refresh.
+            if (this._proxy.gNameOwner === null) return;
             this._store.setDaemonRunning(true);
             this._snapshotImmediate();
             this.emit('ready');
