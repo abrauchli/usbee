@@ -88,6 +88,9 @@ export const DBusClient = GObject.registerClass({
         // Initialised to 0 (no pending source). _scheduleRefresh resets this
         // on every incoming signal so N signals in 150 ms -> exactly 1 snapshot.
         this._debounceId = 0;
+        // Dispose handle for the registry entry tracking _debounceId.
+        // Null when no timer is pending or after the callback has fired.
+        this._dropDebounce = null;
     }
 
     /**
@@ -175,27 +178,28 @@ export const DBusClient = GObject.registerClass({
      * because _onAppeared calls _snapshotImmediate() directly
      * (RESEARCH.md §Pitfall G — first event must not feel sluggish).
      *
-     * Each new timer is tracked via _registry.addTimeout so disable()
-     * clears any in-flight callback (RESEARCH.md §Validation 23).
-     * The registry entry for the previously-removed timer becomes a
-     * harmless no-op on dispose (GLib returns false; PITFALLS.md §9).
+     * Each new timer is tracked via _registry.addTimeout, which returns a
+     * dispose handle. We drop the handle both when cancelling an in-flight
+     * timer and when the callback runs to completion, so the registry never
+     * carries stale entries that would emit GLib-CRITICAL on disable.
      */
     _scheduleRefresh() {
         if (this._debounceId !== 0) {
             GLib.Source.remove(this._debounceId);
+            this._dropDebounce?.();
+            this._dropDebounce = null;
             this._debounceId = 0;
-            // Note: the old SignalRegistry entry's dispose-fn will call
-            // GLib.Source.remove on the now-removed id — GLib treats this
-            // as a no-op (returns false). PITFALLS.md §9 documents as safe.
         }
         this._debounceId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, 150, () => {
+                this._dropDebounce?.();
+                this._dropDebounce = null;
                 this._debounceId = 0;
                 this._snapshotImmediate();
                 return GLib.SOURCE_REMOVE;
             });
         // Track the new timer so disable() removes it if still in-flight.
-        this._registry.addTimeout(this._debounceId);
+        this._dropDebounce = this._registry.addTimeout(this._debounceId);
     }
 
     _onVanished() {

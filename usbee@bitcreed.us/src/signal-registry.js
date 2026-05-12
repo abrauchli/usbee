@@ -63,15 +63,26 @@ export class SignalRegistry {
 
     /**
      * Register a GLib.timeout_add / idle_add source.
+     *
+     * Returns a dispose handle (function) the caller can invoke to drop the
+     * entry early — e.g. when the timer callback fires naturally and the
+     * source is already gone. Without this, dispose() would call
+     * GLib.Source.remove() on a stale id and emit GLib-CRITICAL.
+     *
      * @param {number} sourceId  Id returned by GLib.timeout_add/idle_add.
+     * @returns {() => void}     Idempotent handle to remove this entry.
      */
     addTimeout(sourceId) {
         if (this._disposed) throw new Error('SignalRegistry.addTimeout after dispose');
-        this._entries.push({
+        const entry = {
             kind: 'timeout',
             dispose: () => GLib.Source.remove(sourceId),
-        });
-        return sourceId;
+        };
+        this._entries.push(entry);
+        return () => {
+            const i = this._entries.indexOf(entry);
+            if (i >= 0) this._entries.splice(i, 1);
+        };
     }
 
     /**
