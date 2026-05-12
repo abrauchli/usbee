@@ -37,16 +37,27 @@ import {buildEmptyStateItem} from './empty-state.js';
  * @param {PopupMenuSection} section  The section to populate.
  * @param {DeviceStore} store         Current device snapshot.
  */
-export function populateDeviceRows(section, store) {
+export function populateDeviceRows(section, store, extension) {
     section.removeAll();
-    if (store.devices.length === 0) {
+
+    // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
+    // Filter predicate uses daemon-emitted tokens 'TypeCPort' / 'Empty'
+    // (same strings src/device-store.js Tier-1 filter consumes).
+    const hideEmpty = extension.getSettings().get_boolean('hide-empty-ports');
+    let devices = store.devices;
+    if (hideEmpty) {
+        devices = devices.filter(d =>
+            !(d.category === 'TypeCPort' && d.status === 'Empty'));
+    }
+
+    if (devices.length === 0) {
         section.addMenuItem(new PopupMenu.PopupMenuItem(
             _('No USB devices attached'),
             {reactive: false, can_focus: false},
         ));
         return;
     }
-    for (const device of store.devices) {
+    for (const device of devices) {
         section.addMenuItem(buildDeviceRow(device));
     }
 }

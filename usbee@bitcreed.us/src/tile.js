@@ -113,7 +113,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         if (!this._store.daemonRunning)
             populateEmptyState(this._rowsSection);
         else
-            populateDeviceRows(this._rowsSection, this._store);
+            populateDeviceRows(this._rowsSection, this._store, this._extension);
     }
 });
 
