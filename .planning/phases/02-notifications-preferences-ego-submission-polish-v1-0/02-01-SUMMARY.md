@@ -178,9 +178,28 @@ Each task was committed atomically on the agent branch:
 
 - **Worktree absolute-path confusion (executor self-correction):** the first Task 1 Write call used an absolute path that resolved to the **main repo** (`/home/blk/projects/rust/usbee/`) instead of the **worktree** (`/home/blk/projects/rust/usbee/.claude/worktrees/agent-acef3ce8305c8c2c3/`), because the absolute path was constructed from a non-worktree `pwd` context. Caught immediately via `git status` mismatch, reverted via `git checkout -- usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml; rm .gitignore` in the main repo and re-applied via worktree-relative paths. No commit, no data loss, no tasks redone. Worktree-prefixed absolute paths used for the remainder of execution. (See agent contract `<absolute-path safety>` clause — this is exactly the failure mode it warns about, #3099.)
 
-## Awaiting Human Verification
+## Human Verification — Completed 2026-05-12
 
-**Task 7 (`checkpoint:human-verify`, `gate="blocking"`)** is the live-Shell smoke test. The orchestrator must surface this to the user. The executor cannot perform it from the worktree because it requires a full GNOME Shell environment with the extension installed and reloaded.
+**Task 7 (`checkpoint:human-verify`, `gate="blocking"`)** is the live-Shell smoke test. All sections A–I passed on a real GNOME Shell 46 (Xorg) session with `usbeehive` daemon active. Two fixes landed during the smoke test and are folded in:
+
+- **Scroll-overflow fix** (commit referenced in §G column below): a busy USB tree was pushing the `Preferences…` row off-screen. Wrapped `_rowsSection` in `St.ScrollView` with `max-height: 50ex` so the device list scrolls and the row stays visible.
+- **`MessageTray.Notification.update()` removal** (commit referenced in §C column below): the GNOME 46 refactor removed `Notification.update()` (the RESEARCH note caught the related `replace-id` removal but missed this). Switched to direct `notification.title = …; notification.body = …` property assignment; the tray re-renders via `notify::*`. Actions persist from construction (same port = same buttons).
+
+### Section results
+
+| § | What | Result |
+|---|------|--------|
+| A | Schema visibility | **PASS** — `GSETTINGS_SCHEMA_DIR=…/schemas gsettings list-schemas \| grep '^us\.bitcreed\.usbee$'` returns the schema; keys + defaults match. (Original §A command was overconservative — extension schemas aren't on the system list. Use `GSETTINGS_SCHEMA_DIR=…` for CLI tests; dconf-editor sees the path-based schema once the extension calls `getSettings()`.) |
+| B | Single-banner notification | **PASS** — banner appeared with correct title `USB-C Port 1 — Charging slower than expected`, verbatim body, both actions in correct order. |
+| C | Coalescing | **PASS** *after fix* — second `onCapabilityDegraded(1, …)` updates body in place, no second entry. First attempt failed with `TypeError: existing.update is not a function`; fixed by switching to direct property assignment (see commit list). |
+| D | Restore | **PASS** — `onCapabilityRestored(1)` removed the banner silently with no replacement notification. |
+| E | Mute action (NOTIF-03 + NOTIF-04) | **PASS** — clicked action button → banner dismissed → `gsettings get us.bitcreed.usbee port-mutes` returned `['2']` → re-trigger for port 2 raised no banner. Cleanup `gsettings reset us.bitcreed.usbee port-mutes` restored `@as []`. |
+| F | Daemon-restart suppression | **PASS** — `onDaemonAppeared()` + immediate `onCapabilityDegraded(3, …)` produced no banner; same call after a 4 s wait produced the expected banner. Driven from bash via `org.gnome.Shell.Eval` with `unsafe_mode` toggled on for the run and off after. |
+| G | Preferences row (unlocked) | **PASS** *after scroll fix* — `Preferences…` row + separator visible at bottom of scrolled device list; clicking fires `extension.openPreferences()` (no journal errors); actual window appears only once Plan 02-02 ships `prefs.js`. |
+| H | Preferences row (locked) | **PASS** — locked screen shows no USBee tile; after unlock, row + separator re-appear correctly. |
+| I | Clean disable (STATE-05 regression) | **PASS** — 10× enable/disable cycles; `journalctl --user-unit gnome-shell` since cycle start shows zero `already disposed` / `handler not found` / `signal not connected` lines. |
+
+### Awaiting Human Verification (original instructions, preserved for the record)
 
 **Pre-flight (from repo root, NOT the worktree — the symlink should target the eventual merge location, or use the worktree path for in-place testing):**
 ```bash
@@ -210,6 +229,8 @@ journalctl --user-unit gnome-shell -f
 **Resume signal:** type `approved` to proceed to Plan 02-02, or describe failures by section letter (A–I) so they can be triaged via `--gaps` re-planning.
 
 **Cleanup after smoke test:** `gsettings reset us.bitcreed.usbee port-mutes; gsettings reset us.bitcreed.usbee hide-empty-ports`.
+
+**Resolution (2026-05-12):** Approved. All A–I passed on GNOME Shell 46 Xorg with the two in-line fixes above. Proceed to Plan 02-02.
 
 ## Contract Handoff to Plan 02-02
 

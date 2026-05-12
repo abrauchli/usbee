@@ -18,9 +18,12 @@
 //     own 'destroy' signal handler so the next emit re-creates it
 //     (RESEARCH §Pitfall B).
 //   - Per-port coalescing: one Notification object per portNumber stored
-//     in this._notifications; second event reuses it via .update()
-//     (RESEARCH §Pitfall A — the 46 refactor removed the legacy
-//     replace-id constructor parameter).
+//     in this._notifications; second event reuses it by assigning .title
+//     and .body directly. The GNOME 46 refactor removed both the legacy
+//     replace-id constructor parameter AND Notification.update(); setting
+//     the GObject properties triggers notify::* which the tray re-renders.
+//     Actions are added once at construction and persist — same port always
+//     means the same two action buttons, so no clear-and-re-add needed.
 //   - port-mutes is read LIVE every CapabilityDegraded — never cached
 //     (RESEARCH §Pitfall G).
 //   - Daemon strings (summary, detail) flow ONLY into plain text properties.
@@ -130,10 +133,12 @@ export class Notifier {
 
         const existing = this._notifications.get(portNumber);
         if (existing) {
-            // RESEARCH §Code Example #2 — {clear: true} drops prior actions
-            // so we re-addAction without duplicating buttons.
-            existing.update(title, body, {clear: true});
-            this._addActions(existing, portNumber);
+            // GNOME 46 removed Notification.update(); set GObject properties
+            // directly — the tray UI listens for notify::title and notify::body
+            // and re-renders in place. Actions persist from construction; same
+            // port means the same two buttons, so we never re-add them.
+            existing.title = title;
+            existing.body = body;
             return;
         }
 
