@@ -43,7 +43,7 @@ Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, 
 
 ### Preferences (PREFS)
 
-- [ ] **PREFS-01**: GSettings schema `org.gnome.usbee` is installed and visible in `dconf-editor` when the extension is enabled
+- [ ] **PREFS-01**: GSettings schema `us.bitcreed.usbee` is installed and visible in `dconf-editor` when the extension is enabled
 - [ ] **PREFS-02**: Schema includes a per-port-mute key (`port-mutes` as `as`) that the notification action writes and the notifier reads
 - [ ] **PREFS-03**: Schema includes a "hide empty ports" boolean toggle that hides USB-C ports with nothing attached from the popover
 - [ ] **PREFS-04**: All preference reads/writes go through GSettings (no ad-hoc config file)

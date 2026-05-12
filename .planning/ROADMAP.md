@@ -17,7 +17,7 @@ Two phases, derived directly from the unanimous research recommendation in `.pla
 ## Phases
 
 - [ ] **Phase 1: Tile, Popover, Hotplug, Daemon-Missing State (v0.1)** — Quick Settings tile mounts with a live headline, popover lists every device/port with vendor/speed/role/wattage/diagnostic, hotplug works, daemon-missing empty state auto-recovers via `NameOwnerChanged`. Shippable to EGO as v0.1.
-- [ ] **Phase 2: Notifications, Preferences, EGO Submission Polish (v1.0)** — `CapabilityDegraded` notifications with per-port mute, GSettings schema `org.gnome.usbee`, gettext scaffolding, README + COPYING + final EGO submission polish. Shippable as v1.0.
+- [ ] **Phase 2: Notifications, Preferences, EGO Submission Polish (v1.0)** — `CapabilityDegraded` notifications with per-port mute, GSettings schema `us.bitcreed.usbee`, gettext scaffolding, README + COPYING + final EGO submission polish. Shippable as v1.0.
 
 ## Phase Details
 
@@ -52,7 +52,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. When `usbeehive` emits `CapabilityDegraded` for a port, USBee raises exactly one desktop notification describing the degradation; repeated events for the same port coalesce via `replaces_id`; a 2–3 s suppression window after daemon-restart prevents replay floods.
   2. The degraded-port notification carries a "Don't notify for this port again" action that writes the port's stable identifier to GSettings; muted ports never raise further `CapabilityDegraded` notifications until unmuted via preferences; mute state survives shell restart, lock/unlock, and extension reload.
-  3. `gsettings list-schemas | grep usbee` returns `org.gnome.usbee`; the schema exposes `port-mutes` (`as`) for per-port mute and a "hide empty ports" boolean toggle; all preference reads/writes go through GSettings (no ad-hoc config file); the schema is visible and editable in `dconf-editor`.
+  3. `gsettings list-schemas | grep usbee` returns `us.bitcreed.usbee`; the schema exposes `port-mutes` (`as`) for per-port mute and a "hide empty ports" boolean toggle; all preference reads/writes go through GSettings (no ad-hoc config file); the schema is visible and editable in `dconf-editor`.
   4. The preferences window (Adwaita, opened via the Extensions app) lists currently muted ports with per-row unmute affordances and exposes the hide-empty-ports toggle; when the screen is locked the tile's preferences entry is hidden (`Main.sessionMode.allowSettings === false`).
   5. The repository ships `COPYING` (GPL-3.0); every user-visible string in `.js` source is wrapped in a `gettext` `_()` marker and `xgettext` produces a non-trivial `.pot` template; `gnome-extensions pack` produces a clean zip with `metadata.json` declaring `shell-version` `["46", "47", "48"]` and a stable `uuid`; the zip contains no bundled binaries, no `Gtk`/`Adw` imports in the Shell-process code, and no synchronous D-Bus or I/O calls; README documents the `usbeehive` daemon dependency and the `systemctl --user enable --now usbeehive` install path.
 **Plans:** 2 plans

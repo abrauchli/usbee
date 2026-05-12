@@ -8,7 +8,7 @@ requires:
   - phase: 01-tile-popover-hotplug-daemon-missing-state-v0-1
     provides: SignalRegistry, DBusClient (with DeviceAdded/Removed + bus_watch_name), USBeeIndicator/Toggle skeleton with Phase 2 seam, extension.js lifecycle scaffolding, GSettings schema scaffold, IFACE_XML already declaring CapabilityDegraded/Restored signals
 provides:
-  - Populated GSettings schema (org.gnome.usbee) with port-mutes (as) and hide-empty-ports (b) keys
+  - Populated GSettings schema (us.bitcreed.usbee) with port-mutes (as) and hide-empty-ports (b) keys
   - src/notifier.js — MessageTray-based Notifier with per-port coalesce, 2.5 s daemon-restart suppression window, live port-mutes read, mute-action handler
   - Capability* D-Bus signal subscriptions in src/dbus-client.js forwarding to the Notifier
   - STATE-04 Preferences… tile menu row with Main.sessionMode.allowSettings gating and destroy/recreate-on-'updated' handler tracked by SignalRegistry
@@ -36,7 +36,7 @@ key-files:
     - usbee@bitcreed.us/src/notifier.js
     - .gitignore
   modified:
-    - usbee@bitcreed.us/schemas/org.gnome.usbee.gschema.xml
+    - usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml
     - usbee@bitcreed.us/src/dbus-client.js
     - usbee@bitcreed.us/src/tile.js
     - usbee@bitcreed.us/extension.js
@@ -84,7 +84,7 @@ completed: 2026-05-12
 
 ## Accomplishments
 
-- **GSettings schema populated** with `port-mutes` (`as`, default `[]`) and `hide-empty-ports` (`b`, default `false`) — verified via `GSETTINGS_SCHEMA_DIR=…/schemas gsettings list-keys org.gnome.usbee`
+- **GSettings schema populated** with `port-mutes` (`as`, default `[]`) and `hide-empty-ports` (`b`, default `false`) — verified via `GSETTINGS_SCHEMA_DIR=…/schemas gsettings list-keys us.bitcreed.usbee`
 - **src/notifier.js created** (212 lines) implementing the full Notifier contract: per-port Map, lazy MessageTray.Source, 2.5 s suppression window in monotonic time, identity-checked destroy cleanup, live port-mutes read, mute-action handler that writes to GSettings AND destroys the live notification
 - **DBusClient extended** to subscribe to `CapabilityDegraded(i, s, s)` and `CapabilityRestored(i)` from the daemon, forwarding via optional chaining to keep unit-test paths alive; suppression-window hooks fire on BOTH branches of `_onAppeared` (cold start + owner-transition reappear)
 - **STATE-04 Preferences… row** wired into the tile menu with `Main.sessionMode.allowSettings` gating; destroy/recreate-on-`'updated'` handler registered with SignalRegistry per D-14 / Pitfall H; label uses U+2026 HORIZONTAL ELLIPSIS (single code point) per UI-SPEC copywriting
@@ -115,7 +115,7 @@ Each task was committed atomically on the agent branch:
 
 ### Modified — behavior
 
-- `usbee@bitcreed.us/schemas/org.gnome.usbee.gschema.xml` — replaced the Phase 1 placeholder comment with two key declarations.
+- `usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml` — replaced the Phase 1 placeholder comment with two key declarations.
 - `usbee@bitcreed.us/src/dbus-client.js` — constructor signature `(registry, store) → (registry, store, notifier)`; added two `connectSignal` subscriptions for Capability events (both tracked in SignalRegistry); added `onDaemonAppeared` hook to both `_onAppeared` branches; added `onDaemonVanished` hook to `_onVanished`.
 - `usbee@bitcreed.us/src/tile.js` — added `import * as Main from 'resource:///org/gnome/shell/ui/main.js'`; USBeeToggle constructor signature `(store, registry) → (store, registry, extension)`; replaced Phase 2 seam comment with the Preferences row + separator + sessionMode handler block; USBeeIndicator constructor extended to forward `extension`.
 - `usbee@bitcreed.us/extension.js` — added `import {Notifier}`; `enable()` constructs the Notifier between DeviceStore and DBusClient and passes `this` to both USBeeIndicator and Notifier; `disable()` inserts `_notifier.dispose()` between `_client.stop()` and `_indicator` teardown.
@@ -176,7 +176,7 @@ Each task was committed atomically on the agent branch:
 
 ## Issues Encountered
 
-- **Worktree absolute-path confusion (executor self-correction):** the first Task 1 Write call used an absolute path that resolved to the **main repo** (`/home/blk/projects/rust/usbee/`) instead of the **worktree** (`/home/blk/projects/rust/usbee/.claude/worktrees/agent-acef3ce8305c8c2c3/`), because the absolute path was constructed from a non-worktree `pwd` context. Caught immediately via `git status` mismatch, reverted via `git checkout -- usbee@bitcreed.us/schemas/org.gnome.usbee.gschema.xml; rm .gitignore` in the main repo and re-applied via worktree-relative paths. No commit, no data loss, no tasks redone. Worktree-prefixed absolute paths used for the remainder of execution. (See agent contract `<absolute-path safety>` clause — this is exactly the failure mode it warns about, #3099.)
+- **Worktree absolute-path confusion (executor self-correction):** the first Task 1 Write call used an absolute path that resolved to the **main repo** (`/home/blk/projects/rust/usbee/`) instead of the **worktree** (`/home/blk/projects/rust/usbee/.claude/worktrees/agent-acef3ce8305c8c2c3/`), because the absolute path was constructed from a non-worktree `pwd` context. Caught immediately via `git status` mismatch, reverted via `git checkout -- usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml; rm .gitignore` in the main repo and re-applied via worktree-relative paths. No commit, no data loss, no tasks redone. Worktree-prefixed absolute paths used for the remainder of execution. (See agent contract `<absolute-path safety>` clause — this is exactly the failure mode it warns about, #3099.)
 
 ## Awaiting Human Verification
 
@@ -201,7 +201,7 @@ journalctl --user-unit gnome-shell -f
 | B | Single-banner notification | In Looking Glass (`Alt+F2 → lg`): `Main.extensionManager.lookup('usbee@bitcreed.us').stateObj._notifier.onCapabilityDegraded(1, 'Charging slower than expected', 'Cable limits this port to 60 W. A full-featured USB-C cable would deliver 100 W.')` → exactly one banner titled `USB-C Port 1 — Charging slower than expected` with body verbatim and two action buttons in order `Don't notify for this port again`, `Open Preferences`. |
 | C | Coalescing | Second `onCapabilityDegraded(1, …, 'NEW DETAIL …')` updates the existing banner in place; no second entry in the shade. |
 | D | Restore | `onCapabilityRestored(1)` makes the banner disappear silently. |
-| E | Mute action (NOTIF-03 + NOTIF-04) | Trigger for port 2 → click "Don't notify for this port again" → banner gone → `gsettings get org.gnome.usbee port-mutes` returns `['2']` → re-trigger for port 2 raises NO banner. Cleanup: `gsettings set org.gnome.usbee port-mutes "[]"`. |
+| E | Mute action (NOTIF-03 + NOTIF-04) | Trigger for port 2 → click "Don't notify for this port again" → banner gone → `gsettings get us.bitcreed.usbee port-mutes` returns `['2']` → re-trigger for port 2 raises NO banner. Cleanup: `gsettings set us.bitcreed.usbee port-mutes "[]"`. |
 | F | Daemon-restart suppression | In LG: `_notifier.onDaemonAppeared(); _notifier.onCapabilityDegraded(3, 'X', 'Y');` → no banner. Wait ~3 s, re-trigger → banner appears. |
 | G | Preferences row (unlocked) | Open Quick Settings → USBee tile → `Preferences…` row + separator visible below device list. Clicking opens the (still-empty) prefs window — Plan 02-02 ships the UI; activation alone is the check. |
 | H | Preferences row (locked) | `Super+L`, wait, unlock, re-open tile → no errors, row + separator still appear correctly. |
@@ -209,13 +209,13 @@ journalctl --user-unit gnome-shell -f
 
 **Resume signal:** type `approved` to proceed to Plan 02-02, or describe failures by section letter (A–I) so they can be triaged via `--gaps` re-planning.
 
-**Cleanup after smoke test:** `gsettings reset org.gnome.usbee port-mutes; gsettings reset org.gnome.usbee hide-empty-ports`.
+**Cleanup after smoke test:** `gsettings reset us.bitcreed.usbee port-mutes; gsettings reset us.bitcreed.usbee hide-empty-ports`.
 
 ## Contract Handoff to Plan 02-02
 
 Plan 02-02 (prefs window + EGO submission) can now assume:
 
-1. **Schema is populated.** `org.gnome.usbee` exists with `port-mutes` (`as`) and `hide-empty-ports` (`b`). `prefs.js` can call `this.getSettings()` and immediately `bind('port-mutes', listStore, 'items', …)` and `bind('hide-empty-ports', switchRow, 'active', …)` without further schema work.
+1. **Schema is populated.** `us.bitcreed.usbee` exists with `port-mutes` (`as`) and `hide-empty-ports` (`b`). `prefs.js` can call `this.getSettings()` and immediately `bind('port-mutes', listStore, 'items', …)` and `bind('hide-empty-ports', switchRow, 'active', …)` without further schema work.
 2. **STATE-04 menu row exists.** Activating the `Preferences…` tile menu item calls `extension.openPreferences()` — the same API the notification "Open Preferences" action uses. Plan 02-02 only needs to ship `prefs.js`; no further tile.js changes required for STATE-04.
 3. **Notification "Open Preferences" action is live.** It calls `extension.openPreferences()` today; until Plan 02-02 ships `prefs.js`, the Shell will log a benign warning when activated. That is expected for Plan 02-01 and is NOT a failure (documented in plan §G note).
 4. **`hide-empty-ports` is ready for the popover patch.** `src/popover.js` does NOT consume the key yet — Plan 02-02's `populateDeviceRows` patch is responsible for reading `settings.get_boolean('hide-empty-ports')` per popover rebuild and filtering Empty-status port rows.
@@ -243,7 +243,7 @@ None — no new attack surface beyond what `<threat_model>` in 02-01-PLAN.md alr
 - Every Task 1–6 `<acceptance_criteria>` block was re-run after the corresponding commit; every check passes.
 - Plan-level `<verification>` block: every grep returns the expected empty / non-empty result.
 - `node --check` syntax validation passes on all 8 .js files.
-- Schema introspection via `GSETTINGS_SCHEMA_DIR=…/schemas gsettings list-keys org.gnome.usbee` returns `hide-empty-ports` + `port-mutes` in the expected types.
+- Schema introspection via `GSETTINGS_SCHEMA_DIR=…/schemas gsettings list-keys us.bitcreed.usbee` returns `hide-empty-ports` + `port-mutes` in the expected types.
 
 ---
 *Phase: 02-notifications-preferences-ego-submission-polish-v1-0*

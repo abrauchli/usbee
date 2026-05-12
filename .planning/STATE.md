@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-12T19:22:38.578Z"
+last_updated: "2026-05-12T19:25:58.067Z"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -19,19 +19,19 @@ progress:
 ## Project Reference
 
 - **Core value:** A GNOME-native, glanceable answer to "is this the fast port?" and "why is my laptop charging slowly?" — without opening a terminal.
-- **Current focus:** Phase 01 — tile-popover-hotplug-daemon-missing-state-v0-1
+- **Current focus:** Phase 02 — notifications-preferences-ego-submission-polish-v1-0
 - **Mode:** mvp
 - **Granularity:** coarse
 - **Workflow mode:** yolo (parallelization enabled)
 
 ## Current Position
 
-Phase: 01 (tile-popover-hotplug-daemon-missing-state-v0-1) — EXECUTING
+Phase: 02 (notifications-preferences-ego-submission-polish-v1-0) — EXECUTING
 Plan: 1 of 2
 
 - **Phase:** 2
 - **Plan:** Not started
-- **Status:** Ready to execute
+- **Status:** Executing Phase 02
 - **Progress:** [█████░░░░░] ~50% of Plan 01 acceptance gates passing automatically; manual verification pending
 
 ## Performance Metrics
@@ -54,7 +54,7 @@ Plan: 1 of 2
 - **License:** GPL-3.0 (matches GNOME ecosystem norms; explicitly different from `usbeehive`'s permissive license).
 - **Distribution:** extensions.gnome.org (EGO) as a single zip produced by `gnome-extensions pack`. No Flatpak for the extension itself.
 - **Min target:** GNOME Shell 46. `metadata.json` `shell-version` will declare `["46", "47", "48"]`.
-- **Settings storage:** GSettings schema `org.gnome.usbee`. No TOML, no dotfiles.
+- **Settings storage:** GSettings schema `us.bitcreed.usbee`. No TOML, no dotfiles. (`org.gnome.*` is GNOME-endorsement namespace, not appropriate for a third-party extension; renamed 2026-05-12.)
 - **i18n:** English strings only in v1; every user-visible string wrapped in `gettext` `_()` markers from day one. Translations deferred to v2.
 - **Architecture rule:** All USB knowledge flows through `usbeehive` via D-Bus. USBee performs no `/sys` or udev access of its own.
 - **D-Bus wire names (Plan 01):** `BUS_NAME='org.usbeehive.Devices'` and `OBJECT_PATH='/org/usbeehive/Devices'` (NO trailing 1); `INTERFACE_NAME='org.usbeehive.Devices1'` (the `1` is only on the interface). Verified against `../usbeehive/src/dbus.rs:290-292`; CONTEXT.md's original wording had this wrong.

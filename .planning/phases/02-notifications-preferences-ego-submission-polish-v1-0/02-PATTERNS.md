@@ -17,7 +17,7 @@
 | `usbee@bitcreed.us/COPYING` (**NEW**) | license text | n/a (static blob) | none | no-analog (verbatim GPL-3.0 text — single authoritative source: <https://www.gnu.org/licenses/gpl-3.0.txt>) |
 | `usbee@bitcreed.us/README.md` (**NEW**) | documentation | n/a (static markdown) | none | external-anchor (structure pinned by `02-UI-SPEC.md` §Packaging Copy) |
 | `usbee@bitcreed.us/po/usbee@bitcreed.us.pot` (**NEW**) | gettext template | batch (toolchain artifact) | none | toolchain-generated (`xgettext` invocation — not hand-written) |
-| `usbee@bitcreed.us/schemas/org.gnome.usbee.gschema.xml` (**MODIFY**) | config / schema declaration | n/a (XML, build-time → dconf runtime) | the file itself (Phase 1 empty scaffold at lines 1-9) | extend-in-place (scaffold already exists; Phase 2 populates two keys) |
+| `usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml` (**MODIFY**) | config / schema declaration | n/a (XML, build-time → dconf runtime) | the file itself (Phase 1 empty scaffold at lines 1-9) | extend-in-place (scaffold already exists; Phase 2 populates two keys) |
 | `usbee@bitcreed.us/src/dbus-client.js` (**MODIFY**) | service / D-Bus client | event-driven | itself (lines 164-177 — the existing `DeviceAdded`/`DeviceRemoved` subscription block is the literal template for the new `CapabilityDegraded`/`CapabilityRestored` block) | exact (same file, same idiom) |
 | `usbee@bitcreed.us/src/tile.js` (**MODIFY**) | component / Quick Settings tile | event-driven | itself (lines 30-52 — existing `setHeader` + `addMenuItem` + `registry.addSignal` pattern; lines 58-62 — the Phase-2 seam comment already documents where Preferences row goes) | exact (same file; Phase 1 left an explicit comment-marked seam) |
 | `usbee@bitcreed.us/src/popover.js` (**MODIFY**) | render-function module | pure transform (store → menu items) | itself (lines 39-51 — existing `populateDeviceRows` signature is the patch target; one parameter added, one filter inserted) | exact (same file) |
@@ -242,20 +242,20 @@ settings.bind('hide-empty-ports', hideRow, 'active', Gio.SettingsBindFlags.DEFAU
 
 ---
 
-### `usbee@bitcreed.us/schemas/org.gnome.usbee.gschema.xml` (MODIFY — config, build-time)
+### `usbee@bitcreed.us/schemas/us.bitcreed.usbee.gschema.xml` (MODIFY — config, build-time)
 
 **Analog:** the file itself (Phase 1 empty scaffold at lines 1-9). The scaffold already declares the schema id and gettext-domain — Phase 2 inserts two `<key>` elements between the existing `<schema>` open and close tags.
 
-**Existing content** (`schemas/org.gnome.usbee.gschema.xml:1-9`):
+**Existing content** (`schemas/us.bitcreed.usbee.gschema.xml:1-9`):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="usbee@bitcreed.us">
-  <schema id="org.gnome.usbee" path="/org/gnome/usbee/">
+  <schema id="us.bitcreed.usbee" path="/us/bitcreed/usbee/">
     <!-- Phase 2 (PREFS-02, PREFS-03) populates this schema with:
            <key name="port-mutes" type="as"> ...
            <key name="hide-empty-ports" type="b"> ...
-         For Phase 1, the empty schema makes `dconf-editor` show `org.gnome.usbee`. -->
+         For Phase 1, the empty schema makes `dconf-editor` show `us.bitcreed.usbee`. -->
   </schema>
 </schemalist>
 ```
@@ -572,7 +572,7 @@ import {Notifier} from './src/notifier.js';
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/abrauchli/usbee",
   "gettext-domain": "usbee@bitcreed.us",
-  "settings-schema": "org.gnome.usbee"
+  "settings-schema": "us.bitcreed.usbee"
 }
 ```
 

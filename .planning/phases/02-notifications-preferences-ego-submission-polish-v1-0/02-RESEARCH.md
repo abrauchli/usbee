@@ -25,7 +25,7 @@ From `STATE.md § Decisions Locked`:
 - **Stack:** Pure-GJS GNOME 46+ Shell extension, ESM-only. No Rust binary, no GTK4-rs, no companion service.
 - **License:** GPL-3.0.
 - **Distribution:** extensions.gnome.org (EGO) as a single zip produced by `gnome-extensions pack`.
-- **Settings storage:** GSettings schema `org.gnome.usbee`. No TOML, no dotfiles.
+- **Settings storage:** GSettings schema `us.bitcreed.usbee`. No TOML, no dotfiles.
 - **i18n:** English strings only in v1; every user-visible string wrapped in `gettext` `_()` markers.
 - **D-Bus wire names:** `BUS_NAME='org.usbeehive.Devices'`, `OBJECT_PATH='/org/usbeehive/Devices'`, `INTERFACE_NAME='org.usbeehive.Devices1'` (`1` only on interface — already correct in Phase 1 code).
 
@@ -87,7 +87,7 @@ From `02-UI-SPEC.md § Out-of-Scope Restatement` and `REQUIREMENTS.md § v2`:
 | **NOTIF-02** | At most one notification per port per degradation event; coalesce across daemon restarts via "replaces_id"-equivalent | §Code Example #2 (`notification.update()` on the existing instance from the per-port `Map`); §Code Example #3 (2.5 s suppression after `NameOwnerChanged null→owner→null→owner`); §Pitfall A (do NOT pass `replaces_id` directly — that's pre-GNOME-46 XDG semantics; GNOME Shell 46 uses `.update()` for in-place updates) |
 | **NOTIF-03** | Notification carries a "Don't notify for this port again" action that persists the mute decision in GSettings | §Code Example #4 (action handler reads `settings.get_strv('port-mutes')`, appends `String(port_number)` if absent, writes via `settings.set_strv(...)`, then `notification.destroy(...)`); §Pitfall E (`addAction` callback receives no arguments — capture `port_number` in the closure) |
 | **NOTIF-04** | Muted ports never raise further `CapabilityDegraded` notifications until unmuted via preferences | §Code Example #1 (Notifier handler short-circuits if `String(port_number)` ∈ `settings.get_strv('port-mutes')` BEFORE composing any notification); read the live GSettings array on every event — do not cache (PREFS writes from `prefs.js` arrive via `changed::port-mutes` and the Notifier should react without restart) |
-| **PREFS-01** | GSettings schema `org.gnome.usbee` installed and visible in `dconf-editor` when extension enabled | §Code Example #5 (schemas/org.gnome.usbee.gschema.xml — the Phase 1 empty scaffold is already in place; Phase 2 populates the two keys); §Architecture Pattern 2 (compile-on-install via `gnome-extensions install` since GNOME 44, manual `glib-compile-schemas` during dev) |
+| **PREFS-01** | GSettings schema `us.bitcreed.usbee` installed and visible in `dconf-editor` when extension enabled | §Code Example #5 (schemas/us.bitcreed.usbee.gschema.xml — the Phase 1 empty scaffold is already in place; Phase 2 populates the two keys); §Architecture Pattern 2 (compile-on-install via `gnome-extensions install` since GNOME 44, manual `glib-compile-schemas` during dev) |
 | **PREFS-02** | Schema includes `port-mutes` (`as`) | §Code Example #5 (schema XML with `<key name="port-mutes" type="as"><default>[]</default>...`); §Pitfall F (store `String(port_number)`, not int — `as` is array-of-strings; daemon's `port_number` is `i` and must be stringified) |
 | **PREFS-03** | Schema includes `hide-empty-ports` boolean toggle | §Code Example #5 (schema XML); §Continuity-with-Phase-1 (Phase 2 patches `populateDeviceRows()` in `src/popover.js` to consult this key) |
 | **PREFS-04** | All preference reads/writes go through GSettings — no ad-hoc config file | §Architecture Pattern 2; §Don't Hand-Roll (config files); §Pitfall G (do NOT cache GSettings in extension state — re-read on every relevant event so `prefs.js` writes take effect without restart) |
@@ -122,7 +122,7 @@ The second-largest risk surface is **EGO submission cleanliness**. The December 
 | Consume `hide-empty-ports` in popover | Shell-process (`src/popover.js` patch) | GSettings | `populateDeviceRows()` reads `extension.getSettings().get_boolean('hide-empty-ports')` once per rebuild. Read-only access; `Gio.Settings` is process-shared via dconf. |
 | Hide `Preferences…` menu entry on lock | Shell-process (`src/tile.js` patch) | — | `Main.sessionMode` is a Shell singleton; `allowSettings` is its property. |
 | Open the prefs window from a notification action | Shell-process (calls `extension.openPreferences()`) | gnome-shell-extension-prefs (target) | `Extension.openPreferences()` is the documented API; the Shell spawns the prefs process for us. |
-| Schema definition (`schemas/org.gnome.usbee.gschema.xml`) | Source-tree (compile-time artifact) | dconf (runtime) | `gnome-extensions install` auto-compiles to `gschemas.compiled` since GNOME 44; during dev, `glib-compile-schemas schemas/` is the manual command. |
+| Schema definition (`schemas/us.bitcreed.usbee.gschema.xml`) | Source-tree (compile-time artifact) | dconf (runtime) | `gnome-extensions install` auto-compiles to `gschemas.compiled` since GNOME 44; during dev, `glib-compile-schemas schemas/` is the manual command. |
 | Translation extraction (`po/usbee@bitcreed.us.pot`) | Source-tree (xgettext build step) | — | gettext is initialized automatically because `metadata.json` already declares `gettext-domain: "usbee@bitcreed.us"`. |
 | Package zip | Source-tree (`gnome-extensions pack`) | EGO upload | The CLI auto-includes `extension.js`, `metadata.json`, `prefs.js`, `stylesheet*.css`, `schemas/`, `po/`; everything else needs `--extra-source`. |
 
@@ -137,7 +137,7 @@ Hard rules extracted from `./CLAUDE.md` — every Phase 2 task **must** be verif
 | C-03 | UI toolkit: GTK4 + libadwaita 1.5+ for `prefs.js` only; GJS / Shell extension JS for the Shell surface | "Constraints" + "What NOT to Use" table | `prefs.js` is the ONLY file with `gi://Gtk` / `gi://Adw` imports |
 | C-04 | All USB knowledge flows through usbeehive via D-Bus | "Constraints" | Notifier consumes `CapabilityDegraded` payload verbatim; never re-derives detail strings |
 | C-05 | Heavy lifting belongs in usbeehive, not USBee | "Constraints" | If Phase 2 surfaces a missing field (e.g. stable port identifier), the fix goes upstream — port_number as int is the v1 identifier |
-| C-06 | Settings: GSettings schema `org.gnome.usbee` (not TOML / not ad-hoc dotfile) | "Constraints" | All persistence via `Gio.Settings`; no `Gio.File.write_*`, no `Gio.Subprocess`, no `~/.config/usbee` |
+| C-06 | Settings: GSettings schema `us.bitcreed.usbee` (not TOML / not ad-hoc dotfile) | "Constraints" | All persistence via `Gio.Settings`; no `Gio.File.write_*`, no `Gio.Subprocess`, no `~/.config/usbee` |
 | C-07 | i18n: English strings only for v1, but every user-visible string must go through gettext | "Constraints" | `_()` wrap on every Notif + Prefs literal; `.pot` generation gate at end of phase |
 | C-08 | NEVER bundle a binary (Rust, C, Go) in the EGO zip — auto-rejection | "What NOT to Use" | `gnome-extensions pack` zip must show `file --mime-type` text/* for every entry |
 | C-09 | NEVER import `gtk4-rs` / `libadwaita-rs` / `zbus` / `tokio` for the tile itself | "What NOT to Use" | Phase 2 adds no Cargo dependency — there is no Cargo.toml in this repo |
@@ -196,7 +196,7 @@ The Phase 1 introspection XML (already in `usbee@bitcreed.us/dbus-iface.xml`) al
 
 ### Supporting
 
-No external libraries. Phase 2 ships **zero** new `npm` / `cargo` / `pip` dependencies. The deliverable is the same flat `gnome-extensions pack` zip as Phase 1 with three new files (`prefs.js`, `src/notifier.js`, `COPYING`, `README.md`, `po/usbee@bitcreed.us.pot`) and edits to two existing files (`src/dbus-client.js`, `src/tile.js`) plus the schema (`schemas/org.gnome.usbee.gschema.xml`).
+No external libraries. Phase 2 ships **zero** new `npm` / `cargo` / `pip` dependencies. The deliverable is the same flat `gnome-extensions pack` zip as Phase 1 with three new files (`prefs.js`, `src/notifier.js`, `COPYING`, `README.md`, `po/usbee@bitcreed.us.pot`) and edits to two existing files (`src/dbus-client.js`, `src/tile.js`) plus the schema (`schemas/us.bitcreed.usbee.gschema.xml`).
 
 ### Alternatives Considered
 
@@ -240,7 +240,7 @@ The existing `metadata.json` (read directly from `usbee@bitcreed.us/metadata.jso
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/abrauchli/usbee",
   "gettext-domain": "usbee@bitcreed.us",
-  "settings-schema": "org.gnome.usbee"
+  "settings-schema": "us.bitcreed.usbee"
 }
 ```
 
@@ -251,8 +251,8 @@ The existing `metadata.json` (read directly from `usbee@bitcreed.us/metadata.jso
 ```diff
    "url": "https://github.com/abrauchli/usbee",
    "gettext-domain": "usbee@bitcreed.us",
--  "settings-schema": "org.gnome.usbee"
-+  "settings-schema": "org.gnome.usbee",
+-  "settings-schema": "us.bitcreed.usbee"
++  "settings-schema": "us.bitcreed.usbee",
 +  "version-name": "1.0.0"
  }
 ```
@@ -429,7 +429,7 @@ Phase 2 is **additive to Phase 1's greenfield**. There is no prior runtime state
 
 | Category | Items Found | Action Required |
 |----------|-------------|------------------|
-| Stored data | The empty `org.gnome.usbee` schema scaffold installed in Phase 1 has no keys yet, so no stored values exist. Phase 2 populates the schema with `port-mutes` (default `[]`) and `hide-empty-ports` (default `false`). **No data migration** — the defaults are the correct initial state for any user upgrading from v0.1. | None — defaults handle the migration |
+| Stored data | The empty `us.bitcreed.usbee` schema scaffold installed in Phase 1 has no keys yet, so no stored values exist. Phase 2 populates the schema with `port-mutes` (default `[]`) and `hide-empty-ports` (default `false`). **No data migration** — the defaults are the correct initial state for any user upgrading from v0.1. | None — defaults handle the migration |
 | Live service config | None — Phase 2 introduces no daemon or service registration outside the extension itself. | None |
 | OS-registered state | The extension is installed via `gnome-extensions install` (or symlinked during dev). No new OS-level registration in Phase 2. | None |
 | Secrets/env vars | None — no auth tokens, no API keys, no env-var reads anywhere in Phase 2. | None |
@@ -490,13 +490,13 @@ notification.addAction(_("Don't notify for this port again"), () => {
 
 ### Pitfall E: GSettings reads in `prefs.js` need the right schema lookup
 
-**What goes wrong:** `prefs.js` calls `this.getSettings('org.gnome.usbee')` and then either (a) passes the wrong schema ID, or (b) forgets the schema isn't compiled yet during dev.
+**What goes wrong:** `prefs.js` calls `this.getSettings('us.bitcreed.usbee')` and then either (a) passes the wrong schema ID, or (b) forgets the schema isn't compiled yet during dev.
 **Why it happens:** In production, `gnome-extensions install --force usbee@bitcreed.us.shell-extension.zip` auto-compiles the schema into `~/.local/share/gnome-shell/extensions/usbee@bitcreed.us/schemas/gschemas.compiled`. During development with symlinked extension dirs, you must run `glib-compile-schemas schemas/` manually after editing the XML.
 **How to avoid:** Three steps:
-1. Declare `settings-schema: "org.gnome.usbee"` in `metadata.json` (already done in Phase 1).
+1. Declare `settings-schema: "us.bitcreed.usbee"` in `metadata.json` (already done in Phase 1).
 2. In `prefs.js`, call `this.getSettings()` with NO argument — the base class reads `settings-schema` from metadata.
 3. In dev loop: `cd schemas/ && glib-compile-schemas .` after every XML edit. Add a comment / docstring noting this in the schema file.
-**Warning signs:** "Settings schema 'org.gnome.usbee' is not installed" in `journalctl`; prefs window opens but is empty.
+**Warning signs:** "Settings schema 'us.bitcreed.usbee' is not installed" in `journalctl`; prefs window opens but is empty.
 
 ### Pitfall F: Storing `port-mutes` as integers in the `as` schema
 
@@ -572,7 +572,7 @@ const SUPPRESSION_WINDOW_US = 2_500_000; // 2.5 s
 
 export class Notifier {
     constructor(settings, registry, extension) {
-        this._settings = settings;        // Gio.Settings for org.gnome.usbee
+        this._settings = settings;        // Gio.Settings for us.bitcreed.usbee
         this._registry = registry;        // SignalRegistry from Phase 1
         this._extension = extension;      // for extension.openPreferences()
         this._notifications = new Map();  // port_number → MessageTray.Notification
@@ -740,12 +740,12 @@ The Notifier's `onCapabilityDegraded` reads `GLib.get_monotonic_time()` on every
 - `mutes.includes(id)` guards against duplicate appends (defensive — but the GSettings array can have duplicates if you don't check).
 - `notification.destroy(SOURCE_CLOSED)` clears the banner immediately so the user gets visual confirmation.
 
-### Example #5: `schemas/org.gnome.usbee.gschema.xml` populated
+### Example #5: `schemas/us.bitcreed.usbee.gschema.xml` populated
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="usbee@bitcreed.us">
-  <schema id="org.gnome.usbee" path="/org/gnome/usbee/">
+  <schema id="us.bitcreed.usbee" path="/us/bitcreed/usbee/">
 
     <key name="port-mutes" type="as">
       <default>[]</default>
@@ -775,7 +775,7 @@ The Notifier's `onCapabilityDegraded` reads `GLib.get_monotonic_time()` on every
 </schemalist>
 ```
 
-[Source: composed from current `schemas/org.gnome.usbee.gschema.xml` scaffold + UI-SPEC §Continuity-with-Phase-1]
+[Source: composed from current `schemas/us.bitcreed.usbee.gschema.xml` scaffold + UI-SPEC §Continuity-with-Phase-1]
 
 **Dev-loop reminder:** after editing this file, run `glib-compile-schemas schemas/` to regenerate `gschemas.compiled` (or re-install via `gnome-extensions install --force` which does it automatically).
 
@@ -1073,7 +1073,7 @@ These are NOT user-confirmation items — they are execution-time smoke-test ite
 2. **Should `prefs.js` show the master notifications-enabled toggle?**
    - What we know: REQUIREMENTS.md `NOTIF-V2-01` is a v2 deferral. UI-SPEC §Out-of-Scope-Restatement explicitly defers it.
    - What's unclear: whether a v1.0 user discovering the prefs window will expect a master kill-switch (per-port is finer-grained but less obvious).
-   - Recommendation: **defer to v2** as UI-SPEC pins. Document in README that the master kill-switch is in roadmap; provide the dconf path (`org.gnome.usbee port-mutes`) as the v1 escape hatch for power users.
+   - Recommendation: **defer to v2** as UI-SPEC pins. Document in README that the master kill-switch is in roadmap; provide the dconf path (`us.bitcreed.usbee port-mutes`) as the v1 escape hatch for power users.
 
 3. **`session-modes` metadata.json field — needed at all?**
    - What we know: STATE-04 hides the Preferences row when locked. The extension itself doesn't run under `unlock-dialog`.
@@ -1269,7 +1269,7 @@ This produces `usbee@bitcreed.us.shell-extension.zip` in the current directory.
 | 12 | 3× lock/unlock cycle has STATE-04 row correctly hidden+restored | Manual Looking Glass smoke test |
 | 13 | `busctl --user emit … CapabilityDegraded` produces exactly one banner; repeat emits update in place | Manual smoke test (corresponds to A1 in §Assumptions Log) |
 | 14 | `busctl --user emit … CapabilityRestored` destroys the banner | Manual smoke test |
-| 15 | Don't-notify action persists to GSettings; visible in `dconf-editor` | `gsettings get org.gnome.usbee port-mutes` shows the stringified port number |
+| 15 | Don't-notify action persists to GSettings; visible in `dconf-editor` | `gsettings get us.bitcreed.usbee port-mutes` shows the stringified port number |
 | 16 | Prefs window opens via `gnome-extensions prefs usbee@bitcreed.us`; trash button removes a row; switch toggles persist | Manual smoke test |
 | 17 | Daemon-restart suppression window — emit Degraded twice within 2 s of `bus_watch_name` "appeared"; no notification banners | Manual smoke test |
 

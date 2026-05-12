@@ -5,5 +5,5 @@
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/abrauchli/usbee",
   "gettext-domain": "usbee@bitcreed.us",
-  "settings-schema": "org.gnome.usbee"
+  "settings-schema": "us.bitcreed.usbee"
 }

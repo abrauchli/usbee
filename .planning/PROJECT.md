@@ -40,7 +40,7 @@ A GNOME-native, glanceable answer to "is this the fast port?" and
       `NameOwnerChanged` and lights up automatically when usbeehive
       appears on the session bus
 - [ ] Per-port mute preferences persisted in GSettings
-      (`org.gnome.usbee`)
+      (`us.bitcreed.usbee`)
 - [ ] Strings wrapped in gettext markers so localisation can be
       added later without churn
 - [ ] Ship as a GNOME Shell extension for the GNOME 46+ Quick
@@ -95,8 +95,10 @@ A GNOME-native, glanceable answer to "is this the fast port?" and
 - **Heavy lifting belongs in `usbeehive`**, not USBee. If a desired
   capability would require non-trivial logic in the indicator, push
   the work upstream into the daemon and consume the result via D-Bus
-- **Settings**: `GSettings` schema `org.gnome.usbee` (not TOML / not
-  ad-hoc dotfile)
+- **Settings**: `GSettings` schema `us.bitcreed.usbee` (not TOML / not
+  ad-hoc dotfile). The `us.bitcreed.*` namespace is the project's own
+  vendor ID — `org.gnome.*` is reserved for components endorsed by the
+  GNOME project, which USBee is not.
 - **i18n**: English strings only for v1, but every user-visible
   string must go through gettext
 
@@ -110,7 +112,7 @@ A GNOME-native, glanceable answer to "is this the fast port?" and
 | All USB data via `org.usbeehive.Devices1` D-Bus interface | usbeehive already implements it; avoids duplicate enumeration logic | — Pending |
 | `usbeehive` runs as user-level systemd unit (`systemctl --user`) | Predictable lifecycle, simpler than D-Bus activation, matches user default | — Pending |
 | Notify once per `CapabilityDegraded` event with per-port mute | Loud-enough-to-notice without becoming notification spam | — Pending |
-| GSettings schema `org.gnome.usbee` for preferences | GNOME-native, visible in `dconf-editor`, integrates with Flatpak | — Pending |
+| GSettings schema `us.bitcreed.usbee` for preferences | GNOME-native, visible in `dconf-editor`, integrates with Flatpak | — Pending |
 | English-only strings + gettext markers in v1 | Defer translation cost without locking it out | — Pending |
 | Pick async runtime / tile-host language during research | User left these open ("evaluate, pick best") — research phase will decide | — Pending |
 

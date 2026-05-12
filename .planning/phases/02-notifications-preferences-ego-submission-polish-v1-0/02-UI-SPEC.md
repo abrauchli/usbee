@@ -464,7 +464,7 @@ Anchor: `<a id="registry-safety"></a>`
 - [ ] Zip contains: **zero binaries** (no `.so`, no `.bin`, no `.bundle`, no compiled C/Rust).
 - [ ] Zip contains: **zero AI-generated boilerplate** (December 2025 EGO AI-code rule). Source is human-readable, structured, single-author-voice.
 - [ ] All user-visible strings in `.js` source are wrapped in `_()`; `xgettext --from-code=UTF-8 -o po/usbee@bitcreed.us.pot extension.js prefs.js src/*.js` produces a non-trivial `.pot`.
-- [ ] `metadata.json` declares `shell-version: ["46", "47", "48"]`, `gettext-domain: "usbee@bitcreed.us"`, `settings-schema: "org.gnome.usbee"`, and a stable `uuid`.
+- [ ] `metadata.json` declares `shell-version: ["46", "47", "48"]`, `gettext-domain: "usbee@bitcreed.us"`, `settings-schema: "us.bitcreed.usbee"`, and a stable `uuid`.
 
 ---
 
@@ -514,7 +514,7 @@ Phase 2 adds three surfaces to the running extension without modifying any Phase
 | Empty-state popover (`buildEmptyStateItem`) | Unchanged. The same `systemctl --user enable --now usbeehive` copy that lives in the popover empty state is now **echoed verbatim** in the prefs About row — both must update in lock-step if the daemon's install command changes upstream. |
 | `stylesheet.css` | Unchanged. **Phase 2 adds zero CSS rules** (per §Spacing rationale). |
 | `dbus-iface.xml` | Unchanged. Phase 2 consumes signals (`CapabilityDegraded`, `CapabilityRestored`) that were already in the captured XML. |
-| `schemas/org.gnome.usbee.gschema.xml` | **Populated** with the two keys: `<key name="port-mutes" type="as">` with default `[]`, and `<key name="hide-empty-ports" type="b">` with default `false`. Both keys declared in the existing empty schema file from Phase 1. |
+| `schemas/us.bitcreed.usbee.gschema.xml` | **Populated** with the two keys: `<key name="port-mutes" type="as">` with default `[]`, and `<key name="hide-empty-ports" type="b">` with default `false`. Both keys declared in the existing empty schema file from Phase 1. |
 | Phase 1 typography / color / spacing tokens | All inherited unchanged. |
 
 ---
