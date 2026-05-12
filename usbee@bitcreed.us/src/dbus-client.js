@@ -199,7 +199,10 @@ export const DBusClient = GObject.registerClass({
     }
 
     _onVanished() {
-        // D-07: do NOT recreate proxy. Just clear cache + flip flag.
+        // Idempotency guard — both bus_watch_name and notify::g-name-owner
+        // fire on daemon disconnect. Without this guard, setDevices([])
+        // and 'lost' would emit twice per vanish event.
+        if (!this._store.daemonRunning) return;
         this._store.setDaemonRunning(false);
         this._store.setDevices([]);
         this.emit('lost');
