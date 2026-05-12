@@ -1,0 +1,9 @@
+{
+  "uuid": "usbee@bitcreed.us",
+  "name": "USBee",
+  "description": "Glanceable USB and USB-C capability + charging info, powered by usbeehive.\n\nMounts a Quick Settings tile next to Wi-Fi, Bluetooth, and Sound. Shows live charging wattage and link speed in the subtitle, expands to a popover listing every attached USB device and USB-C port with a plain-English diagnostic per port. Reads only from the usbeehive D-Bus daemon (org.usbeehive.Devices1); no /sys access, no subprocesses, no bundled binaries.\n\nRequires the usbeehive daemon (systemctl --user enable --now usbeehive).",
+  "shell-version": ["46", "47", "48"],
+  "url": "https://github.com/abrauchli/usbee",
+  "gettext-domain": "usbee@bitcreed.us",
+  "settings-schema": "org.gnome.usbee"
+}
