@@ -33,7 +33,14 @@ Two phases, derived directly from the unanimous research recommendation in `.pla
   3. Plugging or unplugging a device updates both the tile subtitle and the open popover live, with no manual refresh required, sourced from `usbeehive`'s `DeviceAdded` / `DeviceRemoved` signals.
   4. With `usbeehive` stopped, the popover shows a copyable `systemctl --user enable --now usbeehive` hint instead of an error or crash; starting the daemon repopulates the tile within ~1 second via `NameOwnerChanged` with no user action; stopping it mid-session transitions cleanly back to the empty state.
   5. Locking and unlocking the screen at least 3 times, and disabling/re-enabling the extension 10 times, produces no duplicate tiles, no "already disposed" warnings, and no leaked signal handlers in `journalctl --user-unit gnome-shell`.
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+- [ ] 01-01-PLAN.md — Walking Skeleton: project scaffold, dbus-iface.xml capture, DBusClient + DeviceStore + SignalRegistry, tile mount, daemon-missing empty state (covers TILE-01/02, STATE-01/02/03, PACK-04/05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 01-02-PLAN.md — Live device list + headline derivation + lifecycle hygiene: full D-09 4-tier subtitle, DeviceAdded/Removed + 150 ms debounce, multi-bullet rows with DIAG-02 line-wrap, RESEARCH §Lifecycle Test Matrix Tests 1/3/4/5 (covers TILE-03/04, LIST-01..06, DIAG-01/02, LIVE-01/02/03, STATE-05)
 **UI hint:** yes
 
 ### Phase 2: Notifications, Preferences, EGO Submission Polish (v1.0)
@@ -55,7 +62,7 @@ Two phases, derived directly from the unanimous research recommendation in `.pla
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 0/0 | Not started | - |
+| 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 0/2 | Plans drafted | - |
 | 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 0/0 | Not started | - |
 
 ## Coverage Map
