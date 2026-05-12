@@ -197,7 +197,7 @@ journalctl --user-unit gnome-shell -f
 
 | § | What | Expected PASS |
 |---|------|----------------|
-| A | Schema visibility | `gsettings list-schemas \| grep '^org\.gnome\.usbee$'` returns the schema; `list-keys` returns exactly `hide-empty-ports` and `port-mutes`; `get port-mutes` returns `@as []`; `get hide-empty-ports` returns `false`. |
+| A | Schema visibility | `gsettings list-schemas \| grep '^us\.bitcreed\.usbee$'` returns the schema; `list-keys` returns exactly `hide-empty-ports` and `port-mutes`; `get port-mutes` returns `@as []`; `get hide-empty-ports` returns `false`. |
 | B | Single-banner notification | In Looking Glass (`Alt+F2 → lg`): `Main.extensionManager.lookup('usbee@bitcreed.us').stateObj._notifier.onCapabilityDegraded(1, 'Charging slower than expected', 'Cable limits this port to 60 W. A full-featured USB-C cable would deliver 100 W.')` → exactly one banner titled `USB-C Port 1 — Charging slower than expected` with body verbatim and two action buttons in order `Don't notify for this port again`, `Open Preferences`. |
 | C | Coalescing | Second `onCapabilityDegraded(1, …, 'NEW DETAIL …')` updates the existing banner in place; no second entry in the shade. |
 | D | Restore | `onCapabilityRestored(1)` makes the banner disappear silently. |

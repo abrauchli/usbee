@@ -1263,7 +1263,7 @@ This produces `usbee@bitcreed.us.shell-extension.zip` in the current directory.
 | 6 | No `proxy.call_sync` / `Gio.DBusProxy.new_for_bus_sync` | `grep -E '\.call_sync\b\|new_for_bus_sync' usbee@bitcreed.us/**/*.js` — empty output |
 | 7 | `metadata.json` `shell-version` declares only EGO-accepted versions | `jq .shell-version metadata.json` returns `["46","47","48"]` |
 | 8 | `metadata.json` has no manual `version` field | `jq .version metadata.json` returns `null` |
-| 9 | Schema visible in `dconf-editor` | `gsettings list-schemas \| grep '^org\.gnome\.usbee$'` — non-empty |
+| 9 | Schema visible in `dconf-editor` | `gsettings list-schemas \| grep '^us\.bitcreed\.usbee$'` — non-empty |
 | 10 | Extension loads cleanly on a fresh user (`enable` 1 cycle, no errors) | `journalctl --user-unit gnome-shell --since '1 minute ago' \| grep -i 'usbee\|usbee@bitcreed.us'` — no errors |
 | 11 | 10× enable/disable cycle leaves no leaked handlers | Phase 1 STATE-05 gate, re-run with Phase 2 additions in place |
 | 12 | 3× lock/unlock cycle has STATE-04 row correctly hidden+restored | Manual Looking Glass smoke test |
