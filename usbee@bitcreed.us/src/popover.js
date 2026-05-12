@@ -81,10 +81,10 @@ function buildDeviceRow(device) {
     // — daemon always emits a non-empty headline per RESEARCH §Daemon Wire Shape).
     const headline = device.headline || device.id || '';
     const item = new PopupMenu.PopupMenuItem(headline, {
-        reactive:    false,
-        can_focus:   false,
-        style_class: 'usbee-device-row',
+        reactive:  false,
+        can_focus: false,
     });
+    item.add_style_class_name('usbee-device-row');
 
     // Body box — one St.Label per bullet, line-wrapped.
     // x_expand: true so labels stretch to the popover width and wrap

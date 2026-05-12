@@ -22,8 +22,8 @@ export function buildEmptyStateItem() {
     const item = new PopupMenu.PopupMenuItem('', {
         reactive: false,
         can_focus: false,
-        style_class: 'usbee-empty-state',
     });
+    item.add_style_class_name('usbee-empty-state');
     item.label.text = _('usbeehive daemon not running');
 
     const box = new St.BoxLayout({
