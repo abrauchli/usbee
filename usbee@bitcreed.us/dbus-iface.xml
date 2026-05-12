@@ -3,7 +3,7 @@
 <node>
   <interface name="org.usbeehive.Devices1">
     <method name="ListDevices">
-      <arg type="a(sssssasi)" direction="out" name="entries"/>
+      <arg type="a(ssssssasi)" direction="out" name="entries"/>
     </method>
     <method name="ListPorts">
       <arg type="ai" direction="out" name="ports"/>

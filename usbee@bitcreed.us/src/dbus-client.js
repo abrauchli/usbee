@@ -35,7 +35,7 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
 <node>
   <interface name="org.usbeehive.Devices1">
     <method name="ListDevices">
-      <arg type="a(sssssasi)" direction="out" name="entries"/>
+      <arg type="a(ssssssasi)" direction="out" name="entries"/>
     </method>
     <method name="ListPorts">
       <arg type="ai" direction="out" name="ports"/>
@@ -71,9 +71,6 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
 </node>`;
 
 const UsbeehiveProxy = Gio.DBusProxy.makeProxyWrapper(IFACE_XML);
-
-// D-15: async-only — promisify the methods we call. Once, at module load.
-Gio._promisify(UsbeehiveProxy.prototype, 'ListDevicesAsync', 'ListDevicesFinish');
 
 export const DBusClient = GObject.registerClass({
     Signals: {
@@ -161,7 +158,15 @@ export const DBusClient = GObject.registerClass({
     async _snapshotImmediate() {
         if (!this._proxy) return;
         try {
-            const [entries] = await this._proxy.ListDevicesAsync();
+            // GJS 1.80 (GNOME 46): makeProxyWrapper *Remote() is callback-style,
+            // not Promise-style. Wrap it ourselves. (Confirmed against the
+            // ubuntu-dock extension's nautilus.EmptyTrashRemote pattern.)
+            const [entries] = await new Promise((resolve, reject) => {
+                this._proxy.ListDevicesRemote((result, error) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                });
+            });
             this._store.setDevices(entries);
             this.emit('devices-changed');
         } catch (e) {
