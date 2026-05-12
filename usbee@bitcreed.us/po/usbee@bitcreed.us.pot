@@ -1,0 +1,148 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR USBee Contributors
+# This file is distributed under the same license as the USBee package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: USBee 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-12 14:58-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: usbee@bitcreed.us/prefs.js:22 usbee@bitcreed.us/prefs.js:100
+msgid "General"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:35
+msgid "Notifications"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:36
+msgid "Manage which USB-C ports may raise degradation warnings"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:50
+msgid "No muted ports"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:51
+msgid "Mute a port from a notification to see it here"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:65
+#, javascript-format
+msgid "USB-C Port %d"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:66
+msgid "Notifications muted"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:70
+msgid "Unmute this port"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:104
+msgid "Hide empty USB-C ports"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:105
+msgid "Don't list ports with nothing attached"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:114
+msgid "About"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:118
+msgid "Version"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:124
+msgid "usbeehive daemon"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:125
+msgid "Required — run: systemctl --user enable --now usbeehive"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:138
+#, javascript-format
+msgid "Charging: %s in"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:140
+#, javascript-format
+msgid "Powering: %s out"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:143
+#, javascript-format
+msgid "USB-C: %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:144
+msgid "USB-C: charging"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:163
+msgid "1 device"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:164
+#, javascript-format
+msgid "%d devices"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:168
+msgid "Nothing connected"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:189
+msgid "Daemon not running"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:28
+msgid "usbeehive daemon not running"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:37
+msgid "Run this command, then this list will populate automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:108 usbee@bitcreed.us/src/tile.js:26
+msgid "USBee"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:129
+#, javascript-format
+msgid "USB-C Port %d — %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:171
+msgid "Don't notify for this port again"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:178
+msgid "Open Preferences"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:55
+msgid "No USB devices attached"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:37
+msgid "USB devices"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:86
+msgid "Preferences…"
+msgstr ""
