@@ -9,8 +9,8 @@
 // proxy.
 //
 // Plan 01: bus watch + lazy proxy + initial snapshot + name-vanish only.
-// Plan 02 Task 2 will additionally subscribe to DeviceAdded /
-// DeviceRemoved and add the 150 ms trailing-edge debounce (D-06, D-10).
+// Plan 02 Task 2: added DeviceAdded / DeviceRemoved subscriptions and the
+// 150 ms trailing-edge debounce via _scheduleRefresh (D-06, D-10).
 
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
@@ -84,6 +84,10 @@ export const DBusClient = GObject.registerClass({
         this._registry = registry;
         this._store = store;
         this._proxy = null;
+        // D-10: shared debounce timer for DeviceAdded / DeviceRemoved bursts.
+        // Initialised to 0 (no pending source). _scheduleRefresh resets this
+        // on every incoming signal so N signals in 150 ms -> exactly 1 snapshot.
+        this._debounceId = 0;
     }
 
     /**
@@ -137,15 +141,61 @@ export const DBusClient = GObject.registerClass({
                             this._onVanished();
                     });
                 this._registry.addSignal(this._proxy, ownerId);
-                // Plan 02 Task 2 will additionally:
-                //   - proxy.connectSignal('DeviceAdded',  ...)
-                //   - proxy.connectSignal('DeviceRemoved', ...)
-                //   - 150ms trailing-edge debounce on signal-driven refresh
+
+                // D-06: subscribe to DeviceAdded / DeviceRemoved for the
+                // whole extension lifetime. We deliberately do NOT subscribe
+                // to CapabilityDegraded / CapabilityRestored — those are
+                // Phase 2 NOTIF-* work (RESEARCH.md §Pitfall F).
+                // Use proxy.connectSignal (NOT .connect) — these are D-Bus
+                // signals, not GObject property notifies (RESEARCH §Pitfall E).
+                const addedId = this._proxy.connectSignal('DeviceAdded',
+                    () => this._scheduleRefresh());
+                this._registry.addProxySignal(this._proxy, addedId);
+
+                const removedId = this._proxy.connectSignal('DeviceRemoved',
+                    () => this._scheduleRefresh());
+                this._registry.addProxySignal(this._proxy, removedId);
+
                 this._store.setDaemonRunning(true);
                 this._snapshotImmediate();
                 this.emit('ready');
             },
         );
+    }
+
+    /**
+     * D-10: 150 ms trailing-edge debounce for DeviceAdded / DeviceRemoved
+     * signal bursts (e.g. dock attach enumerating 5-15 devices).
+     *
+     * Every incoming signal resets the timer so N signals within 150 ms
+     * collapse to exactly one ListDevices call + one store mutation +
+     * one tile repaint (RESEARCH.md §Don't Hand-Roll + §Code Example 3).
+     *
+     * The first snapshot on daemon appearance bypasses this debounce
+     * because _onAppeared calls _snapshotImmediate() directly
+     * (RESEARCH.md §Pitfall G — first event must not feel sluggish).
+     *
+     * Each new timer is tracked via _registry.addTimeout so disable()
+     * clears any in-flight callback (RESEARCH.md §Validation 23).
+     * The registry entry for the previously-removed timer becomes a
+     * harmless no-op on dispose (GLib returns false; PITFALLS.md §9).
+     */
+    _scheduleRefresh() {
+        if (this._debounceId !== 0) {
+            GLib.Source.remove(this._debounceId);
+            this._debounceId = 0;
+            // Note: the old SignalRegistry entry's dispose-fn will call
+            // GLib.Source.remove on the now-removed id — GLib treats this
+            // as a no-op (returns false). PITFALLS.md §9 documents as safe.
+        }
+        this._debounceId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, 150, () => {
+                this._debounceId = 0;
+                this._snapshotImmediate();
+                return GLib.SOURCE_REMOVE;
+            });
+        // Track the new timer so disable() removes it if still in-flight.
+        this._registry.addTimeout(this._debounceId);
     }
 
     _onVanished() {
