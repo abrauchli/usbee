@@ -12,7 +12,7 @@
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-// DeviceEntry tuple from ListDevices: a(sssssasi)
+// DeviceEntry tuple from ListDevices: a(ssssssasi)
 // → [id, category, status, headline, subtitle, icon, bullets[], port_number]
 // Field shapes verified against ../usbeehive/src/dbus.rs (RESEARCH.md
 // §Daemon Wire Shape).
@@ -191,7 +191,7 @@ export const DeviceStore = GObject.registerClass({
 
     /**
      * Replace the device list wholesale (D-08 full re-snapshot strategy).
-     * @param {Array} rawEntries  Unpacked a(sssssasi) tuples from ListDevicesAsync.
+     * @param {Array} rawEntries  Unpacked a(ssssssasi) tuples from ListDevicesAsync.
      */
     setDevices(rawEntries) {
         this._devices = (rawEntries || []).map(unpackDeviceEntry);
