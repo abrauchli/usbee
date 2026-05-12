@@ -112,50 +112,52 @@ Deferred to a future release. Tracked but not in the v1 roadmap.
 
 ## Traceability
 
-Populated by the roadmapper. All v1 requirements must map to exactly one phase.
+All v1 requirements mapped to exactly one phase by the roadmapper.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TILE-01 | TBD | Pending |
-| TILE-02 | TBD | Pending |
-| TILE-03 | TBD | Pending |
-| TILE-04 | TBD | Pending |
-| LIST-01 | TBD | Pending |
-| LIST-02 | TBD | Pending |
-| LIST-03 | TBD | Pending |
-| LIST-04 | TBD | Pending |
-| LIST-05 | TBD | Pending |
-| LIST-06 | TBD | Pending |
-| DIAG-01 | TBD | Pending |
-| DIAG-02 | TBD | Pending |
-| LIVE-01 | TBD | Pending |
-| LIVE-02 | TBD | Pending |
-| LIVE-03 | TBD | Pending |
-| NOTIF-01 | TBD | Pending |
-| NOTIF-02 | TBD | Pending |
-| NOTIF-03 | TBD | Pending |
-| NOTIF-04 | TBD | Pending |
-| PREFS-01 | TBD | Pending |
-| PREFS-02 | TBD | Pending |
-| PREFS-03 | TBD | Pending |
-| PREFS-04 | TBD | Pending |
-| STATE-01 | TBD | Pending |
-| STATE-02 | TBD | Pending |
-| STATE-03 | TBD | Pending |
-| STATE-04 | TBD | Pending |
-| STATE-05 | TBD | Pending |
-| PACK-01 | TBD | Pending |
-| PACK-02 | TBD | Pending |
-| PACK-03 | TBD | Pending |
-| PACK-04 | TBD | Pending |
-| PACK-05 | TBD | Pending |
-| PACK-06 | TBD | Pending |
+| TILE-01 | Phase 1 | Pending |
+| TILE-02 | Phase 1 | Pending |
+| TILE-03 | Phase 1 | Pending |
+| TILE-04 | Phase 1 | Pending |
+| LIST-01 | Phase 1 | Pending |
+| LIST-02 | Phase 1 | Pending |
+| LIST-03 | Phase 1 | Pending |
+| LIST-04 | Phase 1 | Pending |
+| LIST-05 | Phase 1 | Pending |
+| LIST-06 | Phase 1 | Pending |
+| DIAG-01 | Phase 1 | Pending |
+| DIAG-02 | Phase 1 | Pending |
+| LIVE-01 | Phase 1 | Pending |
+| LIVE-02 | Phase 1 | Pending |
+| LIVE-03 | Phase 1 | Pending |
+| NOTIF-01 | Phase 2 | Pending |
+| NOTIF-02 | Phase 2 | Pending |
+| NOTIF-03 | Phase 2 | Pending |
+| NOTIF-04 | Phase 2 | Pending |
+| PREFS-01 | Phase 2 | Pending |
+| PREFS-02 | Phase 2 | Pending |
+| PREFS-03 | Phase 2 | Pending |
+| PREFS-04 | Phase 2 | Pending |
+| STATE-01 | Phase 1 | Pending |
+| STATE-02 | Phase 1 | Pending |
+| STATE-03 | Phase 1 | Pending |
+| STATE-04 | Phase 2 | Pending |
+| STATE-05 | Phase 1 | Pending |
+| PACK-01 | Phase 2 | Pending |
+| PACK-02 | Phase 2 | Pending |
+| PACK-03 | Phase 2 | Pending |
+| PACK-04 | Phase 1 | Pending |
+| PACK-05 | Phase 1 | Pending |
+| PACK-06 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 34 total
-- Mapped to phases: 0 (roadmapper will populate)
-- Unmapped: 34 ⚠️
+- Mapped to phases: 34 (100%) ✓
+- Unmapped: 0
+- Phase 1: 21 requirements (TILE × 4, LIST × 6, DIAG × 2, LIVE × 3, STATE-01/02/03/05, PACK-04/05)
+- Phase 2: 13 requirements (NOTIF × 4, PREFS × 4, STATE-04, PACK-01/02/03/06)
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after initial definition*
+*Last updated: 2026-05-11 — traceability populated by roadmapper*
