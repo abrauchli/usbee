@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/popover.js
 //
 // Stateless popover render functions called from src/tile.js on the

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/empty-state.js
 //
 // Daemon-not-running empty-state widget (CONTEXT.md D-13, STATE-01).

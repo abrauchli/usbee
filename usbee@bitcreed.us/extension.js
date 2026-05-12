@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // extension.js
 //
 // Lifecycle owner. The ONLY file that mounts / destroys the indicator

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/dbus-client.js
 //
 // Single connectivity authority for org.usbeehive.Devices.

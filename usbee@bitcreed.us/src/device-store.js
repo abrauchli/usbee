@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/device-store.js
 //
 // In-memory device snapshot + headline derivation. Pure data — no D-Bus,
