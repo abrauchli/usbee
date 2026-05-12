@@ -85,10 +85,13 @@ export const DBusClient = GObject.registerClass({
         'devices-changed': {},
     },
 }, class DBusClient extends GObject.Object {
-    constructor(registry, store) {
+    constructor(registry, store, notifier) {
         super();
         this._registry = registry;
         this._store = store;
+        // May be null in unit-test paths; all call sites use optional
+        // chaining (?.) below. Phase 2 NOTIF-01..04 wiring.
+        this._notifier = notifier;
         this._proxy = null;
         // D-10: shared debounce timer for DeviceAdded / DeviceRemoved bursts.
         // Initialised to 0 (no pending source). _scheduleRefresh resets this
@@ -131,6 +134,7 @@ export const DBusClient = GObject.registerClass({
             // to drive the refresh.
             if (this._proxy.gNameOwner === null) return;
             this._store.setDaemonRunning(true);
+            this._notifier?.onDaemonAppeared(); // RESEARCH §Code Example #3 — 2.5 s suppression
             this._snapshotImmediate();
             this.emit('ready');
             return;
@@ -175,7 +179,23 @@ export const DBusClient = GObject.registerClass({
                     () => this._scheduleRefresh());
                 this._registry.addProxySignal(this._proxy, removedId);
 
+                // Phase 2: forward Capability* signals to the Notifier
+                // (NOTIF-01..04). Destructured payload matches IFACE_XML
+                // (i, s, s) and (i) declared above.
+                const degradedId = this._proxy.connectSignal('CapabilityDegraded',
+                    (_proxy, _sender, [portNumber, summary, detail]) => {
+                        this._notifier?.onCapabilityDegraded(portNumber, summary, detail);
+                    });
+                this._registry.addProxySignal(this._proxy, degradedId);
+
+                const restoredId = this._proxy.connectSignal('CapabilityRestored',
+                    (_proxy, _sender, [portNumber]) => {
+                        this._notifier?.onCapabilityRestored(portNumber);
+                    });
+                this._registry.addProxySignal(this._proxy, restoredId);
+
                 this._store.setDaemonRunning(true);
+                this._notifier?.onDaemonAppeared(); // RESEARCH §Code Example #3 — 2.5 s suppression
                 this._snapshotImmediate();
                 this.emit('ready');
             },
@@ -225,6 +245,7 @@ export const DBusClient = GObject.registerClass({
         if (!this._store.daemonRunning) return;
         this._store.setDaemonRunning(false);
         this._store.setDevices([]);
+        this._notifier?.onDaemonVanished(); // drop live notifications — they're stale
         this.emit('lost');
     }
 
