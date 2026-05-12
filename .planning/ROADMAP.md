@@ -55,15 +55,22 @@ Plans:
   3. `gsettings list-schemas | grep usbee` returns `org.gnome.usbee`; the schema exposes `port-mutes` (`as`) for per-port mute and a "hide empty ports" boolean toggle; all preference reads/writes go through GSettings (no ad-hoc config file); the schema is visible and editable in `dconf-editor`.
   4. The preferences window (Adwaita, opened via the Extensions app) lists currently muted ports with per-row unmute affordances and exposes the hide-empty-ports toggle; when the screen is locked the tile's preferences entry is hidden (`Main.sessionMode.allowSettings === false`).
   5. The repository ships `COPYING` (GPL-3.0); every user-visible string in `.js` source is wrapped in a `gettext` `_()` marker and `xgettext` produces a non-trivial `.pot` template; `gnome-extensions pack` produces a clean zip with `metadata.json` declaring `shell-version` `["46", "47", "48"]` and a stable `uuid`; the zip contains no bundled binaries, no `Gtk`/`Adw` imports in the Shell-process code, and no synchronous D-Bus or I/O calls; README documents the `usbeehive` daemon dependency and the `systemctl --user enable --now usbeehive` install path.
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+- [ ] 02-01-PLAN.md — Notifier vertical slice: GSettings schema, src/notifier.js (per-port Map + MessageTray.Source + 2.5 s suppression window + live mute read + mute action handler), CapabilityDegraded/Restored subscriptions in dbus-client.js, STATE-04 Preferences… menu row with Main.sessionMode gating, SPDX retrofit (covers NOTIF-01..04, PREFS-01..03, STATE-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — Preferences + EGO packaging vertical slice: prefs.js (Adwaita window with three groups), src/popover.js hide-empty-ports consumer, metadata.json version-name, COPYING (verbatim GPL-3.0), README.md, po/usbee@bitcreed.us.pot, gnome-extensions pack zip passing automated EGO audit gates 1-9 (covers PREFS-04, PACK-01, PACK-02, PACK-03, PACK-06)
 **UI hint:** yes
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 0/2 | Plans drafted | - |
-| 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 0/0 | Not started | - |
+| 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 2/2 | Complete | 2026-05-11 |
+| 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 0/2 | Plans drafted | - |
 
 ## Coverage Map
 
