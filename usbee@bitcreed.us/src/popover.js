@@ -9,6 +9,7 @@
 // multi-line diagnostic strings wrap cleanly inside the popover width.
 // populateEmptyState is unchanged from Plan 01.
 
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -100,7 +101,7 @@ function buildDeviceRow(device) {
         const lbl = new St.Label({text: bullet, x_expand: true});
         // DIAG-02: multi-line diagnostic strings must wrap cleanly.
         lbl.clutter_text.line_wrap = true;
-        lbl.clutter_text.line_wrap_mode = 2; // Pango.WrapMode.WORD_CHAR
+        lbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
         body.add_child(lbl);
     }
     item.add_child(body);
