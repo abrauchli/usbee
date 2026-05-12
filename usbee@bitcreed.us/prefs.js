@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// prefs.js — runs in the gnome-shell-extension-prefs process. The ONLY
+// file in this repo that imports gi://Gtk or gi://Adw (CLAUDE.md C-03 +
+// 01-CONTEXT.md D-17). Importing these in any Shell-process file is an
+// EGO rejection.
+
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk?version=4.0';
+import Adw from 'gi://Adw?version=1';
+
+import {ExtensionPreferences, gettext as _}
+    from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+export default class USBeePreferences extends ExtensionPreferences {
+
+    fillPreferencesWindow(window) {
+        const settings = this.getSettings();
+        window._settings = settings; // keep alive across the window's lifetime
+
+        const page = new Adw.PreferencesPage({
+            title: _('General'),
+            icon_name: 'network-usb-symbolic',
+        });
+        window.add(page);
+
+        this._buildNotificationsGroup(page, settings, window);
+        this._buildGeneralGroup(page, settings);
+        this._buildAboutGroup(page);
+    }
+
+    // ── Group 1: Notifications (muted ports) ─────────────────────────
+    _buildNotificationsGroup(page, settings, window) {
+        const notifGroup = new Adw.PreferencesGroup({
+            title: _('Notifications'),
+            description: _('Manage which USB-C ports may raise degradation warnings'),
+        });
+        page.add(notifGroup);
+
+        // §Pitfall J — Adw.PreferencesGroup has no bulk-clear method; track
+        // rows manually so we can remove them one-by-one on each rebuild.
+        const mutedRows = [];
+        const rebuildMutedRows = () => {
+            for (const row of mutedRows) notifGroup.remove(row);
+            mutedRows.length = 0;
+
+            const mutes = settings.get_strv('port-mutes');
+            if (mutes.length === 0) {
+                const empty = new Adw.ActionRow({
+                    title: _('No muted ports'),
+                    subtitle: _('Mute a port from a notification to see it here'),
+                    sensitive: false,  // disabled — UI-SPEC §Component-Inventory pin
+                });
+                notifGroup.add(empty);
+                mutedRows.push(empty);
+                return;
+            }
+            for (const id of mutes) {
+                const portNumber = parseInt(id, 10);
+                // §T-02-08 — tolerate poisoned (non-stringified-int) entries;
+                // skip them rather than crashing the prefs window.
+                if (Number.isNaN(portNumber)) continue;
+
+                const row = new Adw.ActionRow({
+                    title: _('USB-C Port %d').format(portNumber),
+                    subtitle: _('Notifications muted'),
+                });
+                const button = new Gtk.Button({
+                    icon_name: 'user-trash-symbolic',
+                    tooltip_text: _('Unmute this port'),
+                    valign: Gtk.Align.CENTER,
+                    css_classes: ['flat', 'destructive-action'],  // UI-SPEC §Color destructive role
+                });
+                button.connect('clicked', () => {
+                    const current = settings.get_strv('port-mutes');
+                    settings.set_strv('port-mutes', current.filter(x => x !== id));
+                    // 'changed::port-mutes' fires and rebuildMutedRows re-runs
+                });
+                row.add_suffix(button);
+                row.set_activatable_widget(button);
+                notifGroup.add(row);
+                mutedRows.push(row);
+            }
+        };
+
+        rebuildMutedRows();
+        const mutesChangedId = settings.connect('changed::port-mutes', rebuildMutedRows);
+
+        // Disconnect when the window closes (prefs-process lifecycle).
+        // The prefs process owns its own teardown via 'close-request' —
+        // it does NOT use the Shell-process signal-registry pattern.
+        window.connect('close-request', () => {
+            settings.disconnect(mutesChangedId);
+            return false; // don't prevent close
+        });
+    }
+
+    // ── Group 2: General (hide-empty-ports) ──────────────────────────
+    _buildGeneralGroup(page, settings) {
+        const generalGroup = new Adw.PreferencesGroup({title: _('General')});
+        page.add(generalGroup);
+
+        const hideRow = new Adw.SwitchRow({
+            title: _('Hide empty USB-C ports'),
+            subtitle: _("Don't list ports with nothing attached"),
+        });
+        generalGroup.add(hideRow);
+        settings.bind('hide-empty-ports', hideRow, 'active',
+                      Gio.SettingsBindFlags.DEFAULT);
+    }
+
+    // ── Group 3: About ───────────────────────────────────────────────
+    _buildAboutGroup(page) {
+        const aboutGroup = new Adw.PreferencesGroup({title: _('About')});
+        page.add(aboutGroup);
+
+        const versionRow = new Adw.ActionRow({
+            title: _('Version'),
+            subtitle: this.metadata['version-name'] || '1.0',  // NOT translated — it's a number
+        });
+        aboutGroup.add(versionRow);
+
+        const daemonRow = new Adw.ActionRow({
+            title: _('usbeehive daemon'),
+            subtitle: _('Required — run: systemctl --user enable --now usbeehive'),
+        });
+        aboutGroup.add(daemonRow);
+    }
+}

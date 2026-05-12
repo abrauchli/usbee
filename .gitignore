@@ -1,2 +1,6 @@
 # Build artifacts
 usbee@bitcreed.us/schemas/gschemas.compiled
+*.shell-extension.zip
+
+# Toolchain transient artifacts (xgettext binary tarball when system gettext is missing)
+*.deb
