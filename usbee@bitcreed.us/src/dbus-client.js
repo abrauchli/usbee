@@ -30,6 +30,12 @@ const INTERFACE_NAME = 'org.usbeehive.Devices1';    // 1 only on interface
 // literal is what the runtime consumes (RESEARCH.md §How the XML is loaded
 // Pattern 1 — avoids an async file load at enable() time, which D-15
 // forbids in the sync form).
+//
+// Refresh and Diagnose are declared but intentionally unused in Phase 01.
+// They mirror the daemon-side interface (the XML must match) and are
+// reserved for Phase 2: Refresh for the NOTIF-driven manual re-snapshot
+// path, Diagnose for the preferences "Diagnose now" per-port button.
+// Do not strip them as dead code.
 const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
