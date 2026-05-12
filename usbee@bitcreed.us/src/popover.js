@@ -64,8 +64,10 @@ export function populateEmptyState(section) {
  *   ...
  *
  * The body box gets style_class: 'body' so the stylesheet rule
- *   .usbee-device-row .body StLabel + StLabel { padding-top: 4px; }
+ *   .usbee-device-row .body { spacing: 4px; }
  * applies the 4-px vertical token between bullets (UI-SPEC #spacing).
+ * St does not support the adjacent-sibling (+) combinator — use BoxLayout's
+ * native `spacing` property instead.
  *
  * Per-row icons are deliberately omitted — Phase 1 deferral per
  * RESEARCH §Daemon Wire Shape note (deferred to v1.x with

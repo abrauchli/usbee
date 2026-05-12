@@ -1,7 +1,7 @@
 /* USBee — Phase 1 custom CSS only. All other styling inherits gnome-shell theme. */
 
-.usbee-device-row .body StLabel + StLabel {
-    padding-top: 4px;
+.usbee-device-row .body {
+    spacing: 4px;
 }
 
 .usbee-empty-state-body {
