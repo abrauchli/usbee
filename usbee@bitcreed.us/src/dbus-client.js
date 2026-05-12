@@ -146,7 +146,11 @@ export const DBusClient = GObject.registerClass({
                 // use plain connect/disconnect (RESEARCH.md §Pitfall E).
                 const ownerId = this._proxy.connect(
                     'notify::g-name-owner', () => {
-                        if (this._proxy.g_name_owner === null)
+                        // Defensive: if a future teardown path nulls _proxy
+                        // before the registry disconnects this handler, the
+                        // dereference would throw. Paired with the CR-01
+                        // idempotency guard in _onVanished.
+                        if (this._proxy && this._proxy.gNameOwner === null)
                             this._onVanished();
                     });
                 this._registry.addSignal(this._proxy, ownerId);
