@@ -12,6 +12,7 @@ import GObject from 'gi://GObject';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {populateDeviceRows, populateEmptyState} from './popover.js';
 
@@ -19,15 +20,15 @@ const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
     constructor(store, registry) {
         super({
-            title: 'USBee',
-            subtitle: 'Starting…',
+            title: _('USBee'),
+            subtitle: store.subhead,
             iconName: 'network-usb-symbolic',   // RESEARCH A2 fallback in icons/usb-symbolic.svg
             toggleMode: false,                  // UI-SPEC #interactions — informational tile
         });
         this._store = store;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
-        this.menu.setHeader('network-usb-symbolic', 'USB devices', '');
+        this.menu.setHeader('network-usb-symbolic', _('USB devices'), '');
 
         // Lazy-populated device list section (D-11; Pattern 2).
         this._rowsSection = new PopupMenu.PopupMenuSection();

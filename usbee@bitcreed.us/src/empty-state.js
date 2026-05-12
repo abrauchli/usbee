@@ -11,6 +11,7 @@
 
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehive';
 
@@ -23,7 +24,7 @@ export function buildEmptyStateItem() {
         can_focus: false,
         style_class: 'usbee-empty-state',
     });
-    item.label.text = 'usbeehive daemon not running';
+    item.label.text = _('usbeehive daemon not running');
 
     const box = new St.BoxLayout({
         vertical: true,
@@ -32,7 +33,7 @@ export function buildEmptyStateItem() {
     });
 
     const hint = new St.Label({
-        text: 'Run this command, then this list will populate automatically:',
+        text: _('Run this command, then this list will populate automatically:'),
         x_expand: true,
     });
     hint.clutter_text.line_wrap = true;

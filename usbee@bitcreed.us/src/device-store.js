@@ -10,6 +10,7 @@
 // parseLinkSpeed, formatWatts. Public surface is unchanged from Plan 01.
 
 import GObject from 'gi://GObject';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // DeviceEntry tuple from ListDevices: a(sssssasi)
 // → [id, category, status, headline, subtitle, icon, bullets[], port_number]
@@ -133,13 +134,13 @@ export function deriveSubtitle(devices) {
                          || a.port.port_number - b.port.port_number);
         const top = ranked[0];
         if (top.direction === 'sink')
-            return `Charging: ${formatWatts(top.watts)} in`;
+            return _('Charging: %s in').format(formatWatts(top.watts));
         if (top.direction === 'source')
-            return `Powering: ${formatWatts(top.watts)} out`;
+            return _('Powering: %s out').format(formatWatts(top.watts));
         // Unknown direction — still Tier 1 (charging port is user's focus)
         return top.watts > 0
-            ? `USB-C: ${formatWatts(top.watts)}`
-            : 'USB-C: charging';
+            ? _('USB-C: %s').format(formatWatts(top.watts))
+            : _('USB-C: charging');
     }
 
     // --- Tier 2: Fastest attached link with parseable version + speed ---
@@ -157,11 +158,13 @@ export function deriveSubtitle(devices) {
     // --- Tier 3: Any attached device (no parseable speed) ---
     const attached = devices.filter(d => d.status !== 'Empty');
     if (attached.length > 0) {
-        return attached.length === 1 ? '1 device' : `${attached.length} devices`;
+        return attached.length === 1
+            ? _('1 device')
+            : _('%d devices').format(attached.length);
     }
 
     // --- Tier 4: Nothing connected ---
-    return 'Nothing connected';
+    return _('Nothing connected');
 }
 
 export const DeviceStore = GObject.registerClass({
@@ -182,7 +185,7 @@ export const DeviceStore = GObject.registerClass({
      * Delegates to deriveSubtitle() for the 4-tier algorithm.
      */
     get subhead() {
-        if (!this._daemonRunning) return 'Daemon not running';
+        if (!this._daemonRunning) return _('Daemon not running');
         return deriveSubtitle(this._devices);
     }
 

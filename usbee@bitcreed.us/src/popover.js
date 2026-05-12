@@ -11,6 +11,7 @@
 
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buildEmptyStateItem} from './empty-state.js';
 
@@ -38,7 +39,7 @@ export function populateDeviceRows(section, store) {
     section.removeAll();
     if (store.devices.length === 0) {
         section.addMenuItem(new PopupMenu.PopupMenuItem(
-            'No USB devices attached',
+            _('No USB devices attached'),
             {reactive: false, can_focus: false},
         ));
         return;
