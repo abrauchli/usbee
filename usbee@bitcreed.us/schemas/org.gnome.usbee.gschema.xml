@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="usbee@bitcreed.us">
   <schema id="org.gnome.usbee" path="/org/gnome/usbee/">
-    <!-- Phase 2 (PREFS-02, PREFS-03) populates this schema with:
-           <key name="port-mutes" type="as"> ...
-           <key name="hide-empty-ports" type="b"> ...
-         For Phase 1, the empty schema makes `dconf-editor` show `org.gnome.usbee`. -->
+
+    <key name="port-mutes" type="as">
+      <default>[]</default>
+      <summary>Muted USB-C ports</summary>
+      <description>
+        Stringified USB-C port numbers (the daemon's "port_number" int32
+        cast to a string) that should not raise CapabilityDegraded
+        notifications. Written by the "Don't notify for this port again"
+        notification action and by the per-row trash button in the
+        preferences window. Read live on every CapabilityDegraded event
+        by src/notifier.js.
+      </description>
+    </key>
+
+    <key name="hide-empty-ports" type="b">
+      <default>false</default>
+      <summary>Hide empty USB-C ports from the popover</summary>
+      <description>
+        When true, USB-C port rows whose status is "Empty" are not
+        rendered in the tile popover. Toggled from the "Hide empty
+        USB-C ports" switch in the preferences window. Read once per
+        popover rebuild by src/popover.js populateDeviceRows.
+      </description>
+    </key>
+
   </schema>
 </schemalist>

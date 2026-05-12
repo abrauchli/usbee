@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/tile.js
 //
 // USBeeToggle (QuickMenuToggle subclass) + USBeeIndicator (SystemIndicator).
@@ -10,6 +11,7 @@
 
 import GObject from 'gi://GObject';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -18,7 +20,7 @@ import {populateDeviceRows, populateEmptyState} from './popover.js';
 
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
-    constructor(store, registry) {
+    constructor(store, registry, extension) {
         super({
             title: _('USBee'),
             subtitle: store.subhead,
@@ -26,6 +28,9 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             toggleMode: false,                  // UI-SPEC #interactions — informational tile
         });
         this._store = store;
+        this._extension = extension;
+        this._prefsItem = null;
+        this._prefsSeparator = null;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('network-usb-symbolic', _('USB devices'), '');
@@ -56,9 +61,38 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // — RESEARCH §Pitfall D).
         this.subtitle = store.subhead;
 
-        // Phase 2 seam: a "Preferences" / "Open Settings" menu item belongs
-        // BELOW this._rowsSection here, gated by STATE-04. Phase 1 leaves
-        // the seam empty by design (UI-SPEC #component-inventory note).
+        // STATE-04 — Preferences… menu row with lock-screen gating.
+        // We physically destroy/recreate the row on sessionMode 'updated'
+        // (UI-SPEC pin: do NOT use item.visible = false; EGO reviewers
+        // flag invisible-but-present items as a side-channel — see
+        // UI-SPEC §Component-Inventory note).
+        const buildPrefsRow = () => {
+            if (!Main.sessionMode.allowSettings) return;
+            this._prefsSeparator = new PopupMenu.PopupSeparatorMenuItem();
+            this._prefsItem = new PopupMenu.PopupMenuItem(_('Preferences…')); // U+2026
+            this._prefsItem.connect('activate', () => this._extension.openPreferences());
+            this.menu.addMenuItem(this._prefsSeparator);
+            this.menu.addMenuItem(this._prefsItem);
+        };
+
+        const destroyPrefsRow = () => {
+            if (this._prefsItem)      { this._prefsItem.destroy();      this._prefsItem = null; }
+            if (this._prefsSeparator) { this._prefsSeparator.destroy(); this._prefsSeparator = null; }
+        };
+
+        buildPrefsRow();
+
+        // §Pitfall H — Main.sessionMode is a Shell singleton that survives
+        // extension enable/disable; the handler MUST be tracked by
+        // SignalRegistry or it leaks across cycles (D-14).
+        const smId = Main.sessionMode.connect('updated', () => {
+            if (Main.sessionMode.allowSettings) {
+                if (!this._prefsItem) buildPrefsRow();
+            } else {
+                destroyPrefsRow();
+            }
+        });
+        registry.addSignal(Main.sessionMode, smId);
     }
 
     _rebuildPopover() {
@@ -71,9 +105,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
 
 export const USBeeIndicator = GObject.registerClass(
 class USBeeIndicator extends QuickSettings.SystemIndicator {
-    constructor(store, registry) {
+    constructor(store, registry, extension) {
         super();
-        this._toggle = new USBeeToggle(store, registry);
+        // Stored for symmetry — Plan 02-02 may grow indicator-level
+        // prefs hooks without another constructor signature change.
+        this._extension = extension;
+        this._toggle = new USBeeToggle(store, registry, extension);
         this.quickSettingsItems.push(this._toggle);
         // No this._addIndicator() panel icon — RESEARCH Open Question Q6:
         // Quick Settings tiles already show in the panel; an extra panel

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // src/signal-registry.js
 //
 // Tracks every signal connection, name-watch, and timeout source created
