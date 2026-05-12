@@ -2,9 +2,9 @@
 phase: 01-tile-popover-hotplug-daemon-missing-state-v0-1
 fixed_at: 2026-05-12T00:00:00Z
 review_path: .planning/phases/01-tile-popover-hotplug-daemon-missing-state-v0-1/01-REVIEW.md
-iteration: 1
-findings_in_scope: 6
-fixed: 6
+iteration: 2
+findings_in_scope: 3
+fixed: 3
 skipped: 0
 status: all_fixed
 ---
@@ -13,114 +13,83 @@ status: all_fixed
 
 **Fixed at:** 2026-05-12
 **Source review:** `.planning/phases/01-tile-popover-hotplug-daemon-missing-state-v0-1/01-REVIEW.md`
-**Iteration:** 1
+**Iteration:** 2
 
-**Summary:**
-- Findings in scope: 6 (1 Critical, 5 Warning)
-- Fixed: 6
+**Summary (this iteration):**
+- Findings in scope this iteration: 3 (IN-01, IN-03, IN-04 — the only
+  Info findings not already resolved by iteration 1)
+- Fixed this iteration: 3
 - Skipped: 0
 
-## Fixed Issues
+**Cumulative status across iterations 1 + 2:** all 11 findings from
+`01-REVIEW.md` are now resolved (1 Critical + 5 Warning fixed in
+iteration 1, 3 Info fixed in iteration 2, IN-02 and IN-05 fixed
+incidentally during iteration 1's Warning work).
 
-### CR-01: Duplicate vanish path — `_onVanished` runs twice on daemon disconnect
+## Fixed Issues (Iteration 2)
 
-**Files modified:** `usbee@bitcreed.us/src/dbus-client.js`
-**Commit:** 9ac363e
-**Applied fix:** Early-return guard at the top of `_onVanished()`: if
-`this._store.daemonRunning` is already false, the second emitter (either
-`bus_watch_name` vanish or `notify::g-name-owner`) becomes a no-op.
-Eliminates duplicate `setDevices([])`, duplicate `'lost'` emissions, and
-the double-repaint on the tile.
+### IN-01: `Pango.WrapMode.WORD_CHAR` written as the literal `2`
 
-### WR-01: Timer registry leak — every fired debounce emits `GLib-CRITICAL` on disable
+**Files modified:** `usbee@bitcreed.us/src/popover.js`
+**Commit:** 6c1d3f1
+**Applied fix:** Imported `Pango` from `gi://Pango` and replaced
+`lbl.clutter_text.line_wrap_mode = 2; // Pango.WrapMode.WORD_CHAR`
+with `lbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR`.
+Removes the magic-number / dangling-comment pattern; future Pango ABI
+shifts (unlikely but possible) now bind by name, not by ordinal.
 
-**Files modified:** `usbee@bitcreed.us/src/signal-registry.js`,
-`usbee@bitcreed.us/src/dbus-client.js`
-**Commit:** 4a69006
-**Applied fix:** `SignalRegistry.addTimeout()` now returns a dispose
-handle (idempotent function) that removes the entry from `_entries`.
-`DBusClient._scheduleRefresh` stores the handle in `this._dropDebounce`
-and invokes it in both branches: when cancelling an in-flight timer AND
-when the timeout callback runs to completion. The registry no longer
-carries stale source ids, so `GLib.Source.remove()` is never called on
-a stale id and the `GLib-CRITICAL` spam at disable is eliminated.
+### IN-03: Tuple signature comment said `a(sssssasi)` but actual is `a(ssssssasi)`
 
-### WR-02: No user-visible string is wrapped in `gettext` — violates project i18n constraint
+**Files modified:** `usbee@bitcreed.us/src/device-store.js`
+**Commit:** 0c54f2b
+**Applied fix:** Corrected both comments (line 15 and line ~194 jsdoc)
+from `a(sssssasi)` (5 strings) to `a(ssssssasi)` (6 strings). The
+unpacker code already read 6 strings + array + int correctly — only
+the comments were wrong. Now the XML, the daemon-side Rust, the
+unpacker, and the comments all agree.
 
-**Files modified:** `usbee@bitcreed.us/src/tile.js`,
-`usbee@bitcreed.us/src/device-store.js`,
-`usbee@bitcreed.us/src/empty-state.js`,
-`usbee@bitcreed.us/src/popover.js`
-**Commit:** 92441b7
-**Applied fix:** Imported `{gettext as _}` from
-`resource:///org/gnome/shell/extensions/extension.js` in all four
-files. Wrapped every user-facing literal in `_()`:
-- `tile.js`: `_('USBee')`, `_('USB devices')`
-- `device-store.js`: `_('Daemon not running')`, `_('Charging: %s in')`,
-  `_('Powering: %s out')`, `_('USB-C: %s')`, `_('USB-C: charging')`,
-  `_('1 device')`, `_('%d devices')`, `_('Nothing connected')`. Template
-  literals rewritten to `.format(...)` per CLAUDE.md i18n rule.
-- `empty-state.js`: `_('usbeehive daemon not running')`, `_('Run this
-  command, then this list will populate automatically:')`
-- `popover.js`: `_('No USB devices attached')`
-- `metadata.json` already declared `gettext-domain` — no change needed.
-
-Tier-2 daemon-supplied strings (USB version label, human rate) remain
-unwrapped because they are data passed through verbatim from the
-daemon, not extension copy.
-
-Also incorporated **IN-02** in this same commit (touched `tile.js`):
-removed the dead `subtitle: 'Starting…'` constructor arg in favour of
-`subtitle: store.subhead`, since the immediate `this.subtitle =
-store.subhead` reassignment made the literal unreachable.
-
-### WR-03: `_onAppeared` re-entrant branch silently calls `_snapshotImmediate` on a dead/changing proxy
+### IN-04: `Refresh` and `Diagnose` D-Bus methods declared but never invoked
 
 **Files modified:** `usbee@bitcreed.us/src/dbus-client.js`
-**Commit:** 041e41f
-**Applied fix:** In the re-entrant branch (proxy already constructed),
-added `if (this._proxy.gNameOwner === null) return;` before the
-`_snapshotImmediate()` call. Owner-churn orderings that deliver
-name-appeared before the proxy's owner property has propagated now
-short-circuit; the next `notify::g-name-owner` (or `bus_watch_name`
-appear) drives the refresh. Uses the camelCase accessor recommended by
-gjs.guide (also resolves IN-05 for this site).
-
-### WR-04: `PopupMenuItem` `style_class` constructor param is not part of the documented API
-
-**Files modified:** `usbee@bitcreed.us/src/empty-state.js`,
-`usbee@bitcreed.us/src/popover.js`
-**Commit:** 16b68c4
-**Applied fix:** Dropped `style_class:` from both `PopupMenuItem`
-constructor param objects (`'usbee-empty-state'` and
-`'usbee-device-row'`) and applied them via `item.add_style_class_name(...)`
-post-construction. Pattern uses only the documented `PopupBaseMenuItem`
-surface; no longer depends on params leaking through to `St.BoxLayout`.
-
-### WR-05: `notify::g-name-owner` handler retains `this._proxy` after `stop()` nulls it
-
-**Files modified:** `usbee@bitcreed.us/src/dbus-client.js`
-**Commit:** 7707e0f
-**Applied fix:** Guarded the handler with `this._proxy &&` before
-dereferencing the owner property, and switched the dereference to
-camelCase `gNameOwner` for consistency with GJS conventions (this also
-addresses IN-05 for the handler site). Paired with the CR-01 idempotency
-guard, the duplicate-vanish-path risk is now defended at both ends.
+**Commit:** cf3c03e
+**Applied fix:** Added a comment block immediately above the
+`IFACE_XML` template literal explaining that `Refresh` and `Diagnose`
+are intentionally unused in Phase 01: they mirror the daemon-side
+interface (the XML must match the daemon) and are reserved for Phase 2
+(NOTIF-driven re-snapshot and preferences "Diagnose now" per-port
+button). Prevents a future cleanup pass from stripping them as dead
+code. Comment lives in `dbus-client.js` because the `IFACE_XML` block
+there is the runtime-consumed copy and the most likely diff target;
+`dbus-iface.xml` remains the on-disk source-of-truth mirror.
 
 ## Skipped Issues
 
-None — all findings in scope were fixed.
+None this iteration.
 
-## Out-of-Scope Notes
+## Out-of-Scope / Previously-Fixed Notes
 
-Info-severity findings (IN-01, IN-03, IN-04, IN-05) were not in scope
-for this run (`fix_scope: critical_warning`). IN-02 and IN-05 were
-incidentally addressed where they overlapped with Warning fixes (in the
-WR-02 and WR-03/WR-05 commits respectively); IN-01, IN-03, IN-04 remain
-open for a future Info-scope iteration.
+Already fixed in iteration 1 (see prior iteration entries below the
+fold or in git log):
+
+- **CR-01** (commit 9ac363e) — idempotency guard in `_onVanished`
+- **WR-01** (commit 4a69006) — registry dispose handle for timeouts
+- **WR-02** (commit 92441b7) — `gettext`-wrap all user-visible strings
+- **WR-03** (commit 041e41f) — `gNameOwner` null check in re-entrant `_onAppeared`
+- **WR-04** (commit 16b68c4) — `add_style_class_name` post-construction
+- **WR-05** (commit 7707e0f) — `this._proxy &&` guard + `gNameOwner` camelCase
+
+Incidentally fixed during iteration 1 (rolled into the Warning fixes):
+
+- **IN-02** — dead `'Starting…'` literal removed in commit 92441b7
+  (WR-02 i18n pass) when `tile.js` was already being touched.
+- **IN-05** — `g_name_owner` → `gNameOwner` camelCase access applied
+  in both call sites in commits 041e41f (WR-03) and 7707e0f (WR-05).
+
+All 11 findings from `01-REVIEW.md` are now resolved across the two
+iterations.
 
 ---
 
 _Fixed: 2026-05-12_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
