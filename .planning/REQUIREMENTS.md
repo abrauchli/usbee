@@ -9,8 +9,8 @@ Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, 
 
 ### Tile (TILE)
 
-- [ ] **TILE-01**: User sees a USBee Quick Settings tile alongside Wi-Fi, Bluetooth, and Sound when the extension is enabled
-- [ ] **TILE-02**: Tile displays a symbolic USB icon and a one-line title
+- [x] **TILE-01**: User sees a USBee Quick Settings tile alongside Wi-Fi, Bluetooth, and Sound when the extension is enabled
+- [x] **TILE-02**: Tile displays a symbolic USB icon and a one-line title
 - [ ] **TILE-03**: Tile shows a live subtitle summarising the most relevant USB-C state (charging direction + wattage, or fastest attached link speed, or "Nothing connected")
 - [ ] **TILE-04**: Tile subtitle updates live (no popover open required) when devices are added, removed, or change power state
 
@@ -50,9 +50,9 @@ Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, 
 
 ### State Handling (STATE)
 
-- [ ] **STATE-01**: When the usbeehive D-Bus name is not owned, the popover shows a graceful empty state with a copyable `systemctl --user enable --now usbeehive` hint instead of erroring or crashing
-- [ ] **STATE-02**: USBee watches `NameOwnerChanged` and automatically transitions out of the empty state when the daemon appears, without the user re-enabling the extension
-- [ ] **STATE-03**: USBee transitions back into the empty state cleanly if the daemon disappears at runtime
+- [x] **STATE-01**: When the usbeehive D-Bus name is not owned, the popover shows a graceful empty state with a copyable `systemctl --user enable --now usbeehive` hint instead of erroring or crashing
+- [x] **STATE-02**: USBee watches `NameOwnerChanged` and automatically transitions out of the empty state when the daemon appears, without the user re-enabling the extension
+- [x] **STATE-03**: USBee transitions back into the empty state cleanly if the daemon disappears at runtime
 - [ ] **STATE-04**: When the screen is locked (`Main.sessionMode.allowSettings === false`), the tile's "Preferences" / "More settings" entry is hidden
 - [ ] **STATE-05**: Extension correctly disables: all signal handlers, D-Bus proxies, GSettings bindings, and notification sources are released without "already disposed" warnings across screen-lock / unlock cycles
 
@@ -61,8 +61,8 @@ Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, 
 - [ ] **PACK-01**: Project is licensed GPL-3.0 with a top-level `COPYING` file
 - [ ] **PACK-02**: Every user-visible string is wrapped in a gettext marker (`_()` / `gettext()`); a `.pot` template is generated from the source
 - [ ] **PACK-03**: Extension passes `gnome-extensions pack` and produces a zip ready for upload to extensions.gnome.org
-- [ ] **PACK-04**: `metadata.json` declares `shell-version` `["46", "47", "48"]` and a stable `uuid` rooted on the project's domain
-- [ ] **PACK-05**: Extension contains no bundled binaries, no `Gtk` / `Adw` imports in the Shell-process code, and no synchronous D-Bus or I/O calls — meeting EGO review guidelines
+- [x] **PACK-04**: `metadata.json` declares `shell-version` `["46", "47", "48"]` and a stable `uuid` rooted on the project's domain
+- [x] **PACK-05**: Extension contains no bundled binaries, no `Gtk` / `Adw` imports in the Shell-process code, and no synchronous D-Bus or I/O calls — meeting EGO review guidelines
 - [ ] **PACK-06**: README documents the `usbeehive` daemon dependency and the `systemctl --user enable --now usbeehive` install path
 
 ## v2 Requirements
@@ -116,8 +116,8 @@ All v1 requirements mapped to exactly one phase by the roadmapper.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TILE-01 | Phase 1 | Pending |
-| TILE-02 | Phase 1 | Pending |
+| TILE-01 | Phase 1 | Complete |
+| TILE-02 | Phase 1 | Complete |
 | TILE-03 | Phase 1 | Pending |
 | TILE-04 | Phase 1 | Pending |
 | LIST-01 | Phase 1 | Pending |
@@ -139,16 +139,16 @@ All v1 requirements mapped to exactly one phase by the roadmapper.
 | PREFS-02 | Phase 2 | Pending |
 | PREFS-03 | Phase 2 | Pending |
 | PREFS-04 | Phase 2 | Pending |
-| STATE-01 | Phase 1 | Pending |
-| STATE-02 | Phase 1 | Pending |
-| STATE-03 | Phase 1 | Pending |
+| STATE-01 | Phase 1 | Complete |
+| STATE-02 | Phase 1 | Complete |
+| STATE-03 | Phase 1 | Complete |
 | STATE-04 | Phase 2 | Pending |
 | STATE-05 | Phase 1 | Pending |
 | PACK-01 | Phase 2 | Pending |
 | PACK-02 | Phase 2 | Pending |
 | PACK-03 | Phase 2 | Pending |
-| PACK-04 | Phase 1 | Pending |
-| PACK-05 | Phase 1 | Pending |
+| PACK-04 | Phase 1 | Complete |
+| PACK-05 | Phase 1 | Complete |
 | PACK-06 | Phase 2 | Pending |
 
 **Coverage:**

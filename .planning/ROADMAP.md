@@ -37,7 +37,7 @@ Two phases, derived directly from the unanimous research recommendation in `.pla
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Walking Skeleton: project scaffold, dbus-iface.xml capture, DBusClient + DeviceStore + SignalRegistry, tile mount, daemon-missing empty state (covers TILE-01/02, STATE-01/02/03, PACK-04/05)
+- [x] 01-01-PLAN.md — Walking Skeleton: project scaffold, dbus-iface.xml capture, DBusClient + DeviceStore + SignalRegistry, tile mount, daemon-missing empty state (covers TILE-01/02, STATE-01/02/03, PACK-04/05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Live device list + headline derivation + lifecycle hygiene: full D-09 4-tier subtitle, DeviceAdded/Removed + 150 ms debounce, multi-bullet rows with DIAG-02 line-wrap, RESEARCH §Lifecycle Test Matrix Tests 1/3/4/5 (covers TILE-03/04, LIST-01..06, DIAG-01/02, LIVE-01/02/03, STATE-05)

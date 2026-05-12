@@ -32,7 +32,8 @@
     "ai_integration_phase": true,
     "tdd_mode": false,
     "ui_review": true,
-    "use_worktrees": true
+    "use_worktrees": true,
+    "_auto_chain_active": true
   },
   "hooks": {
     "context_warnings": true
