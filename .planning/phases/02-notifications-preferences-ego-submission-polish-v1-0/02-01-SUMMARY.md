@@ -203,7 +203,7 @@ journalctl --user-unit gnome-shell -f
 | D | Restore | `onCapabilityRestored(1)` makes the banner disappear silently. |
 | E | Mute action (NOTIF-03 + NOTIF-04) | Trigger for port 2 → click "Don't notify for this port again" → banner gone → `gsettings get us.bitcreed.usbee port-mutes` returns `['2']` → re-trigger for port 2 raises NO banner. Cleanup: `gsettings set us.bitcreed.usbee port-mutes "[]"`. |
 | F | Daemon-restart suppression | In LG: `_notifier.onDaemonAppeared(); _notifier.onCapabilityDegraded(3, 'X', 'Y');` → no banner. Wait ~3 s, re-trigger → banner appears. |
-| G | Preferences row (unlocked) | Open Quick Settings → USBee tile → `Preferences…` row + separator visible below device list. Clicking opens the (still-empty) prefs window — Plan 02-02 ships the UI; activation alone is the check. |
+| G | Preferences row (unlocked) | Open Quick Settings → USBee tile → `Preferences…` row + separator visible below device list. Clicking it fires the activate handler (popover closes — standard GNOME `PopupMenuItem` behavior) and invokes `extension.openPreferences()`; the actual prefs window only appears once Plan 02-02 ships `prefs.js`. Activation + clean popover-close (no journal errors) is the check. |
 | H | Preferences row (locked) | `Super+L`, wait, unlock, re-open tile → no errors, row + separator still appear correctly. |
 | I | Clean disable (STATE-05 regression) | `for i in {1..10}; do gnome-extensions disable usbee@bitcreed.us; gnome-extensions enable usbee@bitcreed.us; done` → `journalctl --user-unit gnome-shell --since "2 minutes ago" \| grep -iE 'usbee\|already disposed\|handler.*not found'` returns NO errors. |
 

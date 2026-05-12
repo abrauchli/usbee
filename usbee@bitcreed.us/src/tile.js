@@ -10,6 +10,7 @@
 // extension.js owns the addExternal* / destroy lifecycle.
 
 import GObject from 'gi://GObject';
+import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -36,8 +37,21 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this.menu.setHeader('network-usb-symbolic', _('USB devices'), '');
 
         // Lazy-populated device list section (D-11; Pattern 2).
+        // Wrapped in a St.ScrollView so a long device list never pushes
+        // the Preferences row (and the eventual notification toggle, etc.)
+        // off-screen. The wrapper bypasses addMenuItem so keyboard focus
+        // tracking is lost on row items — acceptable here because every
+        // device row is `reactive: false, can_focus: false` (popover.js).
         this._rowsSection = new PopupMenu.PopupMenuSection();
-        this.menu.addMenuItem(this._rowsSection);
+        this._rowsScroll = new St.ScrollView({
+            style_class: 'usbee-popover-scroll',
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            overlay_scrollbars: true,
+            enable_mouse_scrolling: true,
+        });
+        this._rowsScroll.set_child(this._rowsSection.actor);
+        this.menu.box.add_child(this._rowsScroll);
 
         // Bind subtitle to the store. This is how TILE-04 / LIVE-03 get
         // their live updates: DBusClient mutates store → 'changed' fires
