@@ -168,6 +168,41 @@ export function deriveSubtitle(devices) {
     return _('Nothing connected');
 }
 
+/**
+ * UI-03 predicate: true iff this device should sort to the top of the popover.
+ * Currently keyed off USB-C port diagnostic verbs in bullets[]; the daemon
+ * does not (yet) expose a standalone diagnostic field on the DeviceEntry tuple.
+ *
+ * A TypeCPort device "has an issue" iff:
+ *   - category is 'TypeCPort'
+ *   - status is not 'Empty' (unconnected ports can't be degraded)
+ *   - at least one bullets[] entry contains a diagnostic keyword (the
+ *     verbatim verbs the upstream daemon uses in its diagnostic prose,
+ *     per REQUIREMENTS DIAG-01 example: "Cable limited to USB 2.0 —
+ *     swap for a full-featured cable to reach 10 Gb/s").
+ *
+ * This is the single point of change if the daemon evolves to emit a
+ * richer diagnostic structure in a future version.
+ *
+ * @param {object} device  Unpacked DeviceEntry from the store.
+ * @returns {boolean}
+ */
+export function hasIssue(device) {
+    if (device.category !== 'TypeCPort') return false;
+    if (device.status === 'Empty') return false;
+    const DIAG_TOKENS = [
+        'degraded', 'limited', 'slower', 'slow', 'cable',
+        'swap', 'expected', 'unable', 'cannot', 'mismatch',
+    ];
+    for (const bullet of (device.bullets || [])) {
+        const lower = bullet.toLowerCase();
+        for (const token of DIAG_TOKENS) {
+            if (lower.includes(token)) return true;
+        }
+    }
+    return false;
+}
+
 export const DeviceStore = GObject.registerClass({
     Signals: {'changed': {}},
 }, class DeviceStore extends GObject.Object {
