@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR Andreas Brauchli
-# This file is distributed under the same license as the usbee package.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the USBee package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: usbee\n"
-"Report-Msgid-Bugs-To: andy@bitcreed.us\n"
-"POT-Creation-Date: 2026-05-12 17:59-0700\n"
+"Project-Id-Version: USBee 1.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-12 22:01-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,145 +17,176 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: prefs.js:38 prefs.js:116
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:38
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:116
 msgid "General"
 msgstr ""
 
-#: prefs.js:51
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:51
 msgid "Notifications"
 msgstr ""
 
-#: prefs.js:52
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:52
 msgid "Manage which USB-C ports may raise degradation warnings"
 msgstr ""
 
-#: prefs.js:66
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:66
 msgid "No muted ports"
 msgstr ""
 
-#: prefs.js:67
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:67
 msgid "Mute a port from a notification to see it here"
 msgstr ""
 
-#: prefs.js:81
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:81
 #, javascript-format
 msgid "USB-C Port %d"
 msgstr ""
 
-#: prefs.js:82
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:82
 msgid "Notifications muted"
 msgstr ""
 
-#: prefs.js:86
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:86
 msgid "Unmute this port"
 msgstr ""
 
-#: prefs.js:120
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:120
 msgid "Hide empty USB-C ports"
 msgstr ""
 
-#: prefs.js:121
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:121
 msgid "Don't list ports with nothing attached"
 msgstr ""
 
-#: prefs.js:130
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:130
 msgid "About"
 msgstr ""
 
-#: prefs.js:134
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:134
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:119
 msgid "Version"
 msgstr ""
 
-#: prefs.js:140
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:140
 msgid "usbeehive daemon"
 msgstr ""
 
-#: prefs.js:141
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:141
 msgid "Checking…"
 msgstr ""
 
-#: prefs.js:153
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:153
 #, javascript-format
 msgid "Running — v%s"
 msgstr ""
 
-#: prefs.js:154
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:154
 msgid "Running"
 msgstr ""
 
-#: prefs.js:157
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/prefs.js:157
 msgid "Start usbeehived daemon"
 msgstr ""
 
-#: src/device-store.js:138
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:138
 #, javascript-format
 msgid "Charging: %s in"
 msgstr ""
 
-#: src/device-store.js:140
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:140
 #, javascript-format
 msgid "Powering: %s out"
 msgstr ""
 
-#: src/device-store.js:143
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:143
 #, javascript-format
 msgid "USB-C: %s"
 msgstr ""
 
-#: src/device-store.js:144
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:144
 msgid "USB-C: charging"
 msgstr ""
 
-#: src/device-store.js:163
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:163
 msgid "1 device"
 msgstr ""
 
-#: src/device-store.js:164
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:164
 #, javascript-format
 msgid "%d devices"
 msgstr ""
 
-#: src/device-store.js:168
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:168
 msgid "Nothing connected"
 msgstr ""
 
-#: src/device-store.js:189
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/device-store.js:224
 msgid "Daemon not running"
 msgstr ""
 
-#: src/empty-state.js:28
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/empty-state.js:28
 msgid "usbeehive daemon not running"
 msgstr ""
 
-#: src/empty-state.js:37
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/empty-state.js:37
 msgid "Run this command, then this list will populate automatically:"
 msgstr ""
 
-#: src/notifier.js:108 src/tile.js:26
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/notifier.js:108
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/tile.js:26
 msgid "USBee"
 msgstr ""
 
-#: src/notifier.js:129
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/notifier.js:129
 #, javascript-format
 msgid "USB-C Port %d — %s"
 msgstr ""
 
-#: src/notifier.js:171
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/notifier.js:171
 msgid "Don't notify for this port again"
 msgstr ""
 
-#: src/notifier.js:178
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/notifier.js:178
 msgid "Open Preferences"
 msgstr ""
 
-#: src/popover.js:55
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:60
 msgid "No USB devices attached"
 msgstr ""
 
-#: src/tile.js:37
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:117
+msgid "Power"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:118
+msgid "Speed"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:120
+msgid "Direction"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:122
+msgid "Role"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:124
+msgid "Diagnostic"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:125
+msgid "Detail"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/popover.js:169
+msgid "Summary"
+msgstr ""
+
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/tile.js:37
 msgid "USB devices"
 msgstr ""
 
-#: src/tile.js:86
+#: /home/blk/projects/rust/usbee/.claude/worktrees/agent-a99a42eb6d10dd40b/usbee@bitcreed.us/src/tile.js:86
 msgid "Preferences…"
 msgstr ""
