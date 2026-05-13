@@ -12,6 +12,22 @@ import Adw from 'gi://Adw?version=1';
 import {ExtensionPreferences, gettext as _}
     from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+// Daemon bus coordinates — must match src/dbus-client.js. The "1" lives
+// only on the interface name, not on bus name or object path.
+const USBEEHIVE_BUS_NAME    = 'org.usbeehive.Devices';
+const USBEEHIVE_OBJECT_PATH = '/org/usbeehive/Devices';
+
+// Minimal IFACE_XML — only the Version property is consumed here, but
+// declaring it lets makeProxyWrapper synthesise the cached-property
+// accessor (no separate Get call needed at runtime).
+const USBEEHIVE_IFACE_XML = `<node>
+  <interface name="org.usbeehive.Devices1">
+    <property name="Version" type="s" access="read"/>
+  </interface>
+</node>`;
+
+const UsbeehiveVersionProxy = Gio.DBusProxy.makeProxyWrapper(USBEEHIVE_IFACE_XML);
+
 export default class USBeePreferences extends ExtensionPreferences {
 
     fillPreferencesWindow(window) {
@@ -26,7 +42,7 @@ export default class USBeePreferences extends ExtensionPreferences {
 
         this._buildNotificationsGroup(page, settings, window);
         this._buildGeneralGroup(page, settings);
-        this._buildAboutGroup(page);
+        this._buildAboutGroup(page, window);
     }
 
     // ── Group 1: Notifications (muted ports) ─────────────────────────
@@ -110,7 +126,7 @@ export default class USBeePreferences extends ExtensionPreferences {
     }
 
     // ── Group 3: About ───────────────────────────────────────────────
-    _buildAboutGroup(page) {
+    _buildAboutGroup(page, window) {
         const aboutGroup = new Adw.PreferencesGroup({title: _('About')});
         page.add(aboutGroup);
 
@@ -122,8 +138,64 @@ export default class USBeePreferences extends ExtensionPreferences {
 
         const daemonRow = new Adw.ActionRow({
             title: _('usbeehive daemon'),
-            subtitle: _('Required — run: systemctl --user enable --now usbeehive'),
+            subtitle: _('Checking…'),
         });
         aboutGroup.add(daemonRow);
+
+        // Live daemon-version probe — async (D-15: no sync D-Bus).
+        // We hold a single proxy reference; bus_watch_name re-fires on
+        // owner transitions and re-reads the cached Version property.
+        let proxy = null;
+
+        const setRunning = () => {
+            const v = proxy?.Version;
+            daemonRow.subtitle = v
+                ? _('Running — v%s').format(v)
+                : _('Running');
+        };
+        const setStopped = () => {
+            daemonRow.subtitle = _('Start usbeehived daemon');
+        };
+
+        const ensureProxy = () => {
+            if (proxy !== null) {
+                setRunning();
+                return;
+            }
+            new UsbeehiveVersionProxy(
+                Gio.DBus.session,
+                USBEEHIVE_BUS_NAME,
+                USBEEHIVE_OBJECT_PATH,
+                (p, error) => {
+                    if (error) {
+                        setStopped();
+                        return;
+                    }
+                    proxy = p;
+                    setRunning();
+                },
+            );
+        };
+
+        const busWatchId = Gio.bus_watch_name(
+            Gio.BusType.SESSION,
+            USBEEHIVE_BUS_NAME,
+            Gio.BusNameWatcherFlags.NONE,
+            () => ensureProxy(),
+            () => {
+                // Owner vanished — the cached proxy is now talking to a
+                // dead name. Drop it so the next appear constructs fresh.
+                proxy = null;
+                setStopped();
+            },
+        );
+
+        // Prefs-process lifecycle teardown — mirror the Notifications
+        // group pattern. The Shell-side SignalRegistry doesn't reach here.
+        window.connect('close-request', () => {
+            Gio.bus_unwatch_name(busWatchId);
+            proxy = null;
+            return false;  // don't prevent close
+        });
     }
 }
