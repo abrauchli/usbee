@@ -25,8 +25,8 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         super({
             title: _('USBee'),
             subtitle: store.subhead,
-            iconName: 'network-usb-symbolic',   // RESEARCH A2 fallback in icons/usb-symbolic.svg
-            toggleMode: false,                  // UI-SPEC #interactions — informational tile
+            iconName: 'drive-removable-media-symbolic',
+            toggleMode: false,  // UI-SPEC #interactions — informational tile (no daemon toggle)
         });
         this._store = store;
         this._extension = extension;
@@ -34,7 +34,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._prefsSeparator = null;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
-        this.menu.setHeader('network-usb-symbolic', _('USB devices'), '');
+        this.menu.setHeader('drive-removable-media-symbolic', _('USB devices'), '');
 
         // Lazy-populated device list section (D-11; Pattern 2).
         // Wrapped in a St.ScrollView so a long device list never pushes
@@ -53,13 +53,14 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._rowsScroll.set_child(this._rowsSection.actor);
         this.menu.box.add_child(this._rowsScroll);
 
-        // Bind subtitle to the store. This is how TILE-04 / LIVE-03 get
-        // their live updates: DBusClient mutates store → 'changed' fires
-        // → subtitle re-reads store.subhead. Plan 01 ships hardcoded
-        // subhead; Plan 02 Task 1 swaps the store's subhead getter for
-        // full D-09 derivation without touching this file.
+        // Bind subtitle + checked state to the store.
+        // checked mirrors store.daemonRunning: true = daemon present (blue tile),
+        // false = daemon absent (gray tile). toggleMode is false so clicking the
+        // tile opens the menu rather than toggling checked — we only set checked
+        // programmatically here.
         const changedId = store.connect('changed', () => {
             this.subtitle = store.subhead;
+            this.checked  = this._store.daemonRunning;
         });
         registry.addSignal(store, changedId);
 
@@ -70,10 +71,11 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             });
         registry.addSignal(this.menu, openId);
 
-        // Initial subtitle — defensive in case the store fired 'changed'
-        // before we connected (e.g. if bus_watch_name appeared synchronously
-        // — RESEARCH §Pitfall D).
+        // Initial subtitle + checked — defensive in case the store fired
+        // 'changed' before we connected (e.g. bus_watch_name appeared
+        // synchronously — RESEARCH §Pitfall D).
         this.subtitle = store.subhead;
+        this.checked  = store.daemonRunning;
 
         // STATE-04 — Preferences… menu row with lock-screen gating.
         // We physically destroy/recreate the row on sessionMode 'updated'
