@@ -58,12 +58,12 @@ export function iconForDevice(device) {
     if (cat === 'hub' || cat === 'typecport')
         return 'network-usb-symbolic';
 
-    // 3. Keyword scan on headline + bullets[].
-    // Build a single lowercased search string from all available text.
-    const haystack = [
-        device.headline || '',
-        ...(device.bullets || []),
-    ].join(' ').toLowerCase();
+    // 3. Keyword scan on the headline ONLY (WR-01 mitigation).
+    // Bullets are detail prose, not classifiers — a hub bullet that says
+    // "Audio passthrough supported" must not classify the device as an
+    // audio card. Headline is the daemon's one-line product summary, which
+    // is the appropriate field for keyword classification.
+    const haystack = (device.headline || '').toLowerCase();
 
     for (const [iconName, ...keywords] of KEYWORD_MAP) {
         for (const kw of keywords) {
