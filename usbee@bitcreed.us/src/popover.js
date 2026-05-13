@@ -138,7 +138,12 @@ function keyForBullet(bullet, category) {
     if (/\d+\s*W\b/i.test(bullet))                         return _('Power');
     if (/Gb\/s|Mb\/s|Kb\/s/i.test(bullet))                 return _('Speed');
     if (/USB\s+\d/i.test(bullet))                          return _('Version');
-    if (/sink|source/i.test(bullet))                       return _('Direction');
+    // WR-04: anchor on category so non-TypeCPort bullets containing
+    // "open source", "source cable", or product names like "SinkMaster"
+    // do NOT get the USB-PD 'Direction' label. Word boundaries also tighten
+    // the match against substrings inside unrelated words.
+    if (/\b(sink|source)\b/i.test(bullet) && category === 'TypeCPort')
+                                                            return _('Direction');
     if (/host|device/i.test(bullet) && category === 'TypeCPort')
                                                             return _('Role');
     if (/cable|limited|degraded|slower|swap|expected|unable|cannot|mismatch/i.test(bullet))
