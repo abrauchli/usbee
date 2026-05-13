@@ -105,10 +105,14 @@ function parseLinkSpeed(bullets) {
 /**
  * Format a wattage for display.
  * >= 10 W → integer ("65 W"); < 10 W → one decimal ("9.5 W").
+ * Non-finite or negative inputs render as the gettext em-dash placeholder
+ * (WR-05: defends against malformed daemon emissions like "e10 W" which
+ * parseFloat returns as NaN, or unit-conversion bugs producing Infinity).
  * @param {number} w
  * @returns {string}
  */
 function formatWatts(w) {
+    if (!Number.isFinite(w) || w < 0) return _('—');
     return w >= 10 ? `${Math.round(w)} W` : `${w.toFixed(1)} W`;
 }
 
