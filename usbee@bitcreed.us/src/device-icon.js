@@ -14,9 +14,13 @@
 // T-03-01 mitigation: accept daemon-supplied icon names only if they match
 // the GNOME symbolic icon pattern — ASCII lowercase/digit words joined by
 // hyphens, ending in -symbolic. Rejects absolute paths, shell metacharacters,
-// and non-symbolic names. Even a bypass would only produce a missing-icon
+// non-symbolic names, AND mixed-case names (WR-02): the GNOME icon naming
+// spec requires lowercase ASCII; mixed-case names like "Audio-Card-Symbolic"
+// would silently render as the missing-icon glyph if accepted. The regex is
+// strictly case-sensitive — no /i flag — so it enforces what the character
+// class already documents. Even a bypass would only produce a missing-icon
 // glyph: St.Icon.icon_name is a theme name lookup, not a filesystem path.
-const SYMBOLIC_ICON_RE = /^[a-z0-9][a-z0-9-]*-symbolic$/i;
+const SYMBOLIC_ICON_RE = /^[a-z0-9][a-z0-9-]*-symbolic$/;
 
 // Keyword table for driver/headline string matching.
 // Each entry: [icon-name, ...lowercased keyword fragments].
