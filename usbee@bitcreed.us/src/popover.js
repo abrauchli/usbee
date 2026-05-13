@@ -218,8 +218,16 @@ function buildDeviceRow(device) {
  * @returns {St.BoxLayout}
  */
 function buildPropertyRow(key, value, _category) {
+    // WR-06: explicit vertical:false for clarity (St.BoxLayout defaults to
+    // horizontal, but every other BoxLayout in this file declares its
+    // orientation; the implicit default invites a future maintainer to add
+    // vertical: true thinking they are setting the value the file already
+    // expected). The .usbee-detail-row style_class gives the inter-column
+    // spacing instead of a generic descendant selector on StBoxLayout.
     const row = new St.BoxLayout({
-        x_expand: true,
+        vertical:    false,
+        x_expand:    true,
+        style_class: 'usbee-detail-row',
     });
 
     const keyLbl = new St.Label({

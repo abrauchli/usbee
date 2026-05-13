@@ -30,7 +30,7 @@
     spacing: 4px;                  /* vertical rhythm between property rows */
 }
 
-.usbee-detail-panel StBoxLayout {
+.usbee-detail-row {
     spacing: 12px;                 /* gap between key and value columns */
 }
 
