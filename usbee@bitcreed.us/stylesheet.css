@@ -20,3 +20,35 @@
 .usbee-popover-scroll {
     max-height: 50ex;
 }
+
+/* Adwaita-coherent detail panel (UI-05).
+ * Mirrors the vertical rhythm + label dim/regular pairing used in
+ * gnome-shell's own network/Bluetooth detail rows.
+ */
+.usbee-detail-panel {
+    padding: 6px 12px 6px 32px;   /* left indent aligns under the row icon */
+    spacing: 4px;                  /* vertical rhythm between property rows */
+}
+
+.usbee-detail-panel StBoxLayout {
+    spacing: 12px;                 /* gap between key and value columns */
+}
+
+.usbee-detail-key {
+    min-width: 7em;                /* consistent left-column width */
+    color: rgba(255, 255, 255, 0.55);  /* dim secondary, matches Adwaita caption-heading */
+    font-weight: normal;
+}
+
+.usbee-detail-value {
+    color: inherit;
+}
+
+/* Diagnostic and speed values look better in monospace — apply via a
+ * style_class hook the popover.js can opt-in per row if needed.
+ * Default value rows remain proportional.
+ */
+.usbee-detail-value.monospace {
+    font-family: monospace;
+    font-size: 0.95em;
+}
