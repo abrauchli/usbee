@@ -86,7 +86,7 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 03-01-PLAN.md — Accordion popover rewrite (PopupSubMenuMenuItem rows + class/driver icons + issue-first sort + Adwaita-coherent detail panel) + v1.1.0 EGO repack (covers UI-01..UI-05)
+- [x] 03-01-PLAN.md — Accordion popover rewrite (PopupSubMenuMenuItem rows + class/driver icons + issue-first sort + Adwaita-coherent detail panel) + v1.1.0 EGO repack (covers UI-01..UI-05)
 **UI hint:** yes
 
 ### Phase 3 Implementation Scope
