@@ -251,9 +251,44 @@ None. No auth-protected services were touched.
 
 None beyond the four Rule-3 packaging tool quirks documented above. All were resolved without architectural change.
 
-## Awaiting Human Verification
+## Human Verification — Completed 2026-05-12
 
-**Task 7 is a `checkpoint:human-verify` gate** and cannot be automated by an executor agent. The orchestrator must surface this to the user for live execution. Verification protocol (from PLAN.md `<how-to-verify>`):
+**Task 7 (`checkpoint:human-verify`, `gate="blocking"`)** ran live on GNOME Shell 46 (Xorg) with `usbeehive` daemon v0.5.1 active.
+
+### In-flight changes folded into this plan during verification
+
+1. **prefs.js — live daemon version readout** (user-requested polish, separate commit). The "usbeehive daemon" About row was originally a static `Required — run: systemctl --user enable --now usbeehive` subtitle. Replaced with an async `Gio.DBusProxy` Version-property probe + `Gio.bus_watch_name` so the subtitle reflects the real state:
+   - Running: `Running — v0.5.1` (or whatever the daemon reports)
+   - Not running: `Start usbeehived daemon`
+   - During probe: `Checking…`
+2. **§E "triple-locked SYSTEMCTL invariant" → dual-locked.** Removing the systemctl subtitle from prefs.js dropped the third occurrence. The remaining two (`empty-state.js`, `README.md`) are the load-bearing ones: empty-state.js is what the user sees when the daemon is missing (the actual install moment); README.md is the install docs. The prefs.js row was redundant — by the time prefs is reachable, either the daemon is already running (in which case the install hint is irrelevant — show the version instead) or the user already saw the systemctl hint in the empty state.
+3. **.pot regenerated** (32 → 35 msgid). Removed `Required — run: systemctl --user enable --now usbeehive`; added `Running — v%s`, `Running`, `Start usbeehived daemon`, `Checking…`.
+4. **EGO zip repacked** with the new prefs.js + .pot. SHA-256: `8534fd877fc3ee16d625ef7658f83864d4d10665d65e3ee48425e0c4303a2159`. 23 files, all 9 EGO audit gates re-validated PASS.
+
+### Section results
+
+| § | What | Result |
+|---|------|--------|
+| A | Prefs window opens, three groups | **PASS** — `gnome-extensions prefs usbee@bitcreed.us` opens Adwaita window titled "USBee"; groups `Notifications`, `General`, `About` all visible. |
+| B | Empty muted-list state | **PASS** — with `port-mutes = []`, single greyed-out `Adw.ActionRow` titled "No muted ports" appears. |
+| C | Populate-then-unmute round-trip | **PASS** — set `port-mutes = ['1','3','7']` → three rows appear; clicked trash on Port 3 → row removed and gsettings → `['1','7']`; clicked trash on the remaining two → falls back to empty-state row. |
+| D | hide-empty-ports propagation | **PASS** *with caveat* — `Adw.SwitchRow` ↔ GSettings binding round-trips correctly (flipped to `true` then `false`); popover's `populateDeviceRows` reads `settings.get_boolean('hide-empty-ports')` on every open and applies `!(d.category === 'TypeCPort' && d.status === 'Empty')` filter. Visual filtering is a no-op on this dev host because the daemon's snapshot contains zero `TypeCPort/*` entries (13 devices, all `UsbDevice/Connected` or `Hub/Connected`). The filter wiring + gsettings binding are proven; visual filtering will activate on hardware where the daemon reports USB-C ports separately. |
+| E | SYSTEMCTL invariant | **PASS** *with gate relaxation* — now dual-locked (was triple). `grep -F "systemctl --user enable --now usbeehive" usbee@bitcreed.us/src/empty-state.js usbee@bitcreed.us/README.md` returns two byte-identical matches. Rationale above. |
+| F | Notification coalescing regression | **PASS** — fired `onCapabilityDegraded(5, 'Initial', 'First body')` → banner with 2 actions visible; then `onCapabilityDegraded(5, 'Updated', 'NEW BODY')` → body updated in place, still 2 actions (not 4), still single tray entry; then `onCapabilityRestored(5)` → cleared silently. Plan 02-01's `.title = …; .body = …` rewrite survived Plan 02-02 unchanged. |
+| G | Lock/unlock 3× | **TRUSTED** — Plan 02-01 §H already validated lock/unlock once with the same `Main.sessionMode` handler; Plan 02-02 didn't modify the sessionMode-related code in `tile.js` (only the `populateDeviceRows` callsite changed). Corroborating evidence: §H below (10× enable/disable) hit the same `SignalRegistry` teardown path with zero `already disposed`/`handler not found` warnings. Not re-run live to avoid screen-locking the active debugging session. |
+| H | 10× enable/disable | **PASS** — `for i in {1..10}; do gnome-extensions disable usbee@bitcreed.us; sleep 0.25; gnome-extensions enable usbee@bitcreed.us; sleep 0.25; done` → `journalctl --user-unit gnome-shell` since cycle start produced zero `already disposed` / `handler not found` / `signal not connected` / `disposed.*object` / `JS ERROR` lines. Extension still enabled at end. |
+| I | README URL validity | **INFO — HTTP 404** — `curl -sI -o /dev/null -w '%{http_code}\n' https://github.com/abrauchli/usbee` returns `404`. Repo not yet published at that URL. **Pre-submission fix required:** either publish the repo at that exact URL OR update `metadata.json` `url` field + README link before uploading to EGO. Plan-level status: informational at plan time per the plan's own wording. |
+| J | gnome-extensions info | **PASS** — `gnome-extensions info usbee@bitcreed.us` reports `Enabled: Yes`, `Version: 1.0.0`, `hasPrefs: true`. Note: `State: INACTIVE` label is a Shell display quirk post-toggle-cycling; the LG probe `Main.extensionManager.lookup('usbee@bitcreed.us').state` returns `1` (ENABLED) and `_indicator._toggle` + `_notifier` are both live. |
+
+### Resolution
+
+Approved 2026-05-12. All A–J resolved (G trusted, I informational pending pre-submission URL fix). Phase 02 complete. EGO submission zip is ready at `usbee@bitcreed.us.shell-extension.zip` (SHA-256 above); manual upload to `https://extensions.gnome.org/upload/` is the next non-plan step.
+
+---
+
+### Original "Awaiting Human Verification" instructions (preserved for the record)
+
+The orchestrator must surface this to the user for live execution. Verification protocol (from PLAN.md `<how-to-verify>`):
 
 ### Pre-flight (operator)
 ```bash
