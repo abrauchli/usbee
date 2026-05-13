@@ -15,36 +15,71 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 A GNOME-native, glanceable answer to "is this the fast port?" and
 "why is my laptop charging slowly?" — without opening a terminal.
 
+## Current Milestone: v1.1 UI Rework
+
+**Goal:** Replace the staircase two-column popover with a per-device
+selectable accordion list — each device gets a class-derived icon,
+expanding a row reveals its diagnostic details rendered with Adwaita-
+coherent styling (not raw text bullets), and devices with daemon-flagged
+issues float to the top.
+
+**Target features:**
+- Per-device row using `PopupSubMenuMenuItem` (canonical pattern from
+  gnome-shell `network-section.js`)
+- Single-row accordion expansion (only one row open at a time)
+- Issue-first sort: devices with a non-empty `diagnostic` field float
+  to the top
+- Per-device icons derived from USB class / driver (usbhid →
+  keyboard/mouse, Hub → generic USB, fallback → generic USB)
+- Expanded device view styled visually coherent with Wi-Fi/Bluetooth
+  detail panels — proper Adwaita-style layout, not raw text bullets
+
+**Out of scope (carried forward as-is from v1.0):** notifier, prefs
+window, GSettings schema, daemon-missing empty state, SignalRegistry
+teardown, EGO submission audit gates.
+
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-(None yet — ship to validate)
-
-### Active
-
-- [ ] Quick Settings tile that mirrors the modern GNOME tile pattern
+- [x] Quick Settings tile that mirrors the modern GNOME tile pattern
       (Wi-Fi / Bluetooth / Sound), with a one-line headline summarising
       USB-C charging + fastest attached device
-- [ ] Expanded view listing every attached USB device / USB-C port
+- [x] Expanded view listing every attached USB device / USB-C port
       with vendor + product name, negotiated speed, USB version, power
       direction, and live wattage when UCSI exposes it
-- [ ] Plain-English diagnostic per USB-C port ("Cable limited to USB
+- [x] Plain-English diagnostic per USB-C port ("Cable limited to USB
       2.0 — swap for a full-featured cable to reach 10 Gb/s")
-- [ ] Hotplug: list updates live via usbeehive's `DeviceAdded` /
+- [x] Hotplug: list updates live via usbeehive's `DeviceAdded` /
       `DeviceRemoved` D-Bus signals
-- [ ] Charging-degraded desktop notification on
+- [x] Charging-degraded desktop notification on
       `CapabilityDegraded`, once per event, dismissable, with a
       "Don't notify for this port" action persisted in GSettings
-- [ ] Graceful "daemon not running" empty state that watches
+- [x] Graceful "daemon not running" empty state that watches
       `NameOwnerChanged` and lights up automatically when usbeehive
       appears on the session bus
-- [ ] Per-port mute preferences persisted in GSettings
+- [x] Per-port mute preferences persisted in GSettings
       (`us.bitcreed.usbee`)
-- [ ] Strings wrapped in gettext markers so localisation can be
+- [x] Strings wrapped in gettext markers so localisation can be
       added later without churn
-- [ ] Ship as a GNOME Shell extension for the GNOME 46+ Quick
+- [x] Ship as a GNOME Shell extension for the GNOME 46+ Quick
       Settings API; reachable via Extensions / EGO install
+
+### Active (v1.1)
+
+- [ ] Per-device popover row that visually matches the
+      Wi-Fi/Bluetooth device-row pattern (icon + headline + chevron),
+      not the v1.0 two-column staircase layout
+- [ ] Click a device row to expand its diagnostic details; only one
+      device row is open at a time (accordion behaviour)
+- [ ] Devices with daemon-flagged issues (non-empty `diagnostic`
+      field) sort to the top of the device list
+- [ ] Each device row shows a class/driver-derived symbolic icon —
+      generic USB icon for hubs and unrecognised devices, input-class
+      icons for HID devices (keyboard, mouse), and matching icons for
+      common storage / audio / video classes
+- [ ] Expanded device detail panel is styled coherently with the
+      GNOME Wi-Fi/Bluetooth detail UX (not raw text bullets)
 
 ### Out of Scope
 
@@ -134,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-11 after initialization*
+*Last updated: 2026-05-13 — milestone v1.1 (UI Rework) started after v1.0 shipped*
