@@ -82,7 +82,11 @@ Plans:
   4. Each row displays a class/driver-derived symbolic icon: HID devices show `input-keyboard-symbolic` or `input-mouse-symbolic`; hubs and unrecognised devices fall back to `network-usb-symbolic`; common storage / audio / video classes resolve to their matching symbolic icons. (UI-04)
   5. The expanded detail panel renders as a structured Adwaita-coherent layout — labelled property rows with consistent vertical rhythm, monospace where appropriate — visually coherent with the Wi-Fi/Bluetooth detail UX, not stacked raw `St.Label` bullets. (UI-05)
   6. `gnome-extensions pack` produces a clean zip whose `metadata.json` declares `version-name: 1.1.0` and a regenerated `po/usbee@bitcreed.us.pot`; the zip still contains no bundled binaries, no `Gtk`/`Adw` imports in Shell-process code, and no synchronous D-Bus or I/O calls (EGO audit gates from Phase 02 remain green).
-**Plans:** TBD (decomposed by `/gsd-plan-phase`; expect 2–3 plans inside this phase given coarse / mvp granularity)
+**Plans:** 1 plan
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Accordion popover rewrite (PopupSubMenuMenuItem rows + class/driver icons + issue-first sort + Adwaita-coherent detail panel) + v1.1.0 EGO repack (covers UI-01..UI-05)
 **UI hint:** yes
 
 ### Phase 3 Implementation Scope
@@ -113,7 +117,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 2/2 | Complete | 2026-05-11 |
 | 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 2/2 | Complete | 2026-05-12 |
-| 3. Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1) | 0/TBD | Plans pending | - |
+| 3. Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1) | 0/1 | Plans drafted | - |
 
 ## Coverage Map
 
