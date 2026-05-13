@@ -1,30 +1,22 @@
 ---
 phase: 03-popover-ui-rework-accordion-rows-class-icons-issue-first-sor
 verified: 2026-05-12T23:30:00Z
-verdict: PARTIAL
+remediated: 2026-05-12T22:35:00Z
+verdict: PASS
 success_criteria:
-  passed: 5
+  passed: 6
   partial: 0
-  failed: 1
+  failed: 0
   total: 6
 requirements:
   total: 5
   covered: 5
   uncovered: 0
-status: gaps_found
-score: 5/6 must-haves verified
+status: complete
+score: 6/6 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "SC-6: gnome-extensions pack produces a clean v1.1.0 zip ready for EGO upload"
-    status: failed
-    reason: "On-disk usbee@bitcreed.us.shell-extension.zip is the STALE v1.0 zip from Phase 02. It contains version-name 1.0.0, lacks device-icon.js, ships the OLD popover.js (no PopupSubMenuMenuItem, no hasIssue, no detail-panel), the OLD stylesheet (no .usbee-detail-* rules), and the OLD .pot. The git commit d867007 ('regenerate .pot + pack v1.1.0 EGO zip') was claimed in SUMMARY.md but the on-disk artifact does NOT reflect that work — likely the pack was performed in a worktree that was discarded before the artifact was copied to the repo root, or it was overwritten by a subsequent re-pack of the wrong tree. SUMMARY claims SHA-256 60368fa7… ; on-disk is 8534fd87… (Phase 02 zip). Zip mtime 2026-05-12 18:00 predates all Phase 03 source commits."
-    artifacts:
-      - path: "usbee@bitcreed.us.shell-extension.zip"
-        issue: "Stale v1.0 contents: version-name 1.0.0; no device-icon.js entry; popover.js is 4821 bytes (old) vs current 251-line version; .pot is 2749 bytes (old) vs current 42-msgid version; no .usbee-detail-* in stylesheet.css inside the zip"
-    missing:
-      - "Re-run the Task 6 packaging recipe (xgettext + glib-compile-schemas + gnome-extensions pack + post-process) against the CURRENT working tree to produce a true v1.1.0 EGO submission zip"
-      - "Capture and record the new SHA-256 in 03-01-SUMMARY.md (replacing the unverifiable 60368fa7… string)"
-      - "Re-run all 9 EGO audit gates against the freshly packed zip; current gates 4/5/5b/6/7/8 pass via working-tree checks, but Gates 1, 2, 3, 9 must be re-verified against the actual zip contents (Gate 9 passed for the old zip, but the NEW zip needs the same check)"
+remediation_notes:
+  - "SC-6 BLOCKER closed in commit ee30c99: re-ran egp-repack-recipe at repo root. New zip SHA-256 2c930dd5c453578267d55c1f717abaf5cb5f12396f18c0e4350b351896beb582 (45381 bytes) carries version-name 1.1.0, src/device-icon.js, the new accordion popover.js, and CR-01-fixed device-store.js. .pot regenerated with canonical relative paths (43 msgid). All 9 EGO audit gates re-validated PASS inline against the new zip."
 human_verification:
   - test: "Live GNOME Shell smoke test of v1.1 popover (Task 7 sections A-I)"
     expected: "Per-device PopupSubMenuMenuItem accordion rows with class-derived icons, single-row accordion behaviour, issue-first sort, Adwaita-coherent labelled detail panel"
