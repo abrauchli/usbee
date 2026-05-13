@@ -170,19 +170,29 @@ export function deriveSubtitle(devices) {
 
 /**
  * UI-03 predicate: true iff this device should sort to the top of the popover.
- * Currently keyed off USB-C port diagnostic verbs in bullets[]; the daemon
+ * Currently keyed off USB-C port diagnostic phrases in bullets[]; the daemon
  * does not (yet) expose a standalone diagnostic field on the DeviceEntry tuple.
  *
  * A TypeCPort device "has an issue" iff:
  *   - category is 'TypeCPort'
  *   - status is not 'Empty' (unconnected ports can't be degraded)
- *   - at least one bullets[] entry contains a diagnostic keyword (the
- *     verbatim verbs the upstream daemon uses in its diagnostic prose,
- *     per REQUIREMENTS DIAG-01 example: "Cable limited to USB 2.0 —
- *     swap for a full-featured cable to reach 10 Gb/s").
+ *   - at least one bullets[] entry contains a multi-word diagnostic phrase
+ *     that the upstream daemon uses ONLY in its diagnostic prose
+ *     (verified against ../usbeehive/src/{summary.rs,diagnostic.rs}).
+ *
+ * IMPORTANT (CR-01): the previous bare-substring token list ('cable',
+ * 'slow', 'expected') matched routine non-diagnostic bullets the daemon
+ * emits for every TypeC port with cable info ("Passive cable",
+ * "Active cable", "Cable speed:", "Cable max power:", "Cable vendor:").
+ * The result was that nearly every connected TypeC port floated to the
+ * top of the popover, inverting UI-03's intent. The phrases below are
+ * anchored multi-word fragments that only appear in genuine diagnostic
+ * copy ("Cable is limiting charging speed", DIAG-01 example
+ * "Cable limited to USB 2.0 — swap for a full-featured cable").
  *
  * This is the single point of change if the daemon evolves to emit a
- * richer diagnostic structure in a future version.
+ * richer diagnostic structure (e.g. an `is_diagnostic: bool` field) in a
+ * future version.
  *
  * @param {object} device  Unpacked DeviceEntry from the store.
  * @returns {boolean}
@@ -190,14 +200,14 @@ export function deriveSubtitle(devices) {
 export function hasIssue(device) {
     if (device.category !== 'TypeCPort') return false;
     if (device.status === 'Empty') return false;
-    const DIAG_TOKENS = [
-        'degraded', 'limited', 'slower', 'slow', 'cable',
-        'swap', 'expected', 'unable', 'cannot', 'mismatch',
+    const DIAG_PHRASES = [
+        'limited to', 'limiting', 'slower than', 'unable to', 'cannot ',
+        'swap ', 'mismatch', 'degraded',
     ];
     for (const bullet of (device.bullets || [])) {
         const lower = bullet.toLowerCase();
-        for (const token of DIAG_TOKENS) {
-            if (lower.includes(token)) return true;
+        for (const phrase of DIAG_PHRASES) {
+            if (lower.includes(phrase)) return true;
         }
     }
     return false;
