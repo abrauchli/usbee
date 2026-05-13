@@ -35,7 +35,12 @@ function unpackDeviceEntry(tuple) {
 // (RESEARCH.md §Threat T-02-02 / STRIDE threat register).
 const WATT_RE        = /(\d+(?:\.\d+)?)\s*W\b/i;
 const DIRECTION_RE   = /\b(sink|source)\b/i;
-const USB_VERSION_RE = /\b(USB\s+\d+(?:\.\d+)?(?:\s+Gen\s+\d+(?:x\d+)?)?)/i;
+// WR-03: trailing lookahead anchors the match to the next word boundary or
+// punctuation, so "USB 3xtra" cannot match "USB 3" (since \d+ alone does not
+// require a \b after it). Required given the file's "Anchored token matchers"
+// claim above.
+const USB_VERSION_RE =
+    /\b(USB\s+\d+(?:\.\d+)?(?:\s+Gen\s+\d+(?:x\d+)?)?)(?=\s|$|[.,;:!?])/i;
 const SPEED_RE       = /(\d+(?:\.\d+)?)\s*(Gb|Mb|Kb)\/s/i;
 
 /**
