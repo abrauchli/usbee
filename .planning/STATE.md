@@ -97,7 +97,15 @@ Plan: 1 of 2
 
 ### Next Action
 
-User to execute the Plan 01-01 manual smoke test (Task 7) per `01-01-SUMMARY.md` §Awaiting Human Verification (sections A–D). Upon `approved`, proceed to Plan 01-02 (live signal subscriptions, debounce, headline derivation, full bullet renderer).
+Phase 02 complete (2026-05-12) — 5/5 SC, 13/13 reqs, 9/9 EGO audit gates PASS, both Task 7 smoke tests resolved live. v1.0 EGO submission zip ready at `usbee@bitcreed.us.shell-extension.zip` (SHA-256 `8534fd87…`). Public GitHub repo created at https://github.com/abrauchli/usbee — README URL now resolves (was the last open §I follow-up).
+
+**Pending — post-EGO-upload only (do NOT block submission on this):**
+
+- **Update repo `homepageUrl` once the EGO extension ID is assigned.** I set it to a placeholder `https://extensions.gnome.org/extension/` during `gh repo create`, but EGO URLs use `https://extensions.gnome.org/extension/<id>/<slug>/`. After uploading to https://extensions.gnome.org/upload/ and getting the assigned ID, run:
+  ```bash
+  gh repo edit abrauchli/usbee --homepage "https://extensions.gnome.org/extension/<ID>/<slug>/"
+  ```
+  Doesn't affect EGO submission itself — purely cosmetic for the GitHub repo page.
 
 ### Files of Record
 
