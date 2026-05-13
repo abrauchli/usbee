@@ -4,11 +4,16 @@
 // Stateless popover render functions called from src/tile.js on the
 // menu's 'open-state-changed' signal (D-11 lazy populate, Pattern 2).
 //
-// Plan 02 Task 3: replaced the Plan-01 headline-only populateDeviceRows
-// with the full LIST-01..06 + DIAG-01..02 version — one St.Label per
-// device.bullets[] entry, each with clutter_text.line_wrap = true so
-// multi-line diagnostic strings wrap cleanly inside the popover width.
-// populateEmptyState is unchanged from Plan 01.
+// v1.1.0 rewrite: replaced the Plan-01/02 stacked-bullets pattern with a
+// per-device PopupSubMenuMenuItem accordion layout. Each row carries a
+// class/driver-derived symbolic icon, a headline, and a chevron. Clicking
+// a row expands its Adwaita-coherent labelled-property detail panel; clicking
+// another row collapses the previous one (single-row accordion, UI-02).
+//
+// SECURITY INVARIANTS (preserved from v1.0):
+//   - All daemon strings are rendered verbatim via .text = ... — NEVER via
+//     markup APIs (untrusted session D-Bus data, T-01-02 / T-02-01 mitigation).
+//   - section.removeAll() is the FIRST call (Pitfall C: never mutate while iterating).
 
 import Pango from 'gi://Pango';
 import St from 'gi://St';
@@ -16,28 +21,28 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buildEmptyStateItem} from './empty-state.js';
+import {hasIssue} from './device-store.js';
+import {iconForDevice} from './device-icon.js';
 
 /**
- * Render the device list (LIST-01..06, DIAG-01, DIAG-02).
+ * Render the device list as an accordion of PopupSubMenuMenuItem rows.
  *
- * Per RESEARCH §Pitfall C, removeAll() must be the FIRST line so we
- * never iterate a section while mutating it.
+ * Called from tile.js every time the popover opens (D-11 lazy-rebuild).
+ * Signal connections on each sub-menu's 'open-state-changed' are NOT tracked
+ * by SignalRegistry — they live only as long as the PopupSubMenuMenuItem
+ * instances, which are destroyed wholesale by section.removeAll() on the next
+ * popover open (D-11 invariant; same pattern as Shell's bluetooth.js).
  *
- * Per UI-SPEC #copywriting + RESEARCH §Threat T-01-02 / T-02-01, all
- * daemon strings are rendered verbatim via .text = ... — never via
- * markup APIs (untrusted data from session D-Bus).
- *
- * Per CONTEXT.md D-11 and UI-SPEC §interactions, the popover does NOT
- * rebuild while open. The tile subtitle still updates live via the
- * store's 'changed' signal; when the user closes and re-opens the
- * popover, the next 'open-state-changed' fires and this function reads
- * the current store state. Do NOT add a store.connect('changed', ...)
- * listener inside the toggle.
+ * UI-03 issue-first sort is a stable sort: Array.prototype.sort is stable
+ * in SpiderMonkey (GJS, ES2019+), so daemon-emit order is preserved within
+ * each bucket.
  *
  * @param {PopupMenuSection} section  The section to populate.
  * @param {DeviceStore} store         Current device snapshot.
+ * @param {Extension} extension       USBee extension instance (for GSettings).
  */
 export function populateDeviceRows(section, store, extension) {
+    // Must be first — never mutate while iterating (Pitfall C).
     section.removeAll();
 
     // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
@@ -57,65 +62,156 @@ export function populateDeviceRows(section, store, extension) {
         ));
         return;
     }
+
+    // UI-03 — Issue-first stable sort. hasIssue(b) - hasIssue(a) floats
+    // issue devices to the top; equal keys preserve insertion order.
+    devices = [...devices].sort((a, b) =>
+        Number(hasIssue(b)) - Number(hasIssue(a)));
+
+    // Build one accordion row per device and wire the single-open constraint.
+    const rows = [];
     for (const device of devices) {
-        section.addMenuItem(buildDeviceRow(device));
+        const row = buildDeviceRow(device);
+        section.addMenuItem(row);
+        rows.push(row);
+    }
+
+    // UI-02 — Single-row accordion: when a row opens, close all others.
+    // Connections on row.menu live only until the next section.removeAll()
+    // destroys the PopupSubMenuMenuItem tree — no leak path (T-03-04 mitigation).
+    for (const row of rows) {
+        row.menu.connect('open-state-changed', (_menu, open) => {
+            if (!open) return;
+            for (const other of rows) {
+                if (other !== row && other.menu.isOpen)
+                    other.menu.close(/* animate */ true);
+            }
+        });
     }
 }
 
+/**
+ * Render the empty state (daemon not running).
+ * Unchanged from v1.0 — delegates to buildEmptyStateItem.
+ *
+ * @param {PopupMenuSection} section
+ */
 export function populateEmptyState(section) {
     section.removeAll();
     section.addMenuItem(buildEmptyStateItem());
 }
 
+// ---------------------------------------------------------------------------
+// Key-derivation heuristic for the Adwaita detail panel left-column labels.
+// Cheap substring + regex scan; no parsing guarantees. If no keyword matches,
+// falls through to the generic 'Detail' label.
+// ---------------------------------------------------------------------------
+
 /**
- * Build one PopupMenuItem row for a device.
+ * Derive a translated left-column property label for a daemon bullet string.
+ * @param {string} bullet  A single bullets[] entry from the device.
+ * @param {string} category  Device category (e.g. 'TypeCPort').
+ * @returns {string}  Gettext-marked label string.
+ */
+function keyForBullet(bullet, category) {
+    if (/\d+\s*W\b/i.test(bullet))                         return _('Power');
+    if (/Gb\/s|Mb\/s|Kb\/s/i.test(bullet))                 return _('Speed');
+    if (/USB\s+\d/i.test(bullet))                          return _('Version');
+    if (/sink|source/i.test(bullet))                       return _('Direction');
+    if (/host|device/i.test(bullet) && category === 'TypeCPort')
+                                                            return _('Role');
+    if (/cable|limited|degraded|slower|swap|expected|unable|cannot|mismatch/i.test(bullet))
+                                                            return _('Diagnostic');
+    return _('Detail');
+}
+
+/**
+ * Build one accordion row for a device.
  *
- * Visual hierarchy per UI-SPEC #hierarchy:
- *   [headline]              ← PopupMenuItem label (600-weight via Shell CSS)
- *   [bullet 1]              ← St.Label, line-wrapped
- *   [bullet 2]              ← St.Label, line-wrapped
- *   ...
+ * Uses PopupSubMenuMenuItem (the gnome-shell widget from bluetooth.js /
+ * network.js) so the row carries a built-in icon slot (.icon), a title
+ * label (.label), and a sub-menu (.menu) whose content panel is built as
+ * a single non-reactive PopupBaseMenuItem containing a vertical St.BoxLayout
+ * of labelled property rows (UI-05 Adwaita-coherent detail panel).
  *
- * The body box gets style_class: 'body' so the stylesheet rule
- *   .usbee-device-row .body { spacing: 4px; }
- * applies the 4-px vertical token between bullets (UI-SPEC #spacing).
- * St does not support the adjacent-sibling (+) combinator — use BoxLayout's
- * native `spacing` property instead.
+ * The icon is set from iconForDevice() — UI-04.
  *
- * Per-row icons are deliberately omitted — Phase 1 deferral per
- * RESEARCH §Daemon Wire Shape note (deferred to v1.x with
- * PopupImageMenuItem).
+ * Value-column labels use .text = (never .set_markup) — T-01-02 mitigation.
  *
  * @param {object} device  Unpacked DeviceEntry from the store.
- * @returns {PopupMenu.PopupMenuItem}
+ * @returns {PopupMenu.PopupSubMenuMenuItem}
  */
 function buildDeviceRow(device) {
-    // Headline is set via the PopupMenuItem constructor's text arg,
-    // which uses .text = internally — safe, no Pango markup parsing.
-    // Fall back to device.id only if headline is empty (shouldn't happen
-    // — daemon always emits a non-empty headline per RESEARCH §Daemon Wire Shape).
     const headline = device.headline || device.id || '';
-    const item = new PopupMenu.PopupMenuItem(headline, {
-        reactive:  false,
-        can_focus: false,
-    });
-    item.add_style_class_name('usbee-device-row');
 
-    // Body box — one St.Label per bullet, line-wrapped.
-    // x_expand: true so labels stretch to the popover width and wrap
-    // correctly (DIAG-02 multi-sentence diagnostic strings).
-    const body = new St.BoxLayout({
-        vertical:    true,
-        x_expand:    true,
-        style_class: 'body',
+    // Second arg `true` enables the built-in .icon slot on the row.
+    const row = new PopupMenu.PopupSubMenuMenuItem(headline, true);
+    row.icon.icon_name = iconForDevice(device);
+    row.add_style_class_name('usbee-device-row');
+
+    // --- Detail panel (UI-05) ---
+    // One non-reactive PopupBaseMenuItem wrapping a vertical St.BoxLayout.
+    const detailItem = new PopupMenu.PopupBaseMenuItem({
+        reactive:    false,
+        can_focus:   false,
+        style_class: 'usbee-detail-panel',
     });
-    for (const bullet of (device.bullets || [])) {
-        const lbl = new St.Label({text: bullet, x_expand: true});
-        // DIAG-02: multi-line diagnostic strings must wrap cleanly.
-        lbl.clutter_text.line_wrap = true;
-        lbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-        body.add_child(lbl);
+
+    const detailBox = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+    });
+    detailItem.add_child(detailBox);
+
+    // Subtitle row (when non-empty) — key: 'Summary'.
+    if (device.subtitle) {
+        detailBox.add_child(buildPropertyRow(
+            _('Summary'), device.subtitle, device.category));
     }
-    item.add_child(body);
-    return item;
+
+    // One property row per bullet string.
+    for (const bullet of (device.bullets || [])) {
+        detailBox.add_child(buildPropertyRow(
+            keyForBullet(bullet, device.category), bullet, device.category));
+    }
+
+    row.menu.addMenuItem(detailItem);
+    return row;
+}
+
+/**
+ * Build a single horizontal property row (key + value labels).
+ *
+ * The key label uses .usbee-detail-key (dim secondary colour).
+ * The value label uses .usbee-detail-value (regular weight).
+ * DIAG-02: value wraps cleanly via clutter_text.line_wrap.
+ *
+ * @param {string} key    Translated left-column label (e.g. 'Speed').
+ * @param {string} value  Raw daemon string — rendered via .text, never markup.
+ * @param {string} _category  Device category (unused here; passed for forward use).
+ * @returns {St.BoxLayout}
+ */
+function buildPropertyRow(key, value, _category) {
+    const row = new St.BoxLayout({
+        x_expand: true,
+    });
+
+    const keyLbl = new St.Label({
+        text:        key,
+        x_expand:    false,
+        style_class: 'usbee-detail-key',
+    });
+
+    const valLbl = new St.Label({
+        text:        value,
+        x_expand:    true,
+        style_class: 'usbee-detail-value',
+    });
+    // DIAG-02: multi-line diagnostic strings must wrap cleanly.
+    valLbl.clutter_text.line_wrap      = true;
+    valLbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+
+    row.add_child(keyLbl);
+    row.add_child(valLbl);
+    return row;
 }
