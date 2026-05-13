@@ -1,11 +1,24 @@
 # Requirements: USBee
 
 **Defined:** 2026-05-11
+**Last milestone-update:** 2026-05-13 (v1.0 → v1.1)
 **Core Value:** A GNOME-native, glanceable answer to "is this the fast port?" and "why is my laptop charging slowly?" — without opening a terminal.
 
-## v1 Requirements
+## v1.1 Requirements (current milestone)
 
-Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, talks to the `usbeehive` daemon over D-Bus, and ships to extensions.gnome.org.
+UI rework: per-device selectable accordion list with class-derived icons, expandable diagnostic detail panels styled coherently with Wi-Fi/Bluetooth, and an issue-first sort order. No daemon-side or schema changes — purely the visual surface of `src/popover.js` + supporting modules.
+
+### UI Rework (UI)
+
+- [ ] **UI-01**: Popover renders one row per device using `PopupSubMenuMenuItem` (matches the gnome-shell network/Bluetooth row pattern); the v1.0 two-column staircase layout is replaced
+- [ ] **UI-02**: Clicking a device row expands its diagnostic detail panel; only one row is expanded at a time (accordion behaviour — opening a new row collapses the previous one)
+- [ ] **UI-03**: Devices with a non-empty daemon-emitted `diagnostic` field sort to the top of the popover list; the rest follow in daemon-emit order
+- [ ] **UI-04**: Each device row displays a class/driver-derived symbolic icon — `network-usb-symbolic` for hubs and unrecognised devices, `input-keyboard-symbolic` / `input-mouse-symbolic` for HID, plus matching symbolic icons for common storage / audio / video classes
+- [ ] **UI-05**: Expanded device-detail panel is rendered as a structured Adwaita-coherent layout (labelled property rows, consistent vertical rhythm, monospace where appropriate) — not raw `St.Label` bullets stacked vertically
+
+## v1 Requirements (validated — shipped in v1.0)
+
+Initial release: a GNOME 46+ Shell extension that mounts a Quick Settings tile, talks to the `usbeehive` daemon over D-Bus, and ships to extensions.gnome.org. All v1 requirements validated by Phase 01 + Phase 02 smoke tests on GNOME Shell 46 Xorg with `usbeehive` v0.5.1.
 
 ### Tile (TILE)
 
@@ -150,14 +163,19 @@ All v1 requirements mapped to exactly one phase by the roadmapper.
 | PACK-04 | Phase 1 | Complete |
 | PACK-05 | Phase 1 | Complete |
 | PACK-06 | Phase 2 | Complete |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Pending |
+| UI-04 | Phase 3 | Pending |
+| UI-05 | Phase 3 | Pending |
 
 **Coverage:**
-- v1 requirements: 34 total
-- Mapped to phases: 34 (100%) ✓
-- Unmapped: 0
+- v1.0 requirements: 34 total, all Complete (Phase 01 + Phase 02 shipped)
+- v1.1 requirements: 5 total (UI × 5), to be mapped to Phase 3 by the roadmapper
 - Phase 1: 21 requirements (TILE × 4, LIST × 6, DIAG × 2, LIVE × 3, STATE-01/02/03/05, PACK-04/05)
 - Phase 2: 13 requirements (NOTIF × 4, PREFS × 4, STATE-04, PACK-01/02/03/06)
+- Phase 3: 5 requirements (UI × 5)
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 — traceability populated by roadmapper*
+*Last updated: 2026-05-13 — v1.1 milestone added (UI × 5), v1.0 requirements marked Complete*
