@@ -25,14 +25,20 @@ const SYMBOLIC_ICON_RE = /^[a-z0-9][a-z0-9-]*-symbolic$/;
 // Keyword table for driver/headline string matching.
 // Each entry: [icon-name, ...lowercased keyword fragments].
 // Evaluated in declaration order; first match wins.
+// All icon names verified present in /usr/share/icons/Adwaita/symbolic/.
 const KEYWORD_MAP = [
-    ['input-keyboard-symbolic',   'keyboard'],
-    ['input-mouse-symbolic',      'mouse', 'pointer', 'trackpad', 'touchpad'],
-    ['drive-harddisk-usb-symbolic', 'storage', 'disk', 'flash drive', 'usb drive', 'ssd', 'hdd'],
-    ['audio-card-symbolic',       'audio', 'sound', 'headset', 'microphone', 'headphone', 'speaker'],
-    ['camera-web-symbolic',       'camera', 'webcam', 'video'],
-    ['printer-symbolic',          'printer'],
-    ['phone-symbolic',            'phone', 'mobile', 'android', 'iphone'],
+    ['input-keyboard-symbolic',     'keyboard'],
+    ['input-mouse-symbolic',        'mouse', 'pointer', 'trackpad', 'touchpad'],
+    ['input-gaming-symbolic',       'gamepad', 'joystick', 'controller', 'deck', 'joypad'],
+    ['input-tablet-symbolic',       'tablet', 'wacom', 'graphics tablet'],
+    ['drive-harddisk-usb-symbolic', 'storage', 'disk', 'flash drive', 'usb drive', 'ssd', 'hdd', 'flash', 'thumb drive', 'pendrive'],
+    ['network-wired-symbolic',      'lan', 'ethernet', 'gigabit', '100/1000', '10/100'],
+    ['video-display-symbolic',      'monitor', 'display', 'screen', 'projector', 'tv'],
+    ['audio-card-symbolic',         'audio', 'sound', 'headset', 'microphone', 'headphone', 'speaker'],
+    ['camera-web-symbolic',         'camera', 'webcam'],
+    ['scanner-symbolic',            'scanner'],
+    ['printer-symbolic',            'printer'],
+    ['phone-symbolic',              'phone', 'mobile', 'android', 'iphone'],
 ];
 
 /**
@@ -58,9 +64,11 @@ export function iconForDevice(device) {
 
     const cat = (device.category || '').toLowerCase();
 
-    // 2. Category shortcut — Hubs and TypeC ports all share the USB icon.
+    // 2. Category shortcut — Hubs and TypeC ports fall back to the generic
+    // removable-media icon (drive-removable-media-symbolic exists in Adwaita;
+    // network-usb-symbolic does not).
     if (cat === 'hub' || cat === 'typecport')
-        return 'network-usb-symbolic';
+        return 'drive-removable-media-symbolic';
 
     // 3. Keyword scan on the headline ONLY (WR-01 mitigation).
     // Bullets are detail prose, not classifiers — a hub bullet that says
@@ -76,6 +84,7 @@ export function iconForDevice(device) {
         }
     }
 
-    // 4. Default fallback.
-    return 'network-usb-symbolic';
+    // 4. Default fallback — drive-removable-media-symbolic is the Adwaita
+    // generic USB device icon (network-usb-symbolic does not exist in Adwaita).
+    return 'drive-removable-media-symbolic';
 }
