@@ -28,10 +28,10 @@ import {iconForDevice} from './device-icon.js';
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
  *
  * Called from tile.js every time the popover opens (D-11 lazy-rebuild).
- * Signal connections on each sub-menu's 'open-state-changed' are NOT tracked
- * by SignalRegistry — they live only as long as the PopupSubMenuMenuItem
- * instances, which are destroyed wholesale by section.removeAll() on the next
- * popover open (D-11 invariant; same pattern as Shell's bluetooth.js).
+ * Signal connections on each sub-menu's 'open-state-changed' are tracked
+ * per-row in `row._usbeeAccordionSigId` and explicitly disconnected before
+ * the next section.removeAll() so a stale signal cannot fire on a finalised
+ * menu object during a rebuild (CR-02 mitigation).
  *
  * UI-03 issue-first sort is a stable sort: Array.prototype.sort is stable
  * in SpiderMonkey (GJS, ES2019+), so daemon-emit order is preserved within
@@ -42,7 +42,23 @@ import {iconForDevice} from './device-icon.js';
  * @param {Extension} extension       USBee extension instance (for GSettings).
  */
 export function populateDeviceRows(section, store, extension) {
-    // Must be first — never mutate while iterating (Pitfall C).
+    // CR-02: disconnect any per-row accordion handlers from the prior
+    // populate() before removeAll() destroys the menu actors. Without this,
+    // a stale 'open-state-changed' fired mid-rebuild (e.g. user double-clicks
+    // the tile while a row is mid-animation) can call .isOpen / .close() on
+    // a destroyed PopupSubMenu, triggering a "instance is invalid" gobject
+    // finalize error.
+    for (const item of section._getMenuItems()) {
+        if (item._usbeeAccordionSigId && item.menu) {
+            try {
+                item.menu.disconnect(item._usbeeAccordionSigId);
+            } catch (_e) {
+                // Menu already destroyed — disconnect is a no-op anyway.
+            }
+            item._usbeeAccordionSigId = 0;
+        }
+    }
+    // Must be first (after handler cleanup) — never mutate while iterating (Pitfall C).
     section.removeAll();
 
     // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
@@ -77,16 +93,21 @@ export function populateDeviceRows(section, store, extension) {
     }
 
     // UI-02 — Single-row accordion: when a row opens, close all others.
-    // Connections on row.menu live only until the next section.removeAll()
-    // destroys the PopupSubMenuMenuItem tree — no leak path (T-03-04 mitigation).
+    // Each connection's signal id is stashed on the row so the next
+    // populateDeviceRows() invocation can disconnect it before
+    // section.removeAll() destroys the menu actors (CR-02 mitigation,
+    // T-03-04 mitigation).
     for (const row of rows) {
-        row.menu.connect('open-state-changed', (_menu, open) => {
+        const sigId = row.menu.connect('open-state-changed', (_menu, open) => {
             if (!open) return;
             for (const other of rows) {
-                if (other !== row && other.menu.isOpen)
+                // Defensive: other.menu may have been destroyed by a
+                // concurrent rebuild before this handler ran.
+                if (other !== row && other.menu && other.menu.isOpen)
                     other.menu.close(/* animate */ true);
             }
         });
+        row._usbeeAccordionSigId = sigId;
     }
 }
 
