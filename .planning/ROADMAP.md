@@ -21,7 +21,7 @@ Two phases, derived directly from the unanimous research recommendation in `.pla
 
 - [x] **Phase 1: Tile, Popover, Hotplug, Daemon-Missing State (v0.1)** — Quick Settings tile mounts with a live headline, popover lists every device/port with vendor/speed/role/wattage/diagnostic, hotplug works, daemon-missing empty state auto-recovers via `NameOwnerChanged`. Shippable to EGO as v0.1.
 - [x] **Phase 2: Notifications, Preferences, EGO Submission Polish (v1.0)** — `CapabilityDegraded` notifications with per-port mute, GSettings schema `us.bitcreed.usbee`, gettext scaffolding, README + COPYING + final EGO submission polish. Shippable as v1.0.
-- [ ] **Phase 3: Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1)** — Replace the staircase popover with per-device `PopupSubMenuMenuItem` rows (single-row accordion), class/driver-derived symbolic icons, issue-first sort order, and an Adwaita-coherent expanded detail panel. Re-pack as v1.1.0 for EGO.
+- [x] **Phase 3: Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1)** — Replace the staircase popover with per-device `PopupSubMenuMenuItem` rows (single-row accordion), class/driver-derived symbolic icons, issue-first sort order, and an Adwaita-coherent expanded detail panel. Re-pack as v1.1.0 for EGO. (completed 2026-05-13)
 
 ## Phase Details
 
@@ -82,7 +82,7 @@ Plans:
   4. Each row displays a class/driver-derived symbolic icon: HID devices show `input-keyboard-symbolic` or `input-mouse-symbolic`; hubs and unrecognised devices fall back to `network-usb-symbolic`; common storage / audio / video classes resolve to their matching symbolic icons. (UI-04)
   5. The expanded detail panel renders as a structured Adwaita-coherent layout — labelled property rows with consistent vertical rhythm, monospace where appropriate — visually coherent with the Wi-Fi/Bluetooth detail UX, not stacked raw `St.Label` bullets. (UI-05)
   6. `gnome-extensions pack` produces a clean zip whose `metadata.json` declares `version-name: 1.1.0` and a regenerated `po/usbee@bitcreed.us.pot`; the zip still contains no bundled binaries, no `Gtk`/`Adw` imports in Shell-process code, and no synchronous D-Bus or I/O calls (EGO audit gates from Phase 02 remain green).
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 **Wave 1**
@@ -117,7 +117,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 2/2 | Complete | 2026-05-11 |
 | 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 2/2 | Complete | 2026-05-12 |
-| 3. Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1) | 0/1 | Plans drafted | - |
+| 3. Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1) | 1/1 | Complete   | 2026-05-13 |
 
 ## Coverage Map
 
