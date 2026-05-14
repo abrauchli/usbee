@@ -21,7 +21,7 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {buildEmptyStateItem} from './empty-state.js';
+import {buildEmptyStateItem, buildDaemonOutOfDateItem} from './empty-state.js';
 import {hasIssue} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {labelForKey} from './label-table.js';
@@ -122,6 +122,19 @@ export function populateDeviceRows(section, store, extension) {
 export function populateEmptyState(section) {
     section.removeAll();
     section.addMenuItem(buildEmptyStateItem());
+}
+
+/**
+ * Render the "daemon out of date" empty state (COMPAT-02).
+ * Wired from tile.js when DBusClient emits 'daemon-too-old'.
+ * Mirrors the populateEmptyState shape but uses the dedicated copy
+ * landed in src/empty-state.js by Plan 04-01.
+ *
+ * @param {PopupMenuSection} section
+ */
+export function populateOutOfDateState(section) {
+    section.removeAll();
+    section.addMenuItem(buildDaemonOutOfDateItem());
 }
 
 /**

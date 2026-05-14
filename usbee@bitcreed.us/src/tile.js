@@ -17,11 +17,11 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {populateDeviceRows, populateEmptyState} from './popover.js';
+import {populateDeviceRows, populateEmptyState, populateOutOfDateState} from './popover.js';
 
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
-    constructor(store, registry, extension) {
+    constructor(store, registry, extension, dbusClient) {
         super({
             title: _('USBee'),
             subtitle: store.subhead,
@@ -30,8 +30,17 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         });
         this._store = store;
         this._extension = extension;
+        this._dbusClient = dbusClient;
         this._prefsItem = null;
         this._prefsSeparator = null;
+        // COMPAT-02 latched flag: once DBusClient declares the daemon too
+        // old, _rebuildPopover routes to populateOutOfDateState until the
+        // next 'ready' (or the next daemon-vanish/appear cycle through the
+        // store's 'changed' signal). Without this latch, _rebuildPopover
+        // could fall back to populateEmptyState ("daemon not running") on
+        // the next popover open since DBusClient sets daemonRunning=false
+        // before emitting 'daemon-too-old'.
+        this._daemonTooOld = false;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('drive-removable-media-symbolic', _('USB devices'), '');
@@ -63,6 +72,25 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             this.checked  = this._store.daemonRunning;
         });
         registry.addSignal(store, changedId);
+
+        // COMPAT-02: route to the "daemon out of date" empty state when
+        // DBusClient declares the daemon's Version below
+        // MIN_USBEEHIVE_VERSION. The latch is cleared on the next 'ready'
+        // (post-restart with a new-enough daemon). STATE-05: tracked via
+        // SignalRegistry so disable() correctly disconnects.
+        if (dbusClient) {
+            const tooOldId = dbusClient.connect('daemon-too-old', () => {
+                this._daemonTooOld = true;
+                if (this.menu.isOpen)
+                    populateOutOfDateState(this._rowsSection);
+            });
+            registry.addSignal(dbusClient, tooOldId);
+
+            const readyId = dbusClient.connect('ready', () => {
+                this._daemonTooOld = false;
+            });
+            registry.addSignal(dbusClient, readyId);
+        }
 
         // Lazy popover rebuild on open (D-11). Tracked via SignalRegistry.
         const openId = this.menu.connect(
@@ -112,7 +140,13 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _rebuildPopover() {
-        if (!this._store.daemonRunning)
+        // COMPAT-02 takes precedence over the daemon-not-running state:
+        // the user is being shown reachable-but-too-old, which is a
+        // distinct copy from "daemon not running". The latch clears on
+        // the next 'ready' signal from DBusClient.
+        if (this._daemonTooOld)
+            populateOutOfDateState(this._rowsSection);
+        else if (!this._store.daemonRunning)
             populateEmptyState(this._rowsSection);
         else
             populateDeviceRows(this._rowsSection, this._store, this._extension);
@@ -121,12 +155,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
 
 export const USBeeIndicator = GObject.registerClass(
 class USBeeIndicator extends QuickSettings.SystemIndicator {
-    constructor(store, registry, extension) {
+    constructor(store, registry, extension, dbusClient) {
         super();
         // Stored for symmetry — Plan 02-02 may grow indicator-level
         // prefs hooks without another constructor signature change.
         this._extension = extension;
-        this._toggle = new USBeeToggle(store, registry, extension);
+        this._toggle = new USBeeToggle(store, registry, extension, dbusClient);
         this.quickSettingsItems.push(this._toggle);
         // No this._addIndicator() panel icon — RESEARCH Open Question Q6:
         // Quick Settings tiles already show in the panel; an extra panel
