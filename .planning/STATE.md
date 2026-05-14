@@ -132,6 +132,7 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 | fast | also use that icon in the expanded tile's header and as header text next to the icon use "{n} USB devices" | 2026-05-14 | 17d9906 | — |
 | fast | Hub icon → network-proxy-symbolic (bundled SVG, Gio.FileIcon path) | 2026-05-14 | 4a2ab03 | — |
 | fast | Storage→media-removable-symbolic; daemon version format; Show USB Hubs pref | 2026-05-14 | c5ce0b1 | — |
+| 20260514-screenshot-and-release-prep | Add screenshot to README, move v2.0.0 tag to HEAD, push | 2026-05-14 | 8ea3c50 | [20260514-screenshot-and-release-prep](./quick/20260514-screenshot-and-release-prep/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
