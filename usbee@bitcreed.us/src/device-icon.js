@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/device-icon.js
 //
-// Class/driver → symbolic icon mapping helper.
-// Keeps the icon switch table out of popover.js (per Phase 3 ROADMAP
-// Implementation Scope: "src/device-icon.js (likely new) — class/driver →
-// symbolic-icon mapping helper; keeps popover.js free of the icon switch").
+// device_class → symbolic icon mapping helper.
+// Keeps the icon switch table out of popover.js (per ROADMAP Phase 3
+// Implementation Scope: "src/device-icon.js — class → symbolic-icon
+// mapping helper; keeps popover.js free of the icon switch").
 //
-// Resolution order (UI-04):
-//   1. Daemon-supplied device.icon field (defensive regex guard — T-03-01)
-//   2. Category + headline/bullet keyword table
-//   3. Default fallback: network-usb-symbolic
+// As of Plan 04-02 (v2.0) this module consumes the `device_class` field
+// from the org.usbeehive.Devices2 wire (CONTEXT D-2.0-02). The v1.x
+// keyword/headline-scan heuristic is deleted; daemon-side classification
+// is the source of truth and forward-compat is owned by Map.get() ?? null
+// (WIRE-04: unknown variants fall through to the generic USB icon).
+//
+// Resolution chain (04-01-ICON-AUDIT.md):
+//   1. Daemon-supplied device.icon — trusted only if it passes T-03-01.
+//   2. TypeCPort shortcut — device_class is 'Unknown' for ports.
+//   3. device_class enum lookup (DEVICE_CLASS_ICON).
+//   4. Default fallback: drive-removable-media-symbolic.
 
 // T-03-01 mitigation: accept daemon-supplied icon names only if they match
 // the GNOME symbolic icon pattern — ASCII lowercase/digit words joined by
@@ -22,69 +29,65 @@
 // glyph: St.Icon.icon_name is a theme name lookup, not a filesystem path.
 const SYMBOLIC_ICON_RE = /^[a-z0-9][a-z0-9-]*-symbolic$/;
 
-// Keyword table for driver/headline string matching.
-// Each entry: [icon-name, ...lowercased keyword fragments].
-// Evaluated in declaration order; first match wins.
-// All icon names verified present in /usr/share/icons/Adwaita/symbolic/.
-const KEYWORD_MAP = [
-    ['input-keyboard-symbolic',     'keyboard'],
-    ['input-mouse-symbolic',        'mouse', 'pointer', 'trackpad', 'touchpad'],
-    ['input-gaming-symbolic',       'gamepad', 'joystick', 'controller', 'deck', 'joypad'],
-    ['input-tablet-symbolic',       'tablet', 'wacom', 'graphics tablet'],
-    ['drive-harddisk-usb-symbolic', 'storage', 'disk', 'flash drive', 'usb drive', 'ssd', 'hdd', 'flash', 'thumb drive', 'pendrive'],
-    ['network-wired-symbolic',      'lan', 'ethernet', 'gigabit', '100/1000', '10/100'],
-    ['video-display-symbolic',      'monitor', 'display', 'screen', 'projector', 'tv'],
-    ['audio-card-symbolic',         'audio', 'sound', 'headset', 'microphone', 'headphone', 'speaker'],
-    ['camera-web-symbolic',         'camera', 'webcam'],
-    ['scanner-symbolic',            'scanner'],
-    ['printer-symbolic',            'printer'],
-    ['phone-symbolic',              'phone', 'mobile', 'android', 'iphone'],
-];
+// DEVICE_CLASS_ICON covers all 19 daemon-side device_class variants
+// (CONTEXT D-2.0-02). Icon names verified against
+// /usr/share/icons/Adwaita/symbolic/ in 04-01-ICON-AUDIT.md.
+//
+// Order roughly follows CONTEXT D-2.0-02 — input devices first, storage/
+// display next, then specialty categories. Unknown is last; it's the
+// daemon's explicit 'cannot classify' sentinel as well as the value the
+// daemon emits for every TypeCPort entry (TypeC ports are handled by the
+// category shortcut path in iconForDevice, not by this table).
+const DEVICE_CLASS_ICON = new Map([
+    ['Keyboard',         'input-keyboard-symbolic'],
+    ['Mouse',            'input-mouse-symbolic'],
+    ['Storage',          'drive-harddisk-usb-symbolic'],
+    ['Display',          'video-display-symbolic'],
+    ['Audio',            'audio-card-symbolic'],
+    ['Camera',           'camera-web-symbolic'],
+    ['Printer',          'printer-symbolic'],
+    ['Phone',            'phone-symbolic'],
+    ['Hub',              'drive-removable-media-symbolic'],
+    ['NetworkWired',     'network-wired-symbolic'],
+    ['NetworkWireless',  'network-wireless-symbolic'],
+    ['InputTablet',      'input-tablet-symbolic'],
+    ['Gamepad',          'input-gaming-symbolic'],
+    ['SecurityKey',      'auth-fingerprint-symbolic'],
+    ['SmartcardReader',  'auth-smartcard-symbolic'],
+    ['Bluetooth',        'bluetooth-symbolic'],
+    ['Serial',           'utilities-terminal-symbolic'],
+    ['VideoCapture',     'camera-video-symbolic'],
+    ['Unknown',          'drive-removable-media-symbolic'],
+]);
 
 /**
- * Derive the symbolic icon name for a device row.
+ * Derive the symbolic icon name for a device row (UI-04 / DISP-02).
  *
- * Resolution order (UI-04):
- *   1. daemon-supplied device.icon (if valid GNOME symbolic name per T-03-01)
- *   2. category shortcut: Hub / TypeCPort → network-usb-symbolic
- *   3. keyword scan on headline + bullets[] strings
- *   4. fallback: network-usb-symbolic
+ * Resolution chain (04-01-ICON-AUDIT.md):
+ *   1. Daemon-supplied device.icon — trusted only if it passes T-03-01.
+ *   2. TypeCPort shortcut — device_class is 'Unknown' for ports.
+ *   3. device_class enum lookup (WIRE-04: unknown values fall through).
+ *   4. Default fallback: drive-removable-media-symbolic.
  *
- * @param {object} device  Unpacked DeviceEntry from the store.
- * @param {string} device.icon     Daemon-supplied icon name (may be empty).
- * @param {string} device.category Category string, e.g. 'Hub', 'TypeCPort', 'UsbDevice'.
- * @param {string} device.headline One-line device summary from daemon.
- * @param {string[]} device.bullets Detail strings array from daemon.
- * @returns {string} A GNOME symbolic icon theme name.
+ * @param {object} device              Unpacked DeviceEntry from the store.
+ * @param {string} device.icon         Daemon-supplied icon name (may be empty).
+ * @param {string} device.category     'Hub' | 'TypeCPort' | 'UsbDevice'.
+ * @param {string} device.device_class One of the 19 CONTEXT D-2.0-02 variants.
+ * @returns {string}                   A GNOME symbolic icon theme name.
  */
 export function iconForDevice(device) {
-    // 1. Daemon-supplied icon — trust only if it passes the defensive regex.
+    // 1. Daemon-supplied icon — trust only if it passes T-03-01.
     if (device.icon && SYMBOLIC_ICON_RE.test(device.icon))
         return device.icon;
 
-    const cat = (device.category || '').toLowerCase();
-
-    // 2. Category shortcut — Hubs and TypeC ports fall back to the generic
-    // removable-media icon (drive-removable-media-symbolic exists in Adwaita;
-    // network-usb-symbolic does not).
-    if (cat === 'hub' || cat === 'typecport')
+    // 2. TypeC port shortcut — device_class is 'Unknown' for ports.
+    if (device.category === 'TypeCPort')
         return 'drive-removable-media-symbolic';
 
-    // 3. Keyword scan on the headline ONLY (WR-01 mitigation).
-    // Bullets are detail prose, not classifiers — a hub bullet that says
-    // "Audio passthrough supported" must not classify the device as an
-    // audio card. Headline is the daemon's one-line product summary, which
-    // is the appropriate field for keyword classification.
-    const haystack = (device.headline || '').toLowerCase();
+    // 3. device_class enum lookup (WIRE-04: unknown values fall through).
+    const fromClass = DEVICE_CLASS_ICON.get(device.device_class);
+    if (fromClass) return fromClass;
 
-    for (const [iconName, ...keywords] of KEYWORD_MAP) {
-        for (const kw of keywords) {
-            if (haystack.includes(kw))
-                return iconName;
-        }
-    }
-
-    // 4. Default fallback — drive-removable-media-symbolic is the Adwaita
-    // generic USB device icon (network-usb-symbolic does not exist in Adwaita).
+    // 4. Default fallback — generic USB icon.
     return 'drive-removable-media-symbolic';
 }
