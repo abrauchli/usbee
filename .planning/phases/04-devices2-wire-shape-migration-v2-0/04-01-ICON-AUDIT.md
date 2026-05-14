@@ -18,25 +18,25 @@ a name that would silently render as the missing-icon glyph.
 
 | device_class | icon | location |
 |---|---|---|
-| Keyboard | `input-keyboard-symbolic` | devices/ |
-| Mouse | `input-mouse-symbolic` | devices/ |
-| Storage | `drive-harddisk-usb-symbolic` | devices/ |
-| Display | `video-display-symbolic` | devices/ |
-| Audio | `audio-card-symbolic` | devices/ |
-| Camera | `camera-web-symbolic` | devices/ |
-| Printer | `printer-symbolic` | devices/ |
-| Phone | `phone-symbolic` | devices/ |
-| Hub | `drive-removable-media-symbolic` | devices/ — chosen for visual consistency with the v1.1 hub fallback |
-| NetworkWired | `network-wired-symbolic` | devices/ |
-| NetworkWireless | `network-wireless-symbolic` | devices/ |
-| InputTablet | `input-tablet-symbolic` | devices/ |
-| Gamepad | `input-gaming-symbolic` | devices/ |
-| SecurityKey | `auth-fingerprint-symbolic` | devices/ — closest semantic match; no `security-key-symbolic` ships in Adwaita |
-| SmartcardReader | `auth-smartcard-symbolic` | devices/ |
-| Bluetooth | `bluetooth-symbolic` | devices/ |
-| Serial | `utilities-terminal-symbolic` | legacy/ — pragmatic pick for "serial console" semantics |
-| VideoCapture | `camera-video-symbolic` | devices/ — distinct from Camera (`camera-web-symbolic`) |
-| Unknown | `drive-removable-media-symbolic` | devices/ — generic USB icon, matches v1.1 fallback at `device-icon.js:71` |
+| Keyboard | input-keyboard-symbolic | devices/ |
+| Mouse | input-mouse-symbolic | devices/ |
+| Storage | drive-harddisk-usb-symbolic | devices/ |
+| Display | video-display-symbolic | devices/ |
+| Audio | audio-card-symbolic | devices/ |
+| Camera | camera-web-symbolic | devices/ |
+| Printer | printer-symbolic | devices/ |
+| Phone | phone-symbolic | devices/ |
+| Hub | drive-removable-media-symbolic | devices/ — chosen for visual consistency with the v1.1 hub fallback |
+| NetworkWired | network-wired-symbolic | devices/ |
+| NetworkWireless | network-wireless-symbolic | devices/ |
+| InputTablet | input-tablet-symbolic | devices/ |
+| Gamepad | input-gaming-symbolic | devices/ |
+| SecurityKey | auth-fingerprint-symbolic | devices/ — closest semantic match; no `security-key-symbolic` ships in Adwaita |
+| SmartcardReader | auth-smartcard-symbolic | devices/ |
+| Bluetooth | bluetooth-symbolic | devices/ |
+| Serial | utilities-terminal-symbolic | legacy/ — pragmatic pick for "serial console" semantics |
+| VideoCapture | camera-video-symbolic | devices/ — distinct from Camera (`camera-web-symbolic`) |
+| Unknown | drive-removable-media-symbolic | devices/ — generic USB icon, matches v1.1 fallback at `device-icon.js:71` |
 
 ## Verification protocol
 
