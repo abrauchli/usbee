@@ -103,7 +103,8 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
       <arg type="i" name="port_number"/>
     </signal>
   </interface>
-</node>`;
+</node>
+`;
 
 const UsbeehiveProxy = Gio.DBusProxy.makeProxyWrapper(IFACE_XML);
 
