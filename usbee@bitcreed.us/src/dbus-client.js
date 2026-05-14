@@ -25,6 +25,34 @@ const BUS_NAME       = 'org.usbeehive.Devices';     // version-agnostic
 const OBJECT_PATH    = '/org/usbeehive/Devices';    // version-agnostic
 const INTERFACE_NAME = 'org.usbeehive.Devices2';    // CONTEXT D-2.0-01
 
+// CONTEXT D-2.0-07 — minimum supported usbeehive daemon version.
+// Re-verified by Plan 04-03 at tag time against the actual upstream tag.
+// The 0.6.0 release shipped Devices2 (confirmed 2026-05-14 against
+// ../usbeehive/Cargo.toml + commit 1258de4 "Release 0.6.0 — Devices2 wire
+// (breaking)" per 04-01-ADR-daemon-version-gate.md).
+const MIN_USBEEHIVE_VERSION = '0.6.0';
+
+// Fail-closed lexical-tuple semver compare. Returns true iff `actual >= minimum`.
+// Any parse failure returns false — the gate routes to 'daemon-too-old'
+// rather than throwing or proceeding optimistically (04-01-ADR step 4).
+function isVersionAtLeast(actual, minimum) {
+    const parse = v => {
+        if (typeof v !== 'string') return null;
+        const parts = v.split('.').map(s => Number.parseInt(s, 10));
+        if (parts.length !== 3 || parts.some(n => !Number.isInteger(n) || n < 0))
+            return null;
+        return parts;
+    };
+    const a = parse(actual);
+    const m = parse(minimum);
+    if (!a || !m) return false;
+    for (let i = 0; i < 3; i++) {
+        if (a[i] > m[i]) return true;
+        if (a[i] < m[i]) return false;
+    }
+    return true;
+}
+
 // IFACE_XML — keep in sync with usbee@bitcreed.us/dbus-iface.xml.
 // The .xml file on disk is the authoritative diff target; this template
 // literal is what the runtime consumes (RESEARCH.md §How the XML is loaded
@@ -84,6 +112,7 @@ export const DBusClient = GObject.registerClass({
         'ready':           {},
         'lost':            {},
         'devices-changed': {},
+        'daemon-too-old':  {},
     },
 }, class DBusClient extends GObject.Object {
     constructor(registry, store, notifier) {
@@ -152,6 +181,20 @@ export const DBusClient = GObject.registerClass({
                     return;
                 }
                 this._proxy = proxy;
+
+                // COMPAT-01: refuse to consume a daemon older than the
+                // pinned minimum. `Version` is a cached property on the
+                // proxy (eagerly populated by makeProxyWrapper). Fail-
+                // closed: any parse error → 'daemon-too-old'. See 04-01-
+                // ADR-daemon-version-gate.md for the full wiring rules.
+                const daemonVersion = this._proxy.Version;
+                if (!isVersionAtLeast(daemonVersion, MIN_USBEEHIVE_VERSION)) {
+                    this._store.setDaemonRunning(false);
+                    this._store.setDevices([]);
+                    this.emit('daemon-too-old');
+                    return;
+                }
+
                 // D-07: notify::g-name-owner handles future owner transitions.
                 // This is a GObject property notify, NOT a D-Bus signal —
                 // use plain connect/disconnect (RESEARCH.md §Pitfall E).
