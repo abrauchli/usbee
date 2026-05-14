@@ -128,14 +128,14 @@ Plans:
   5. Plugging a phone into a Type-C port (host sources power) drives the tile subtitle to `Powering: N W out` via the new `Status::Sourcing`; plugging a charger (host sinks) still drives `Charging: N W in`; the issue-first sort puts only `charging_diag.is_warning` ports at the top — Sourcing ports do not float.
   6. A device with `primary_driver == ""` and non-Empty status is visibly flagged in the popover (badge or detail-panel note — implementation chosen during planning, must be observable).
   7. `gnome-extensions pack` produces a clean zip whose `metadata.json` declares `version-name: 2.0.0`, the EGO audit gates from Phase 02 remain green (no bundled binaries, no Gtk/Adw in Shell-process code, no sync D-Bus), and `CHANGELOG.md` names the minimum required usbeehive version. The zip is uploaded to extensions.gnome.org as USBee's first EGO submission.
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 04-01-PLAN.md — Pre-wire-cut prep & UX decisions: ADR for the daemon-version gate (where the check lives, copy of the new empty state, location of the `MIN_USBEEHIVE_VERSION` constant), `src/label-table.js` skeleton with gettext catalogue staged ahead of integration, audit of Adwaita symbolic icon names for the 19 `device_class` variants (decide picks for `SmartcardReader` / `Bluetooth` / `Serial` / `VideoCapture`), UX decisions for `primary_driver == ""` rendering, `device_subclass` rendering policy, and `Status::Sourcing` subtitle copy + sort behaviour. Lands code only for the prep modules; no wire-shape change yet (covers DISP-01 staging, DISP-02 design, DISP-03 copy, DISP-04 design, DISP-05 decision, COMPAT-02 copy)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 04-02-PLAN.md — Wire-shape cutover: bump `dbus-iface.xml` and `IFACE_XML` in `src/dbus-client.js` to `Devices2`; rewrite `unpackDeviceEntry` to the 19-field shape; switch consumers to typed fields; delete `WATT_RE` / `DIRECTION_RE` / `USB_VERSION_RE` / `SPEED_RE` / `parseWatts` / `parseDirection` / `parseLinkSpeed` / `DIAG_PHRASES` / `keyForBullet` / `KEYWORD_MAP`; wire `label-table.js` into the property-row renderer; wire the `device_class` icon lookup into `device-icon.js`; wire `Status::Sourcing` and `primary_driver` into the popover and tile subtitle; wire the daemon-version gate; add the forward-compat regression test for unknown enum values (covers WIRE-01..04, CLEAN-01..03, DISP-01..05 integration, COMPAT-01..02 integration)
+- [x] 04-02-PLAN.md — Wire-shape cutover: bump `dbus-iface.xml` and `IFACE_XML` in `src/dbus-client.js` to `Devices2`; rewrite `unpackDeviceEntry` to the 19-field shape; switch consumers to typed fields; delete `WATT_RE` / `DIRECTION_RE` / `USB_VERSION_RE` / `SPEED_RE` / `parseWatts` / `parseDirection` / `parseLinkSpeed` / `DIAG_PHRASES` / `keyForBullet` / `KEYWORD_MAP`; wire `label-table.js` into the property-row renderer; wire the `device_class` icon lookup into `device-icon.js`; wire `Status::Sourcing` and `primary_driver` into the popover and tile subtitle; wire the daemon-version gate; add the forward-compat regression test for unknown enum values (covers WIRE-01..04, CLEAN-01..03, DISP-01..05 integration, COMPAT-01..02 integration)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 04-03-PLAN.md — Release coordination: bump `metadata.json` `version-name` to `2.0.0` and increment `version`; write the `## [2.0.0]` CHANGELOG entry naming the minimum required usbeehive version and listing the regex deletions; `gnome-extensions pack` + tag + GitHub release; first EGO upload (covers REL-01..03)
@@ -172,7 +172,7 @@ Plans:
 | 1. Tile, Popover, Hotplug, Daemon-Missing State (v0.1) | 2/2 | Complete | 2026-05-11 |
 | 2. Notifications, Preferences, EGO Submission Polish (v1.0) | 2/2 | Complete | 2026-05-12 |
 | 3. Popover UI Rework — Accordion Rows, Class Icons, Issue-First Sort (v1.1) | 1/1 | Complete   | 2026-05-13 |
-| 4. Devices2 wire-shape migration (v2.0) | 1/3 | In Progress|  |
+| 4. Devices2 wire-shape migration (v2.0) | 2/3 | In Progress|  |
 
 ## Coverage Map
 
