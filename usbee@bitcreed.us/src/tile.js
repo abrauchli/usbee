@@ -44,7 +44,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._daemonTooOld = false;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
-        this.menu.setHeader('drive-removable-media-symbolic', _('USB devices'), '');
+        this.menu.setHeader('drive-harddisk-usb-symbolic', _('USB devices'), '');
 
         // Lazy-populated device list section (D-11; Pattern 2).
         // Wrapped in a St.ScrollView so a long device list never pushes
@@ -173,6 +173,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             populateEmptyState(this._rowsSection);
         else
             populateDeviceRows(this._rowsSection, this._store, this._extension);
+
+        const n = this._store.daemonRunning
+            ? this._store.devices.filter(d => d.status !== 'Empty').length : -1;
+        const hdrTitle = n === 1 ? _('1 USB device')
+            : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
+        this.menu.setHeader('drive-harddisk-usb-symbolic', hdrTitle, '');
     }
 });
 
