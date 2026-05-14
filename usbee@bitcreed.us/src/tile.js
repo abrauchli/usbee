@@ -46,17 +46,6 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('drive-removable-media-symbolic', _('USB devices'), '');
 
-        // QuickSettings menus don't implement _setOpenedSubMenu (the method
-        // PopupSubMenuMenuItem.open() calls on its top menu to close any
-        // sibling submenu). Without this shim, every accordion row open/close
-        // throws "TypeError: _setOpenedSubMenu is not a function" — the
-        // canonical implementation is copied from PopupMenu.PopupMenuBase.
-        this.menu._setOpenedSubMenu = function (submenu) {
-            if (this._openedSubMenu && this._openedSubMenu !== submenu)
-                this._openedSubMenu.close(true);
-            this._openedSubMenu = submenu;
-        };
-
         // Lazy-populated device list section (D-11; Pattern 2).
         // Wrapped in a St.ScrollView so a long device list never pushes
         // the Preferences row (and the eventual notification toggle, etc.)
@@ -65,6 +54,23 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // device row is `reactive: false, can_focus: false` (popover.js).
         this._rowsSection = new PopupMenu.PopupMenuSection();
         this._rowsSection.actor.add_style_class_name('usbee-device-section');
+
+        // PopupSubMenuMenuItem.open()/close() calls this._getTopMenu()
+        // ._setOpenedSubMenu(...) to coordinate which submenu is open.
+        // _getTopMenu() walks up the actor parent chain and stops at the
+        // FIRST PopupMenuBase delegate it finds — which here is the
+        // PopupMenuSection above (not the QuickSettings menu further up).
+        // Neither PopupMenuSection nor QuickSettings' menu implement
+        // _setOpenedSubMenu; without these shims every row open/close
+        // throws "TypeError: _setOpenedSubMenu is not a function".
+        // Install on both to cover all _getTopMenu() walk outcomes.
+        const setOpenedSubMenuShim = function (submenu) {
+            if (this._openedSubMenu && this._openedSubMenu !== submenu)
+                this._openedSubMenu.close(true);
+            this._openedSubMenu = submenu;
+        };
+        this._rowsSection._setOpenedSubMenu = setOpenedSubMenuShim;
+        this.menu._setOpenedSubMenu        = setOpenedSubMenuShim;
         this._rowsScroll = new St.ScrollView({
             style_class: 'usbee-popover-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
