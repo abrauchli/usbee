@@ -15,7 +15,6 @@
 //     markup APIs (untrusted session D-Bus data, T-01-02 / T-02-01 mitigation).
 //   - section.removeAll() is the FIRST call (Pitfall C: never mutate while iterating).
 
-import Clutter from 'gi://Clutter';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -170,7 +169,7 @@ function buildDeviceRow(device) {
     });
 
     const detailBox = new St.BoxLayout({
-        orientation: Clutter.Orientation.VERTICAL,
+        vertical: true,
         x_expand: true,
     });
     detailItem.add_child(detailBox);
@@ -225,14 +224,11 @@ function buildDeviceRow(device) {
  * @returns {St.BoxLayout}
  */
 function buildPropertyRow(key, value, _category) {
-    // WR-06: explicit HORIZONTAL orientation for clarity (St.BoxLayout
-    // defaults to horizontal, but every other BoxLayout in this file declares
-    // its orientation; the implicit default invites a future maintainer to
-    // switch to VERTICAL thinking they are setting the value the file already
-    // expected). The .usbee-detail-row style_class gives the inter-column
-    // spacing instead of a generic descendant selector on StBoxLayout.
+    // WR-06: St.BoxLayout defaults to horizontal (vertical: false). The
+    // .usbee-detail-row style_class gives the inter-column spacing instead of
+    // a generic descendant selector on StBoxLayout.
     const row = new St.BoxLayout({
-        orientation: Clutter.Orientation.HORIZONTAL,
+        vertical:    false,
         x_expand:    true,
         style_class: 'usbee-detail-row',
     });
