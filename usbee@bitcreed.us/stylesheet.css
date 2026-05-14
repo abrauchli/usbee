@@ -16,9 +16,13 @@
 
 /* Cap the device-list popover height so a busy USB tree never pushes
  * the Preferences row (and future menu rows) below the screen edge.
- * 50ex ≈ 14 default-size rows; the rest scrolls. */
+ * 50ex ≈ 14 default-size rows; the rest scrolls.
+ *
+ * padding-right reserves a lane for the overlay scrollbar so row hover
+ * backgrounds and the expand-arrow (›) do not paint underneath it. */
 .usbee-popover-scroll {
     max-height: 50ex;
+    padding-right: 12px;
 }
 
 /* Adwaita-coherent detail panel (UI-05).

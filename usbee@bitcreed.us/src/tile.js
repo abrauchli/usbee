@@ -45,6 +45,17 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('drive-removable-media-symbolic', _('USB devices'), '');
 
+        // QuickSettings menus don't implement _setOpenedSubMenu (the method
+        // PopupSubMenuMenuItem.open() calls on its top menu to close any
+        // sibling submenu). Without this shim, every accordion row open/close
+        // throws "TypeError: _setOpenedSubMenu is not a function" — the
+        // canonical implementation is copied from PopupMenu.PopupMenuBase.
+        this.menu._setOpenedSubMenu = function (submenu) {
+            if (this._openedSubMenu && this._openedSubMenu !== submenu)
+                this._openedSubMenu.close(true);
+            this._openedSubMenu = submenu;
+        };
+
         // Lazy-populated device list section (D-11; Pattern 2).
         // Wrapped in a St.ScrollView so a long device list never pushes
         // the Preferences row (and the eventual notification toggle, etc.)
