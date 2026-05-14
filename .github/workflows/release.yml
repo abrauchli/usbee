@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install gnome-extensions CLI and gettext
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-shell gettext
+
+      - name: Verify metadata version matches tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          META=$(python3 -c "import json; print(json.load(open('usbee@bitcreed.us/metadata.json'))['version-name'])")
+          if [ "$TAG" != "$META" ]; then
+            echo "Tag v$TAG does not match metadata.json version-name $META" >&2
+            exit 1
+          fi
+
+      - name: Pack extension
+        run: |
+          gnome-extensions pack usbee@bitcreed.us \
+            --podir=po \
+            --extra-source=src \
+            --force
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            BEGIN { found = 0 }
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" v "]")) { found = 1; next }
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No changelog entry found for v$VERSION" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            usbee@bitcreed.us.shell-extension.zip
