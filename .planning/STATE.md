@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: executing
 last_updated: "2026-05-14T09:10:00.000Z"
-last_activity: 2026-05-14 - Completed quick task 260514-g4x: For the bubble-tile icon use drive-harddisk-usb-symbolic instead of the shipped one
+last_activity: 2026-05-14 - Popover header icon + dynamic device count in header title
 progress:
   total_phases: 1
   completed_phases: 0
@@ -129,6 +129,7 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260514-g4x | For the bubble-tile icon use drive-harddisk-usb-symbolic instead of the shipped one | 2026-05-14 | a2bc54c | [260514-g4x-for-the-bubble-tile-icon-use-drive-hardd](./quick/260514-g4x-for-the-bubble-tile-icon-use-drive-hardd/) |
+| fast | also use that icon in the expanded tile's header and as header text next to the icon use "{n} USB devices" | 2026-05-14 | 17d9906 | — |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
