@@ -21,6 +21,14 @@
     max-height: 50ex;
 }
 
+/* Reserve a lane for the overlay scrollbar so row hover backgrounds and
+ * the expand-arrow (›) do not paint underneath it. Applied to the section
+ * (not the ScrollView) because St.ScrollView's padding doesn't constrain
+ * the viewport child's allocated width. */
+.usbee-device-section {
+    padding-right: 16px;
+}
+
 /* Adwaita-coherent detail panel (UI-05).
  * Mirrors the vertical rhythm + label dim/regular pairing used in
  * gnome-shell's own network/Bluetooth detail rows.
@@ -51,4 +59,9 @@
 .usbee-detail-value.monospace {
     font-family: monospace;
     font-size: 0.95em;
+}
+
+/* DISP-04 / UX-1: italic flag for driver-less devices. */
+.usbee-detail-driver-missing .usbee-detail-value {
+    font-style: italic;
 }

@@ -17,39 +17,67 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// VERIFIED against ../usbeehive/src/dbus.rs:290-292
-// (see RESEARCH.md §Daemon Wire Shape + §Pitfall A)
-// The "1" lives ONLY on the interface name — not on the bus name or
-// object path. CONTEXT.md described these wrong; RESEARCH.md surfaced
-// the correction and the daemon source is the source of truth.
-const BUS_NAME       = 'org.usbeehive.Devices';     // no trailing 1
-const OBJECT_PATH    = '/org/usbeehive/Devices';    // no trailing 1
-const INTERFACE_NAME = 'org.usbeehive.Devices1';    // 1 only on interface
+// VERIFIED against ../usbeehive/src/dbus.rs:306-393 (the
+// `#[interface(name = "org.usbeehive.Devices2")]` block shipped in
+// usbeehive 0.6.0). The "2" lives ONLY on the interface name — not on
+// the bus name or object path; both are version-agnostic.
+const BUS_NAME       = 'org.usbeehive.Devices';     // version-agnostic
+const OBJECT_PATH    = '/org/usbeehive/Devices';    // version-agnostic
+const INTERFACE_NAME = 'org.usbeehive.Devices2';    // CONTEXT D-2.0-01
+
+// CONTEXT D-2.0-07 — minimum supported usbeehive daemon version.
+// Re-verified by Plan 04-03 at tag time against the actual upstream tag.
+// The 0.6.0 release shipped Devices2 (confirmed 2026-05-14 against
+// ../usbeehive/Cargo.toml + commit 1258de4 "Release 0.6.0 — Devices2 wire
+// (breaking)" per 04-01-ADR-daemon-version-gate.md).
+const MIN_USBEEHIVE_VERSION = '0.6.0';
+
+// Fail-closed lexical-tuple semver compare. Returns true iff `actual >= minimum`.
+// Any parse failure returns false — the gate routes to 'daemon-too-old'
+// rather than throwing or proceeding optimistically (04-01-ADR step 4).
+function isVersionAtLeast(actual, minimum) {
+    const parse = v => {
+        if (typeof v !== 'string') return null;
+        const parts = v.split('.').map(s => Number.parseInt(s, 10));
+        if (parts.length !== 3 || parts.some(n => !Number.isInteger(n) || n < 0))
+            return null;
+        return parts;
+    };
+    const a = parse(actual);
+    const m = parse(minimum);
+    if (!a || !m) return false;
+    for (let i = 0; i < 3; i++) {
+        if (a[i] > m[i]) return true;
+        if (a[i] < m[i]) return false;
+    }
+    return true;
+}
 
 // IFACE_XML — keep in sync with usbee@bitcreed.us/dbus-iface.xml.
 // The .xml file on disk is the authoritative diff target; this template
 // literal is what the runtime consumes (RESEARCH.md §How the XML is loaded
 // Pattern 1 — avoids an async file load at enable() time, which D-15
-// forbids in the sync form).
+// forbids in the sync form). Plan 04-02 Task 13 enforces byte-equality
+// between this literal and dbus-iface.xml on disk (less the doctype).
 //
-// Refresh and Diagnose are declared but intentionally unused in Phase 01.
-// They mirror the daemon-side interface (the XML must match) and are
-// reserved for Phase 2: Refresh for the NOTIF-driven manual re-snapshot
-// path, Diagnose for the preferences "Diagnose now" per-port button.
-// Do not strip them as dead code.
+// Refresh and Diagnose are declared and mirror the daemon-side interface
+// in dbus-iface.xml. Refresh feeds the NOTIF-driven manual re-snapshot
+// path; Diagnose is reserved for the preferences "Diagnose now" per-port
+// button. Both remain unused at call sites in v2.0 — do not strip as dead
+// code.
 const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="org.usbeehive.Devices1">
+  <interface name="org.usbeehive.Devices2">
     <method name="ListDevices">
-      <arg type="a(ssssssasi)" direction="out" name="entries"/>
+      <arg type="a(ssssssssssqqsa(ss)ius(uus)(bsssb))" direction="out" name="entries"/>
     </method>
     <method name="ListPorts">
       <arg type="ai" direction="out" name="ports"/>
     </method>
     <method name="Diagnose">
       <arg type="i" direction="in" name="port_number"/>
-      <arg type="(ssssb)" direction="out" name="diagnostic"/>
+      <arg type="(bsssb)" direction="out" name="diagnostic"/>
     </method>
     <method name="SnapshotJson">
       <arg type="s" direction="out" name="json"/>
@@ -75,7 +103,8 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
       <arg type="i" name="port_number"/>
     </signal>
   </interface>
-</node>`;
+</node>
+`;
 
 const UsbeehiveProxy = Gio.DBusProxy.makeProxyWrapper(IFACE_XML);
 
@@ -84,6 +113,7 @@ export const DBusClient = GObject.registerClass({
         'ready':           {},
         'lost':            {},
         'devices-changed': {},
+        'daemon-too-old':  {},
     },
 }, class DBusClient extends GObject.Object {
     constructor(registry, store, notifier) {
@@ -152,6 +182,20 @@ export const DBusClient = GObject.registerClass({
                     return;
                 }
                 this._proxy = proxy;
+
+                // COMPAT-01: refuse to consume a daemon older than the
+                // pinned minimum. `Version` is a cached property on the
+                // proxy (eagerly populated by makeProxyWrapper). Fail-
+                // closed: any parse error → 'daemon-too-old'. See 04-01-
+                // ADR-daemon-version-gate.md for the full wiring rules.
+                const daemonVersion = this._proxy.Version;
+                if (!isVersionAtLeast(daemonVersion, MIN_USBEEHIVE_VERSION)) {
+                    this._store.setDaemonRunning(false);
+                    this._store.setDevices([]);
+                    this.emit('daemon-too-old');
+                    return;
+                }
+
                 // D-07: notify::g-name-owner handles future owner transitions.
                 // This is a GObject property notify, NOT a D-Bus signal —
                 // use plain connect/disconnect (RESEARCH.md §Pitfall E).

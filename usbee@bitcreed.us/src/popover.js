@@ -15,15 +15,15 @@
 //     markup APIs (untrusted session D-Bus data, T-01-02 / T-02-01 mitigation).
 //   - section.removeAll() is the FIRST call (Pitfall C: never mutate while iterating).
 
-import Clutter from 'gi://Clutter';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {buildEmptyStateItem} from './empty-state.js';
+import {buildEmptyStateItem, buildDaemonOutOfDateItem} from './empty-state.js';
 import {hasIssue} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
+import {formatValueForKey, labelForKey} from './label-table.js';
 
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
@@ -123,33 +123,17 @@ export function populateEmptyState(section) {
     section.addMenuItem(buildEmptyStateItem());
 }
 
-// ---------------------------------------------------------------------------
-// Key-derivation heuristic for the Adwaita detail panel left-column labels.
-// Cheap substring + regex scan; no parsing guarantees. If no keyword matches,
-// falls through to the generic 'Detail' label.
-// ---------------------------------------------------------------------------
-
 /**
- * Derive a translated left-column property label for a daemon bullet string.
- * @param {string} bullet  A single bullets[] entry from the device.
- * @param {string} category  Device category (e.g. 'TypeCPort').
- * @returns {string}  Gettext-marked label string.
+ * Render the "daemon out of date" empty state (COMPAT-02).
+ * Wired from tile.js when DBusClient emits 'daemon-too-old'.
+ * Mirrors the populateEmptyState shape but uses the dedicated copy
+ * landed in src/empty-state.js by Plan 04-01.
+ *
+ * @param {PopupMenuSection} section
  */
-function keyForBullet(bullet, category) {
-    if (/\d+\s*W\b/i.test(bullet))                         return _('Power');
-    if (/Gb\/s|Mb\/s|Kb\/s/i.test(bullet))                 return _('Speed');
-    if (/USB\s+\d/i.test(bullet))                          return _('Version');
-    // WR-04: anchor on category so non-TypeCPort bullets containing
-    // "open source", "source cable", or product names like "SinkMaster"
-    // do NOT get the USB-PD 'Direction' label. Word boundaries also tighten
-    // the match against substrings inside unrelated words.
-    if (/\b(sink|source)\b/i.test(bullet) && category === 'TypeCPort')
-                                                            return _('Direction');
-    if (/host|device/i.test(bullet) && category === 'TypeCPort')
-                                                            return _('Role');
-    if (/cable|limited|degraded|slower|swap|expected|unable|cannot|mismatch/i.test(bullet))
-                                                            return _('Diagnostic');
-    return _('Detail');
+export function populateOutOfDateState(section) {
+    section.removeAll();
+    section.addMenuItem(buildDaemonOutOfDateItem());
 }
 
 /**
@@ -185,7 +169,7 @@ function buildDeviceRow(device) {
     });
 
     const detailBox = new St.BoxLayout({
-        orientation: Clutter.Orientation.VERTICAL,
+        vertical: true,
         x_expand: true,
     });
     detailItem.add_child(detailBox);
@@ -196,10 +180,31 @@ function buildDeviceRow(device) {
             _('Summary'), device.subtitle, device.category));
     }
 
-    // One property row per bullet string.
-    for (const bullet of (device.bullets || [])) {
+    // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
+    // Empty Type-C ports already say nothing about drivers — suppress the
+    // row in that case (`status !== 'Empty'` gate).
+    if (device.primary_driver === '' && device.status !== 'Empty') {
+        const driverRow = buildPropertyRow(
+            _('Driver'), _('not bound'), device.category);
+        driverRow.add_style_class_name('usbee-detail-driver-missing');
+        detailBox.add_child(driverRow);
+    }
+
+    // DISP-05 / UX-2: detail-panel-only treatment for the daemon's advisory
+    // subclass hint. Empty subclass strings (default) render nothing; the
+    // row title is intentionally unchanged (UX-2 rejects "append to title").
+    if (device.device_subclass) {
         detailBox.add_child(buildPropertyRow(
-            keyForBullet(bullet, device.category), bullet, device.category));
+            _('Subclass'), device.device_subclass, device.category));
+    }
+
+    // One property row per machine-key pair from the Devices2 properties bag
+    // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
+    // deliberate order and labelForKey() is a pure resolver. Unknown keys
+    // render the raw key string (WIRE-04 forward-compat, label-table.js).
+    for (const [key, value] of (device.properties || [])) {
+        detailBox.add_child(buildPropertyRow(
+            labelForKey(key), formatValueForKey(key, value), device.category));
     }
 
     row.menu.addMenuItem(detailItem);
@@ -219,14 +224,11 @@ function buildDeviceRow(device) {
  * @returns {St.BoxLayout}
  */
 function buildPropertyRow(key, value, _category) {
-    // WR-06: explicit HORIZONTAL orientation for clarity (St.BoxLayout
-    // defaults to horizontal, but every other BoxLayout in this file declares
-    // its orientation; the implicit default invites a future maintainer to
-    // switch to VERTICAL thinking they are setting the value the file already
-    // expected). The .usbee-detail-row style_class gives the inter-column
-    // spacing instead of a generic descendant selector on StBoxLayout.
+    // WR-06: St.BoxLayout defaults to horizontal (vertical: false). The
+    // .usbee-detail-row style_class gives the inter-column spacing instead of
+    // a generic descendant selector on StBoxLayout.
     const row = new St.BoxLayout({
-        orientation: Clutter.Orientation.HORIZONTAL,
+        vertical:    false,
         x_expand:    true,
         style_class: 'usbee-detail-row',
     });

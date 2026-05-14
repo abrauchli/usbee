@@ -24,9 +24,9 @@ export default class USBeeExtension extends Extension {
         // exist by then so the resulting 'changed' signal has a listener.
         this._registry  = new SignalRegistry();
         this._store     = new DeviceStore();
-        this._indicator = new USBeeIndicator(this._store, this._registry, this); // pass `this` for STATE-04 Preferences row
         this._notifier  = new Notifier(this.getSettings(), this._registry, this); // NEW — between Store and Client per RESEARCH §Pattern 1
         this._client    = new DBusClient(this._registry, this._store, this._notifier);
+        this._indicator = new USBeeIndicator(this._store, this._registry, this, this._client); // dbusClient threaded through for 'daemon-too-old'
 
         // Mount the indicator BEFORE starting the watch. D-16: only here.
         Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);

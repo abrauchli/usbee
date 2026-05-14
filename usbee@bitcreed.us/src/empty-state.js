@@ -10,7 +10,6 @@
 // No retry button (UI-SPEC #primary-cta): NameOwnerChanged auto-recovers.
 // No subprocess spawning (D-18, EGO PACK-05): user runs systemctl themselves.
 
-import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -29,7 +28,7 @@ export function buildEmptyStateItem() {
     item.label.text = _('usbeehive daemon not running');
 
     const box = new St.BoxLayout({
-        orientation: Clutter.Orientation.VERTICAL,
+        vertical: true,
         x_expand: true,
         style_class: 'usbee-empty-state-body',
     });
@@ -84,7 +83,7 @@ export function buildDaemonOutOfDateItem() {
     item.label.text = _('usbeehive daemon out of date');
 
     const box = new St.BoxLayout({
-        orientation: Clutter.Orientation.VERTICAL,
+        vertical: true,
         x_expand: true,
         style_class: 'usbee-empty-state-body',
     });
