@@ -130,6 +130,7 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 |---|-------------|------|--------|-----------|
 | 260514-g4x | For the bubble-tile icon use drive-harddisk-usb-symbolic instead of the shipped one | 2026-05-14 | a2bc54c | [260514-g4x-for-the-bubble-tile-icon-use-drive-hardd](./quick/260514-g4x-for-the-bubble-tile-icon-use-drive-hardd/) |
 | fast | also use that icon in the expanded tile's header and as header text next to the icon use "{n} USB devices" | 2026-05-14 | 17d9906 | — |
+| fast | Hub icon → network-proxy-symbolic (bundled SVG, Gio.FileIcon path) | 2026-05-14 | 4a2ab03 | — |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
