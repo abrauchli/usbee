@@ -28,9 +28,9 @@ progress:
 ## Current Position
 
 Phase: 04 — Devices2 wire-shape migration
-Plan: Not started — 3 plans queued (04-01 prep & UX, 04-02 wire cutover, 04-03 release)
-Status: Roadmapped — awaiting `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first)
-Last activity: 2026-05-14 — Milestone v2.0 + Phase 04 added to ROADMAP
+Plan: 3 plans drafted (04-01: 5 tasks, 04-02: 14 tasks, 04-03: 8 tasks) — all PASS plan-checker
+Status: Ready for execution — `/gsd-execute-phase 4`
+Last activity: 2026-05-14 — Plan-checker PASS after B-1 (atomic-commit) + B-2 (bottleneck coverage) fixes landed in `60effc0`
 
 ## Performance Metrics
 
@@ -39,9 +39,10 @@ Last activity: 2026-05-14 — Milestone v2.0 + Phase 04 added to ROADMAP
 | Total requirements | 55 (34 v1.0 + 5 v1.1 + 16 v2.0) |
 | Mapped to phases | 55 (100%) |
 | Orphaned | 0 |
-| Phases | 4 (3 complete, 1 pending) |
-| v2.0 plans queued | 3 |
+| Phases | 4 (3 complete, 1 planned + ready) |
+| v2.0 plans queued | 3 (5 + 14 + 8 = 27 tasks) |
 | v2.0 plans complete | 0 |
+| Plan-checker | PASS (post B-1/B-2 fix, 2026-05-14) |
 
 ## Accumulated Context
 
