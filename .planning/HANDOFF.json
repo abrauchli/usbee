@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-14T09:04:46.076Z",
+  "phase": "04",
+  "phase_name": "devices2-wire-shape-migration-v2-0",
+  "phase_dir": ".planning/phases/04-devices2-wire-shape-migration-v2-0",
+  "plan": 3,
+  "task": 0,
+  "total_tasks": 8,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "04-01", "name": "Decision-and-staging work (ADR, UX-DECISIONS, ICON-AUDIT, label-table, empty-state)", "status": "done", "commit": "f42ab5a"},
+    {"id": "04-02", "name": "Atomic Devices1→Devices2 wire-shape cutover + smoke-test approved", "status": "done", "commit": "7e022b7"}
+  ],
+  "remaining_tasks": [
+    {"id": "04-03", "name": "Release coordination: metadata bump → CHANGELOG → .pot regen → pack → tag → EGO upload doc", "status": "not_started"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Plan 04-03 release pack invocation must include --extra-source=src --extra-source=icons", "context": "Default `gnome-extensions pack` skips both directories; without them the published zip is unusable (ImportError on extension.js's first import). Surfaced during smoke test", "blocking": true},
+    {"action": "DISP-04 (italic 'Driver: not bound' row) live verification deferred", "context": "User's test hardware has no driver-less USB device; carry forward as HUMAN-UAT", "blocking": false},
+    {"action": "DISP-05 (Subclass row) live verification deferred", "context": "User's test hardware has no device with non-empty device_subclass; carry forward as HUMAN-UAT", "blocking": false},
+    {"action": "COMPAT-02 negative test (MIN_USBEEHIVE_VERSION='99.99.99' → out-of-date empty state) not performed", "context": "Time-bounded smoke session; carry forward as HUMAN-UAT", "blocking": false},
+    {"action": "Lifecycle hygiene 3× lock/unlock + 5× disable/enable formal cycle not run", "context": "Multiple enable/disable cycles happened during fix iteration without journalctl-CRITICAL warnings, but the formal cycle was not run", "blocking": false},
+    {"action": "WIRE-04 forward-compat.test.js gjs invocation not performed", "context": "Node-side syntax check passed; gjs runtime check deferred", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Two-line tile pill (title=kind, subtitle=value) replacing single-line 'USBee' subtitle", "rationale": "Tier-2 subtitle 'USB 2.0 · 480 Mb/s' truncated badly in the narrow QuickMenuToggle pill; user requested Wi-Fi/Bluetooth pattern at smoke-test time. deriveSubtitle → deriveTileText returning {title, subtitle}; back-compat shim preserved for WIRE-04 tests", "phase": "04"},
+    {"decision": "Bundle USB-trident SVG and load via Gio.FileIcon (gicon, not iconName)", "rationale": "Adwaita ships no usb-symbolic; theme renders of drive-removable-media-symbolic looked like 'screen with ?' on user's setup. icons/usb-symbolic.svg was already in the project — wire it via gicon for theme independence", "phase": "04"},
+    {"decision": "Lazy-build the gettext label-table on first labelForKey() call", "rationale": "GJS's extension-scoped gettext fails at module-load time because #lookupExtension() cannot find an Extension instance on the call stack. Lazy memoization deferred construction to the first popover render, by which point enable() has run", "phase": "04"},
+    {"decision": "Use St.BoxLayout `vertical: true/false` boolean prop, not `orientation: Clutter.Orientation.*` enum", "rationale": "The enum form fails on GNOME 46 baseline ('No property orientation on StBoxLayout'). The boolean is universally supported on 46+", "phase": "04"},
+    {"decision": "Shim _setOpenedSubMenu on BOTH this.menu and _rowsSection (PopupMenuSection)", "rationale": "PopupSubMenuMenuItem.open()/close() calls _getTopMenu()._setOpenedSubMenu(). _getTopMenu() walks the actor parent chain and stops at the FIRST PopupMenuBase delegate — the section, not the toggle's menu further up. Section doesn't implement the method either", "phase": "04"},
+    {"decision": "Append `mA` unit to usb_power_ma property values via UNIT_BY_KEY table", "rationale": "Daemon emits raw integer strings; key name encodes unit. UNIT_BY_KEY is conservatively populated only with keys whose unit is unambiguous (only usb_power_ma so far); cable_current / charger_max etc. deferred until real-hardware confirms emission format", "phase": "04"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Spawn gsd-executor for Plan 04-03 (release coordination). Before dispatch, ensure the executor knows: (1) pack command must use --extra-source=src --extra-source=icons; (2) CHANGELOG entry should call out the new minimum usbeehive version (0.6.0) + the GNOME-46 St.BoxLayout/_setOpenedSubMenu compatibility decisions; (3) .pot regeneration must include the new strings (Charging, Powering, USB-C, USB, charging, Nothing connected, Daemon out of date, Subclass, Driver, not bound, plus the 15 label-table keys).",
+  "context_notes": "Wave 2 was a long human-verify checkpoint iteration. Executor returned at 06:40Z after Tasks 1–13 + 2 Rule-3 fix-ups. User exercised the live smoke test on Ubuntu/GNOME 46/Xorg. Eight bugs surfaced + one user-requested UX refactor + one icon polish + one missing-unit fix; all landed as fix(04-02)/refactor(04-02) commits in the worktree before merging back to master via 7e022b7. SUMMARY.md (04-02-SUMMARY.md) committed at 1cc0446 captures the full deviation table. Phase-level verifier has NOT run yet — Plan 04-03 must finish before /gsd-execute-phase reaches verify_phase_goal."
+}
