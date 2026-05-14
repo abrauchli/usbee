@@ -75,19 +75,20 @@ function formatWatts(w) {
 }
 
 /**
- * Derive the tile subtitle from the current device list.
- * Implements CONTEXT.md D-09 / UI-SPEC #copywriting Tier 1-4:
+ * Derive the tile title + subtitle (two-line pill) from the current device list.
+ * Implements CONTEXT.md D-09 / UI-SPEC #copywriting Tier 1-4 in the post-04-02
+ * polish shape where the top line carries the *kind* of fact ("Charging",
+ * "USB 2.0", …) and the bottom line carries the *value* ("65 W", "480 Mb/s", …).
  *
- *   Tier 1 — Active USB-C charging port → wattage + direction
+ *   Tier 1 — Active USB-C charging/sourcing port → direction word + wattage
  *   Tier 2 — Fastest attached link with parseable USB version + speed
  *   Tier 3 — Anything attached (count)
  *   Tier 4 — Nothing connected
  *
- * Exported so plan-level automated gates can verify its presence.
  * @param {object[]} devices  Unpacked DeviceEntry objects from the store.
- * @returns {string}
+ * @returns {{title: string, subtitle: string}}
  */
-export function deriveSubtitle(devices) {
+export function deriveTileText(devices) {
     // --- Tier 1: Active USB-C charging-or-sourcing port ---
     // DISP-03 / UX-3: Sourcing widens the Tier-1 filter but does NOT
     // trigger issue-first sort (hasIssue stays keyed off charging_diag).
@@ -127,13 +128,14 @@ export function deriveSubtitle(devices) {
                          || a.port.port_number - b.port.port_number);
         const top = ranked[0];
         if (top.direction === 'sink')
-            return _('Charging: %s in').format(formatWatts(top.watts));
+            return {title: _('Charging'), subtitle: formatWatts(top.watts)};
         if (top.direction === 'source')
-            return _('Powering: %s out').format(formatWatts(top.watts));
+            return {title: _('Powering'), subtitle: formatWatts(top.watts)};
         // Unknown direction — still Tier 1 (charging port is user's focus)
-        return top.watts > 0
-            ? _('USB-C: %s').format(formatWatts(top.watts))
-            : _('USB-C: charging');
+        return {
+            title: _('USB-C'),
+            subtitle: top.watts > 0 ? formatWatts(top.watts) : _('charging'),
+        };
     }
 
     // --- Tier 2: Fastest attached link with structured speed + version ---
@@ -147,7 +149,6 @@ export function deriveSubtitle(devices) {
         withSpeed.sort((a, b) => b.link_speed_mbps - a.link_speed_mbps
                               || a.id.localeCompare(b.id));
         const top = withSpeed[0];
-        const label = `USB ${top.usb_version}`;
         const mbps  = top.link_speed_mbps;
         // Daemon emits raw Mbit/s; render the human form here (USBee owns
         // the UI side of the unit conversion).
@@ -155,20 +156,34 @@ export function deriveSubtitle(devices) {
         if (mbps >= 10000) humanRate = `${Math.round(mbps / 1000)} Gb/s`;
         else if (mbps >= 1000) humanRate = `${(mbps / 1000).toFixed(1)} Gb/s`;
         else humanRate = `${mbps} Mb/s`;
-        // U+00B7 middle dot — NOT a hyphen-minus (UI-SPEC #copywriting Tier 2)
-        return `${label} · ${humanRate}`;
+        return {title: `USB ${top.usb_version}`, subtitle: humanRate};
     }
 
     // --- Tier 3: Any attached device (no parseable speed) ---
     const attached = devices.filter(d => d.status !== 'Empty');
     if (attached.length > 0) {
-        return attached.length === 1
-            ? _('1 device')
-            : _('%d devices').format(attached.length);
+        return {
+            title:    _('USB'),
+            subtitle: attached.length === 1
+                ? _('1 device')
+                : _('%d devices').format(attached.length),
+        };
     }
 
     // --- Tier 4: Nothing connected ---
-    return _('Nothing connected');
+    return {title: _('USB'), subtitle: _('Nothing connected')};
+}
+
+/**
+ * Back-compat string form of the tile subtitle. Preserved so the WIRE-04
+ * forward-compat regression test (forward-compat.test.js) keeps its
+ * unchanged "doesNotThrow" contract.
+ *
+ * @param {object[]} devices  Unpacked DeviceEntry objects from the store.
+ * @returns {string}
+ */
+export function deriveSubtitle(devices) {
+    return deriveTileText(devices).subtitle;
 }
 
 /**
@@ -201,13 +216,21 @@ export const DeviceStore = GObject.registerClass({
     get daemonRunning()  { return this._daemonRunning; }
 
     /**
-     * Full D-09 tile subtitle. Returns 'Daemon not running' when the
-     * daemon is off the bus (UI-SPEC #copywriting Tile/empty state).
-     * Delegates to deriveSubtitle() for the 4-tier algorithm.
+     * Two-line D-09 tile text {title, subtitle}. Returns the daemon-not-running
+     * sentinel when the daemon is off the bus (UI-SPEC #copywriting Tile/empty
+     * state); otherwise delegates to deriveTileText() for the 4-tier algorithm.
+     */
+    get tileText() {
+        if (!this._daemonRunning)
+            return {title: _('USB'), subtitle: _('Daemon not running')};
+        return deriveTileText(this._devices);
+    }
+
+    /**
+     * Back-compat one-line subtitle. Same content as tileText.subtitle.
      */
     get subhead() {
-        if (!this._daemonRunning) return _('Daemon not running');
-        return deriveSubtitle(this._devices);
+        return this.tileText.subtitle;
     }
 
     /**

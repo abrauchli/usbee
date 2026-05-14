@@ -2,8 +2,8 @@
 // src/tile.js
 //
 // USBeeToggle (QuickMenuToggle subclass) + USBeeIndicator (SystemIndicator).
-// The toggle binds its subtitle to store.subhead via store 'changed'
-// (TILE-04 / LIVE-03), and rebuilds the popover lazily on
+// The toggle binds its two-line title/subtitle to store.tileText via store
+// 'changed' (TILE-04 / LIVE-03), and rebuilds the popover lazily on
 // 'open-state-changed' (D-11, Pattern 2).
 //
 // Per D-16: this file does NOT mount the indicator on the panel —
@@ -22,10 +22,11 @@ import {populateDeviceRows, populateEmptyState, populateOutOfDateState} from './
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
     constructor(store, registry, extension, dbusClient) {
+        const initial = store.tileText;
         super({
-            title: _('USBee'),
-            subtitle: store.subhead,
-            iconName: 'drive-removable-media-symbolic',
+            title:    initial.title,
+            subtitle: initial.subtitle,
+            iconName: 'ac-adapter-symbolic',
             toggleMode: false,  // UI-SPEC #interactions — informational tile (no daemon toggle)
         });
         this._store = store;
@@ -80,7 +81,9 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // tile opens the menu rather than toggling checked — we only set checked
         // programmatically here.
         const changedId = store.connect('changed', () => {
-            this.subtitle = store.subhead;
+            const txt = store.tileText;
+            this.title    = txt.title;
+            this.subtitle = txt.subtitle;
             this.checked  = this._store.daemonRunning;
         });
         registry.addSignal(store, changedId);
@@ -111,10 +114,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             });
         registry.addSignal(this.menu, openId);
 
-        // Initial subtitle + checked — defensive in case the store fired
+        // Initial title/subtitle + checked — defensive in case the store fired
         // 'changed' before we connected (e.g. bus_watch_name appeared
         // synchronously — RESEARCH §Pitfall D).
-        this.subtitle = store.subhead;
+        const initTxt = store.tileText;
+        this.title    = initTxt.title;
+        this.subtitle = initTxt.subtitle;
         this.checked  = store.daemonRunning;
 
         // STATE-04 — Preferences… menu row with lock-screen gating.
