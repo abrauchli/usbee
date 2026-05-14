@@ -32,7 +32,7 @@ jobs:
       - name: Pack extension
         run: |
           gnome-extensions pack usbee@bitcreed.us \
-            --podir=po \
+            --podir=../po \
             --extra-source=src \
             --force
 
