@@ -26,5 +26,16 @@
       </description>
     </key>
 
+    <key name="show-hubs" type="b">
+      <default>false</default>
+      <summary>Show USB hub devices in the popover</summary>
+      <description>
+        When false (the default), USB hub devices are hidden from the
+        tile popover. Toggled from the "Show USB Hubs" switch in the
+        preferences window. Read once per popover rebuild by
+        src/popover.js populateDeviceRows.
+      </description>
+    </key>
+
   </schema>
 </schemalist>

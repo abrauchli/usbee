@@ -65,12 +65,14 @@ export function populateDeviceRows(section, store, extension) {
     // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
     // Filter predicate uses daemon-emitted tokens 'TypeCPort' / 'Empty'
     // (same strings src/device-store.js Tier-1 filter consumes).
-    const hideEmpty = extension.getSettings().get_boolean('hide-empty-ports');
+    const settings = extension.getSettings();
+    const hideEmpty = settings.get_boolean('hide-empty-ports');
+    const showHubs  = settings.get_boolean('show-hubs');
     let devices = store.devices;
-    if (hideEmpty) {
-        devices = devices.filter(d =>
-            !(d.category === 'TypeCPort' && d.status === 'Empty'));
-    }
+    if (hideEmpty)
+        devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
+    if (!showHubs)
+        devices = devices.filter(d => d.category !== 'Hub');
 
     if (devices.length === 0) {
         section.addMenuItem(new PopupMenu.PopupMenuItem(

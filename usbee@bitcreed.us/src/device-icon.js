@@ -57,7 +57,7 @@ const SYMBOLIC_ICON_RE = /^[a-z0-9][a-z0-9-]*-symbolic$/;
 const DEVICE_CLASS_ICON = new Map([
     ['Keyboard',         'input-keyboard-symbolic'],
     ['Mouse',            'input-mouse-symbolic'],
-    ['Storage',          'drive-harddisk-usb-symbolic'],
+    ['Storage',          'media-removable-symbolic'],
     ['Display',          'video-display-symbolic'],
     ['Audio',            'audio-card-symbolic'],
     ['Camera',           'camera-web-symbolic'],

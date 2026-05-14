@@ -111,7 +111,7 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
     }
 
-    // ── Group 2: General (hide-empty-ports) ──────────────────────────
+    // ── Group 2: General (hide-empty-ports, show-hubs) ───────────────
     _buildGeneralGroup(page, settings) {
         const generalGroup = new Adw.PreferencesGroup({title: _('General')});
         page.add(generalGroup);
@@ -122,6 +122,14 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
         generalGroup.add(hideRow);
         settings.bind('hide-empty-ports', hideRow, 'active',
+                      Gio.SettingsBindFlags.DEFAULT);
+
+        const hubRow = new Adw.SwitchRow({
+            title: _('Show USB Hubs'),
+            subtitle: _('Include USB hub devices in the device list'),
+        });
+        generalGroup.add(hubRow);
+        settings.bind('show-hubs', hubRow, 'active',
                       Gio.SettingsBindFlags.DEFAULT);
     }
 
@@ -149,9 +157,8 @@ export default class USBeePreferences extends ExtensionPreferences {
 
         const setRunning = () => {
             const v = proxy?.Version;
-            daemonRow.subtitle = v
-                ? _('Running — v%s').format(v)
-                : _('Running');
+            // Show "usbeehived 0.6.0" when the version is known.
+            daemonRow.subtitle = v ? `usbeehived ${v}` : _('usbeehived');
         };
         const setStopped = () => {
             daemonRow.subtitle = _('Start usbeehived daemon');
