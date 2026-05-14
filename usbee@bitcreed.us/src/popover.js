@@ -79,7 +79,7 @@ export function populateDeviceRows(section, store, extension) {
             _('No USB devices attached'),
             {reactive: false, can_focus: false},
         ));
-        return;
+        return 0;
     }
 
     // UI-03 — Issue-first stable sort. hasIssue(b) - hasIssue(a) floats
@@ -112,6 +112,7 @@ export function populateDeviceRows(section, store, extension) {
         });
         row._usbeeAccordionSigId = sigId;
     }
+    return devices.length;
 }
 
 /**

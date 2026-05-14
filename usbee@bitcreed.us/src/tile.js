@@ -167,15 +167,13 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // the user is being shown reachable-but-too-old, which is a
         // distinct copy from "daemon not running". The latch clears on
         // the next 'ready' signal from DBusClient.
+        let n = -1;
         if (this._daemonTooOld)
             populateOutOfDateState(this._rowsSection);
         else if (!this._store.daemonRunning)
             populateEmptyState(this._rowsSection);
         else
-            populateDeviceRows(this._rowsSection, this._store, this._extension);
-
-        const n = this._store.daemonRunning
-            ? this._store.devices.filter(d => d.status !== 'Empty').length : -1;
+            n = populateDeviceRows(this._rowsSection, this._store, this._extension);
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
         this.menu.setHeader('drive-harddisk-usb-symbolic', hdrTitle, '');
