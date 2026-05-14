@@ -8,9 +8,9 @@ attached USB device and USB-C port with a plain-English diagnostic per
 port ("Charging at 65 W (PD 3.0)", "Cable limited to USB 2.0", etc.).
 
 USBee is the GNOME-side companion to the
-[`usbeehive`](https://github.com/abrauchli/usbeehive) daemon. The
-extension itself performs no `/sys`, udev, or subprocess access — all
-USB knowledge flows through `usbeehive` over D-Bus.
+[`usbeehive`](https://github.com/abrauchli/usbeehive) daemon `usbhived`.
+The extension itself performs no `/sys`, udev, or subprocess access — all
+USB knowledge flows through `usbeehived` over D-Bus.
 
 ## Screenshot
 
@@ -19,19 +19,28 @@ USB knowledge flows through `usbeehive` over D-Bus.
 ## Status
 
 Current release: v2.0.0. Pre-1.0 in spirit; the D-Bus interface
-with `usbeehive` is considered stable, but UI details may still change.
+with `usbeehived` is considered stable, but UI details may still change.
 
 ## Requirements
 
-- GNOME Shell **46, 47, 48, 49, or 50** (48-50 untested, only API-checked. Happy to take bug reports or success stories)
-- The [`usbeehive`](https://github.com/abrauchli/usbeehive) daemon running
-  on the session bus (`systemctl --user enable --now usbeehive`)
+- GNOME Shell **46, 47, 48, 49, or 50** (48-50 untested, only
+  API-checked. Happy to take bug reports or success stories)
+- The [`usbeehive`](https://github.com/abrauchli/usbeehive) daemon
+  `usbeehived` running on the session bus
 
-Without `usbeehive`, the tile renders an empty state explaining that the
+Without `usbeehived`, the tile renders an empty state explaining that the
 daemon is not running. The extension auto-recovers when the daemon
 appears or disappears on the session bus.
 
 ## Install
+
+### USBeehived Daemon Installation
+
+```
+cargo install usbeehive --features=dbus
+usbeehived --install-service
+systemctl --user enable --now usbeehived
+```
 
 ### From extensions.gnome.org (recommended)
 
@@ -94,6 +103,6 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 - [`usbeehive`](https://github.com/abrauchli/usbeehive) — the daemon
   that owns all USB / `/sys` / udev knowledge and publishes
-  `org.usbeehive.Devices1` on the session bus.
+  `org.usbeehive.Devices2` on the session bus.
 - [WhatCable](https://github.com/darrylmorley/whatcable) — the macOS
   menu-bar app USBee is conceptually modeled on.
