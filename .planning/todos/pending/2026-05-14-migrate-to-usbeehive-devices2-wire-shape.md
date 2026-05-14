@@ -2,6 +2,7 @@
 created: 2026-05-14T01:58:27.730Z
 title: Migrate to usbeehive Devices2 wire shape
 area: general
+resolves_phase: 4
 files:
   - usbee@bitcreed.us/dbus-iface.xml
   - usbee@bitcreed.us/src/dbus-client.js:40-78

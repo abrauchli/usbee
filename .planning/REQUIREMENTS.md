@@ -1,20 +1,60 @@
 # Requirements: USBee
 
 **Defined:** 2026-05-11
-**Last milestone-update:** 2026-05-13 (v1.0 → v1.1)
+**Last milestone-update:** 2026-05-14 (v1.1 → v2.0)
 **Core Value:** A GNOME-native, glanceable answer to "is this the fast port?" and "why is my laptop charging slowly?" — without opening a terminal.
 
-## v1.1 Requirements (current milestone)
+## v2.0 Requirements (current milestone)
+
+Devices2 wire-shape migration. usbeehive shipped a structured 19-field
+D-Bus interface (`org.usbeehive.Devices2`); USBee migrates in lockstep
+and deletes its entire bullet-prose regex layer. Hard cut, no
+compatibility shim. First EGO submission ships with this milestone as
+USBee v2.0.0.
+
+### D-Bus Wire (WIRE)
+
+- [ ] **WIRE-01**: USBee proxy targets `org.usbeehive.Devices2`; `dbus-iface.xml` and the embedded `IFACE_XML` in `src/dbus-client.js` match the daemon's published interface verbatim, including the 19-field per-device tuple
+- [ ] **WIRE-02**: `unpackDeviceEntry` exposes every Devices2 field by name (`id`, `category`, `device_class`, `device_subclass`, `status`, `headline`, `subtitle`, `icon`, `vendor`, `product`, `vendor_id`, `product_id`, `primary_driver`, `properties`, `port_number`, `link_speed_mbps`, `usb_version`, `power`, `charging_diag`) so downstream consumers never index by tuple position
+- [ ] **WIRE-03**: Consumers of `Diagnose(port)` read the new `(present, bottleneck, summary, detail, is_warning)` shape and use the `present` bool as the absence sentinel — never the bottleneck string emptiness
+- [ ] **WIRE-04**: Unknown enum values for `device_class`, `device_subclass`, `status`, `power_role`, `bottleneck` fall back to `Unknown` (or sensible per-enum default) without raising; covered by a regression test asserting forward-compatibility with future daemon variants
+
+### Cleanup (CLEAN)
+
+- [ ] **CLEAN-01**: All bullet-prose regex helpers in `src/device-store.js` are removed: `WATT_RE`, `DIRECTION_RE`, `USB_VERSION_RE` (including the WR-03 lookahead patch), `SPEED_RE`, `parseWatts`, `parseDirection`, `parseLinkSpeed`
+- [ ] **CLEAN-02**: `hasIssue()` collapses to `device.charging_diag.present && device.charging_diag.is_warning`; the `DIAG_PHRASES` substring scan is removed
+- [ ] **CLEAN-03**: `keyForBullet()` in `src/popover.js` and the `KEYWORD_MAP` + headline substring scan in `src/device-icon.js` are removed; the defensive `SYMBOLIC_ICON_RE` daemon-icon guard remains for security mitigation T-03-01
+
+### Display (DISP)
+
+- [ ] **DISP-01**: A new `src/label-table.js` maps daemon machine keys (`serial`, `mount`, `drivers`, `data_role`, `power_mode`, `pd_revision`, `plug_orientation`, `pd_contract`, `cable_speed`, `cable_current`, `cable_max_power`, `cable_type`, `cable_vendor`, `charger_max`, `usb_power_ma`) to gettext-wrapped display labels; unknown keys render the raw key without crashing
+- [ ] **DISP-02**: Device-row symbolic icons resolve from a `device_class` enum lookup table covering all 19 daemon variants; the daemon-supplied `icon` field is preferred when it passes `SYMBOLIC_ICON_RE`
+- [ ] **DISP-03**: Tile subtitle Tier-1 surfaces `Status::Sourcing` (outbound charging) as "Powering: %s out"; Sourcing entries do not trigger the issue-first sort
+- [ ] **DISP-04**: Devices with `primary_driver == ""` and non-Empty status are visibly flagged in the popover (badge or detail-panel note — exact treatment decided during planning, must be observable in the UI)
+- [ ] **DISP-05**: `device_subclass` rendering policy is implemented per the planning decision (append to row title, surface in the detail panel only, or ignore for v2.0) and documented
+
+### Daemon Compatibility (COMPAT)
+
+- [ ] **COMPAT-01**: USBee reads the daemon's `Version` property on proxy-ready and refuses to consume a daemon older than the pinned minimum version constant
+- [ ] **COMPAT-02**: When the daemon is too old, the popover shows a dedicated "Daemon out of date — please update usbeehive" empty state with copy distinct from the existing "Daemon not running" state
+
+### Release (REL)
+
+- [ ] **REL-01**: `usbee@bitcreed.us/metadata.json` `version-name` bumped to `2.0.0`; `version` integer incremented per the EGO rule
+- [ ] **REL-02**: `CHANGELOG.md` carries a `## [2.0.0]` entry naming the minimum required usbeehive version, listing the breaking daemon dependency, and noting the deletion of the regex layer
+- [ ] **REL-03**: USBee v2.0.0 zip built via `gnome-extensions pack` and uploaded as the first EGO submission; release tag pushed so the GitHub release workflow produces the same zip
+
+## v1.1 Requirements (validated — shipped in v1.1)
 
 UI rework: per-device selectable accordion list with class-derived icons, expandable diagnostic detail panels styled coherently with Wi-Fi/Bluetooth, and an issue-first sort order. No daemon-side or schema changes — purely the visual surface of `src/popover.js` + supporting modules.
 
 ### UI Rework (UI)
 
-- [ ] **UI-01**: Popover renders one row per device using `PopupSubMenuMenuItem` (matches the gnome-shell network/Bluetooth row pattern); the v1.0 two-column staircase layout is replaced
-- [ ] **UI-02**: Clicking a device row expands its diagnostic detail panel; only one row is expanded at a time (accordion behaviour — opening a new row collapses the previous one)
-- [ ] **UI-03**: Devices with a non-empty daemon-emitted `diagnostic` field sort to the top of the popover list; the rest follow in daemon-emit order
-- [ ] **UI-04**: Each device row displays a class/driver-derived symbolic icon — `network-usb-symbolic` for hubs and unrecognised devices, `input-keyboard-symbolic` / `input-mouse-symbolic` for HID, plus matching symbolic icons for common storage / audio / video classes
-- [ ] **UI-05**: Expanded device-detail panel is rendered as a structured Adwaita-coherent layout (labelled property rows, consistent vertical rhythm, monospace where appropriate) — not raw `St.Label` bullets stacked vertically
+- [x] **UI-01**: Popover renders one row per device using `PopupSubMenuMenuItem` (matches the gnome-shell network/Bluetooth row pattern); the v1.0 two-column staircase layout is replaced
+- [x] **UI-02**: Clicking a device row expands its diagnostic detail panel; only one row is expanded at a time (accordion behaviour — opening a new row collapses the previous one)
+- [x] **UI-03**: Devices with a non-empty daemon-emitted `diagnostic` field sort to the top of the popover list; the rest follow in daemon-emit order
+- [x] **UI-04**: Each device row displays a class/driver-derived symbolic icon — `network-usb-symbolic` for hubs and unrecognised devices, `input-keyboard-symbolic` / `input-mouse-symbolic` for HID, plus matching symbolic icons for common storage / audio / video classes
+- [x] **UI-05**: Expanded device-detail panel is rendered as a structured Adwaita-coherent layout (labelled property rows, consistent vertical rhythm, monospace where appropriate) — not raw `St.Label` bullets stacked vertically
 
 ## v1 Requirements (validated — shipped in v1.0)
 
@@ -163,19 +203,38 @@ All v1 requirements mapped to exactly one phase by the roadmapper.
 | PACK-04 | Phase 1 | Complete |
 | PACK-05 | Phase 1 | Complete |
 | PACK-06 | Phase 2 | Complete |
-| UI-01 | Phase 3 | Pending |
-| UI-02 | Phase 3 | Pending |
-| UI-03 | Phase 3 | Pending |
-| UI-04 | Phase 3 | Pending |
-| UI-05 | Phase 3 | Pending |
+| UI-01 | Phase 3 | Complete |
+| UI-02 | Phase 3 | Complete |
+| UI-03 | Phase 3 | Complete |
+| UI-04 | Phase 3 | Complete |
+| UI-05 | Phase 3 | Complete |
+| WIRE-01 | Phase 4 | Pending |
+| WIRE-02 | Phase 4 | Pending |
+| WIRE-03 | Phase 4 | Pending |
+| WIRE-04 | Phase 4 | Pending |
+| CLEAN-01 | Phase 4 | Pending |
+| CLEAN-02 | Phase 4 | Pending |
+| CLEAN-03 | Phase 4 | Pending |
+| DISP-01 | Phase 4 | Pending |
+| DISP-02 | Phase 4 | Pending |
+| DISP-03 | Phase 4 | Pending |
+| DISP-04 | Phase 4 | Pending |
+| DISP-05 | Phase 4 | Pending |
+| COMPAT-01 | Phase 4 | Pending |
+| COMPAT-02 | Phase 4 | Pending |
+| REL-01 | Phase 4 | Pending |
+| REL-02 | Phase 4 | Pending |
+| REL-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1.0 requirements: 34 total, all Complete (Phase 01 + Phase 02 shipped)
-- v1.1 requirements: 5 total (UI × 5), to be mapped to Phase 3 by the roadmapper
+- v1.1 requirements: 5 total (UI × 5), all Complete (Phase 03 shipped)
+- v2.0 requirements: 16 total (WIRE × 4, CLEAN × 3, DISP × 5, COMPAT × 2, REL × 3), all mapped to Phase 4
 - Phase 1: 21 requirements (TILE × 4, LIST × 6, DIAG × 2, LIVE × 3, STATE-01/02/03/05, PACK-04/05)
 - Phase 2: 13 requirements (NOTIF × 4, PREFS × 4, STATE-04, PACK-01/02/03/06)
 - Phase 3: 5 requirements (UI × 5)
+- Phase 4: 16 requirements (WIRE × 4, CLEAN × 3, DISP × 5, COMPAT × 2, REL × 3)
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-13 — v1.1 milestone added (UI × 5), v1.0 requirements marked Complete*
+*Last updated: 2026-05-14 — v2.0 milestone added (Devices2 migration: WIRE × 4, CLEAN × 3, DISP × 5, COMPAT × 2, REL × 3); v1.1 marked Complete*
