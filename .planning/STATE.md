@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: executing
 last_updated: "2026-05-14T09:10:00.000Z"
-last_activity: 2026-05-14 -- Phase 04 plans 04-01 and 04-02 complete; paused before 04-03
+last_activity: 2026-05-14 - Completed quick task 260514-g4x: For the bubble-tile icon use drive-harddisk-usb-symbolic instead of the shipped one
 progress:
   total_phases: 1
   completed_phases: 0
@@ -123,6 +123,12 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 - `.planning/config.json` — coarse / yolo / parallel
 - `../usbeehive/src/dbus.rs` — authoritative wire shape for Devices2 (consult during Plan 04-02)
 - `../usbeehive/CHANGELOG.md` — `[Unreleased]` section carries the regex → field migration table + property-key vocabulary
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260514-g4x | For the bubble-tile icon use drive-harddisk-usb-symbolic instead of the shipped one | 2026-05-14 | a2bc54c | [260514-g4x-for-the-bubble-tile-icon-use-drive-hardd](./quick/260514-g4x-for-the-bubble-tile-icon-use-drive-hardd/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
