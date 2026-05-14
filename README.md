@@ -12,9 +12,13 @@ USBee is the GNOME-side companion to the
 extension itself performs no `/sys`, udev, or subprocess access — all
 USB knowledge flows through `usbeehive` over D-Bus.
 
+## Screenshot
+
+![USBee Quick Settings panel showing the device list](usbee-quick-settings-panel-device-list.png)
+
 ## Status
 
-Initial public release (v1.2.0). Pre-1.0 in spirit; the D-Bus interface
+Current release: v2.0.0. Pre-1.0 in spirit; the D-Bus interface
 with `usbeehive` is considered stable, but UI details may still change.
 
 ## Requirements
