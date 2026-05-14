@@ -165,6 +165,52 @@ Conventions not yet established. Will populate as patterns emerge during develop
 Architecture not yet mapped. Follow existing patterns found in the codebase.
 <!-- GSD:architecture-end -->
 
+## Release Process
+
+USBee is a pure GJS GNOME Shell extension. The EGO submission rules
+forbid bundled binaries, so there is no Rust/C/Go build step and no
+crates.io / cargo publish path. The release artifact is a single
+`.shell-extension.zip` built by `gnome-extensions pack`.
+
+Version fields in `usbee@bitcreed.us/metadata.json`:
+- `version` — EGO-required monotonic integer. Increment by 1 per
+  EGO submission. Unrelated to semver.
+- `version-name` — human-facing semver string. Bumped per release.
+
+### Steps for a new release
+
+1. **Bump version strings** in `usbee@bitcreed.us/metadata.json`:
+   - `version-name` → next semver (e.g. `1.2.0` → `1.3.0`)
+   - `version` → previous integer + 1
+2. **Update `CHANGELOG.md`** with a new `## [X.Y.Z] — YYYY-MM-DD`
+   section. Include an `[X.Y.Z]:` reference link at the bottom.
+3. **Commit** the version bump + changelog: `chore: release vX.Y.Z`.
+4. **Tag** with an annotated tag whose message is the changelog entry
+   body:
+   ```
+   git tag -a vX.Y.Z -m "vX.Y.Z" -m "$(awk ...)"  # or paste manually
+   ```
+   The tag name must match `version-name` exactly — the release
+   workflow asserts this and fails otherwise.
+5. **Push the tag**: `git push origin vX.Y.Z`. The
+   `.github/workflows/release.yml` workflow then:
+   - Verifies `metadata.json` `version-name` matches the tag.
+   - Runs `gnome-extensions pack` to build the zip.
+   - Extracts the matching `CHANGELOG.md` section as release notes.
+   - Creates the GitHub Release and attaches the zip.
+6. **Upload to EGO** — download the zip from the GitHub Release page
+   and submit it at <https://extensions.gnome.org/upload/>. EGO review
+   is manual and asynchronous.
+
+### What does *not* get published
+
+- The zip is never committed to the repo (`.gitignore` excludes it).
+- `.planning/` is never shipped to EGO (the extension dir is the only
+  source for `gnome-extensions pack`). It stays in the repo for
+  decision provenance; use `/gsd-pr-branch` to filter it out of
+  external PR branches.
+- No crates.io step. USBee has no Rust component.
+
 <!-- GSD:skills-start source:skills/ -->
 ## Project Skills
 
