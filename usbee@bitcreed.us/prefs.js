@@ -21,7 +21,7 @@ const USBEEHIVE_OBJECT_PATH = '/org/usbeehive/Devices';
 // declaring it lets makeProxyWrapper synthesise the cached-property
 // accessor (no separate Get call needed at runtime).
 const USBEEHIVE_IFACE_XML = `<node>
-  <interface name="org.usbeehive.Devices1">
+  <interface name="org.usbeehive.Devices2">
     <property name="Version" type="s" access="read"/>
   </interface>
 </node>`;
