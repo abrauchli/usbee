@@ -30,7 +30,7 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — EXECUTING
 Plan: 3 of 3 (next: 04-03 release coordination)
 Status: Wave 2 complete (04-02 Task 14 approved); paused before Wave 3
-Last activity: 2026-05-14 -- Plan 04-02 Devices2 cutover landed + smoke-test fix-ups (12 commits) merged to master via 7e022b7; SUMMARY.md committed
+Last activity: 2026-05-14 -- Completed quick task 260514-mq0: fix EGO shexli lint (schema rename + test file move)
 
 ## Performance Metrics
 
@@ -133,6 +133,7 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 | fast | Hub icon → network-proxy-symbolic (bundled SVG, Gio.FileIcon path) | 2026-05-14 | 4a2ab03 | — |
 | fast | Storage→media-removable-symbolic; daemon version format; Show USB Hubs pref | 2026-05-14 | c5ce0b1 | — |
 | 20260514-screenshot-and-release-prep | Add screenshot to README, move v2.0.0 tag to HEAD, push | 2026-05-14 | 8ea3c50 | [20260514-screenshot-and-release-prep](./quick/20260514-screenshot-and-release-prep/) |
+| 260514-mq0 | Fix 3 EGO shexli lint errors: rename GSettings schema to org.gnome.shell.extensions namespace, move test file out of extension dir | 2026-05-14 | 3172694 | [260514-mq0-fix-ego-shexli-lint](./quick/260514-mq0-fix-ego-shexli-lint/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
