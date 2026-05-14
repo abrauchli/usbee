@@ -18,6 +18,22 @@
 //   3. device_class enum lookup (DEVICE_CLASS_ICON).
 //   4. Default fallback: drive-removable-media-symbolic.
 
+import Gio from 'gi://Gio';
+
+// Set by initIcons() from extension.js enable() so bundled SVGs resolve to
+// an absolute path. Null until the extension enables (unit-test contexts only).
+let _iconsPath = null;
+
+/** Register the extension icon directory once on enable(). */
+export function initIcons(extensionPath) {
+    _iconsPath = `${extensionPath}/icons`;
+}
+
+// Icons shipped in icons/ that are not present in the system Adwaita theme.
+// iconForDevice() returns a Gio.FileIcon for these so St.Icon renders them
+// without a theme lookup; popover.js uses .gicon instead of .icon_name.
+const BUNDLED_ICONS = new Set(['network-proxy-symbolic']);
+
 // T-03-01 mitigation: accept daemon-supplied icon names only if they match
 // the GNOME symbolic icon pattern — ASCII lowercase/digit words joined by
 // hyphens, ending in -symbolic. Rejects absolute paths, shell metacharacters,
@@ -47,7 +63,7 @@ const DEVICE_CLASS_ICON = new Map([
     ['Camera',           'camera-web-symbolic'],
     ['Printer',          'printer-symbolic'],
     ['Phone',            'phone-symbolic'],
-    ['Hub',              'drive-removable-media-symbolic'],
+    ['Hub',              'network-proxy-symbolic'],
     ['NetworkWired',     'network-wired-symbolic'],
     ['NetworkWireless',  'network-wireless-symbolic'],
     ['InputTablet',      'input-tablet-symbolic'],
@@ -86,7 +102,13 @@ export function iconForDevice(device) {
 
     // 3. device_class enum lookup (WIRE-04: unknown values fall through).
     const fromClass = DEVICE_CLASS_ICON.get(device.device_class);
-    if (fromClass) return fromClass;
+    if (fromClass) {
+        // Bundled icons ship as SVGs in icons/; return Gio.FileIcon so
+        // St.Icon renders them via .gicon without a system theme lookup.
+        if (_iconsPath && BUNDLED_ICONS.has(fromClass))
+            return Gio.icon_new_for_string(`${_iconsPath}/${fromClass}.svg`);
+        return fromClass;
+    }
 
     // 4. Default fallback — generic USB icon.
     return 'drive-removable-media-symbolic';

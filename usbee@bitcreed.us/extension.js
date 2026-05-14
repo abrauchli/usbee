@@ -12,12 +12,16 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {DBusClient}       from './src/dbus-client.js';
 import {DeviceStore}      from './src/device-store.js';
+import {initIcons}        from './src/device-icon.js';
 import {Notifier}         from './src/notifier.js';
 import {USBeeIndicator}   from './src/tile.js';
 import {SignalRegistry}   from './src/signal-registry.js';
 
 export default class USBeeExtension extends Extension {
     enable() {
+        // Register bundled icon paths before any popover renders.
+        initIcons(this.path);
+
         // Construction order matters — RESEARCH §Pitfall D.
         // bus_watch_name "appeared" may fire before client.start() returns
         // if the daemon is already on the bus; the store and indicator must

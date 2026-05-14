@@ -157,7 +157,11 @@ function buildDeviceRow(device) {
 
     // Second arg `true` enables the built-in .icon slot on the row.
     const row = new PopupMenu.PopupSubMenuMenuItem(headline, true);
-    row.icon.icon_name = iconForDevice(device);
+    const devIcon = iconForDevice(device);
+    if (typeof devIcon === 'string')
+        row.icon.icon_name = devIcon;
+    else
+        row.icon.gicon = devIcon;  // Gio.FileIcon for bundled SVGs
     row.add_style_class_name('usbee-device-row');
 
     // --- Detail panel (UI-05) ---
