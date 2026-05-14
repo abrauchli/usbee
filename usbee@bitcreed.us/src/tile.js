@@ -63,6 +63,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // tracking is lost on row items — acceptable here because every
         // device row is `reactive: false, can_focus: false` (popover.js).
         this._rowsSection = new PopupMenu.PopupMenuSection();
+        this._rowsSection.actor.add_style_class_name('usbee-device-section');
         this._rowsScroll = new St.ScrollView({
             style_class: 'usbee-popover-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
