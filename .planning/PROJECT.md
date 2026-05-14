@@ -15,28 +15,48 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 A GNOME-native, glanceable answer to "is this the fast port?" and
 "why is my laptop charging slowly?" — without opening a terminal.
 
-## Current Milestone: v1.1 UI Rework
+## Current Milestone: v2.0 Devices2 wire-shape migration
 
-**Goal:** Replace the staircase two-column popover with a per-device
-selectable accordion list — each device gets a class-derived icon,
-expanding a row reveals its diagnostic details rendered with Adwaita-
-coherent styling (not raw text bullets), and devices with daemon-flagged
-issues float to the top.
+**Goal:** Cut over to usbeehive's `org.usbeehive.Devices2` interface —
+delete every prose-parsing regex in USBee in favour of the structured
+top-level fields the daemon now emits. Hard cut, no backwards
+compatibility with `Devices1`. Ships as USBee v2.0.0 with a minimum
+usbeehive version constant and the first EGO submission.
 
 **Target features:**
-- Per-device row using `PopupSubMenuMenuItem` (canonical pattern from
-  gnome-shell `network-section.js`)
-- Single-row accordion expansion (only one row open at a time)
-- Issue-first sort: devices with a non-empty `diagnostic` field float
-  to the top
-- Per-device icons derived from USB class / driver (usbhid →
-  keyboard/mouse, Hub → generic USB, fallback → generic USB)
-- Expanded device view styled visually coherent with Wi-Fi/Bluetooth
-  detail panels — proper Adwaita-style layout, not raw text bullets
+- Bump `IFACE_XML` / `dbus-iface.xml` to `org.usbeehive.Devices2` and
+  the new 19-field tuple shape; rewrite `unpackDeviceEntry` accordingly
+- Delete the regex layer: `parseWatts` / `parseDirection` /
+  `parseLinkSpeed` / `USB_VERSION_RE` + the WR-03 lookahead patch /
+  `DIAG_PHRASES` substring scan / `keyForBullet` regex / `KEYWORD_MAP`
+  headline scan — every consumer reads structured fields directly
+- New `src/label-table.js` maps the daemon's machine-key vocabulary
+  (`serial`, `mount`, `drivers`, `data_role`, `power_mode`,
+  `pd_revision`, `plug_orientation`, `pd_contract`, `cable_speed`,
+  `cable_current`, `cable_max_power`, `cable_type`, `cable_vendor`,
+  `charger_max`, `usb_power_ma`) to gettext-wrapped display labels;
+  unknown keys render verbatim
+- `device_class` enum → symbolic-icon lookup table replacing the
+  headline substring scan; defensive `SYMBOLIC_ICON_RE` guard retained
+- Daemon-version gate: read `Version` property on proxy-ready and show
+  a dedicated "Daemon out of date — please update usbeehive" empty
+  state (distinct from "Daemon not running") if below the pinned
+  minimum
+- New UX surfaces for fields the v1 wire couldn't carry:
+  `primary_driver == ""` badge, `device_subclass` rendering policy,
+  `Status::Sourcing` (outbound charging) on the Tier-1 subtitle
+- Lockstep release coordination: CHANGELOG entry, min-version constant,
+  version bump to USBee v2.0.0, EGO first-submission
 
-**Out of scope (carried forward as-is from v1.0):** notifier, prefs
-window, GSettings schema, daemon-missing empty state, SignalRegistry
-teardown, EGO submission audit gates.
+**Out of scope (explicit non-goals):**
+- Any compatibility path with `Devices1` — no dual-shape unpacker, no
+  feature-detect, no fallback parser. Old daemon → out-of-date empty
+  state, full stop.
+- Per-property markup/warnings (plain strings only).
+- Non-USB-C diagnostics or speculative diagnostics ("would charge
+  faster on a PD port").
+- i18n of daemon-supplied prose fields (`headline`, `subtitle`,
+  `vendor`, `product`) — those render verbatim, never wrapped in `_()`.
 
 ## Requirements
 
@@ -65,21 +85,48 @@ teardown, EGO submission audit gates.
 - [x] Ship as a GNOME Shell extension for the GNOME 46+ Quick
       Settings API; reachable via Extensions / EGO install
 
-### Active (v1.1)
+### Validated (v1.1)
 
-- [ ] Per-device popover row that visually matches the
+- [x] Per-device popover row that visually matches the
       Wi-Fi/Bluetooth device-row pattern (icon + headline + chevron),
       not the v1.0 two-column staircase layout
-- [ ] Click a device row to expand its diagnostic details; only one
+- [x] Click a device row to expand its diagnostic details; only one
       device row is open at a time (accordion behaviour)
-- [ ] Devices with daemon-flagged issues (non-empty `diagnostic`
+- [x] Devices with daemon-flagged issues (non-empty `diagnostic`
       field) sort to the top of the device list
-- [ ] Each device row shows a class/driver-derived symbolic icon —
+- [x] Each device row shows a class/driver-derived symbolic icon —
       generic USB icon for hubs and unrecognised devices, input-class
       icons for HID devices (keyboard, mouse), and matching icons for
       common storage / audio / video classes
-- [ ] Expanded device detail panel is styled coherently with the
+- [x] Expanded device detail panel is styled coherently with the
       GNOME Wi-Fi/Bluetooth detail UX (not raw text bullets)
+
+### Active (v2.0)
+
+- [ ] USBee reads device data exclusively from
+      `org.usbeehive.Devices2` structured fields (no regex parsing of
+      bullet prose; `bullets` array no longer exists on the wire)
+- [ ] Every regex/heuristic listed in the migration table is removed:
+      `WATT_RE`, `DIRECTION_RE`, `USB_VERSION_RE` (incl. WR-03 patch),
+      `SPEED_RE`, `hasIssue()` substring scan, `keyForBullet()`,
+      `KEYWORD_MAP` headline scan
+- [ ] Property labels in the popover detail panel come from a
+      machine-key → gettext-wrapped display-label table; unknown keys
+      render the raw key without crashing
+- [ ] Device-row icons resolve from `device_class` enum lookup
+      (defensive `SYMBOLIC_ICON_RE` guard on daemon-supplied icon name
+      retained for security)
+- [ ] USBee detects an out-of-date daemon via the `Version` property
+      and displays a distinct "Daemon out of date — please update
+      usbeehive" empty state (different copy from "Daemon not running")
+- [ ] Tier-1 tile subtitle handles `Status::Sourcing` (outbound
+      charging): "Powering: %s out"
+- [ ] Devices without a kernel driver bound (`primary_driver == ""`)
+      are surfaced in the UI (badge or detail-panel note — final
+      treatment decided in Plan 1 UX section)
+- [ ] USBee v2.0.0 is submitted to EGO for the first time; CHANGELOG
+      records the breaking daemon dependency and the minimum required
+      usbeehive version
 
 ### Out of Scope
 
@@ -99,11 +146,17 @@ teardown, EGO submission audit gates.
 ## Context
 
 - **Sibling daemon**: `usbeehive` lives at `~/projects/rust/usbeehive`.
-  It already exposes `org.usbeehive.Devices1` on the session bus with
-  methods (`ListDevices`, `SnapshotJson`, `Diagnose`), properties
-  (`Version`, `DeviceCount`), and signals (`DeviceAdded`,
-  `DeviceRemoved`, `CapabilityDegraded`, `CapabilityRestored`).
-  USBee is a pure D-Bus client — it never reads `/sys` directly.
+  Since commit `5e216cd` (master, pre-release as of milestone start)
+  it exposes `org.usbeehive.Devices2` on the session bus with
+  19 typed top-level fields per device plus a `properties: a(ss)`
+  bag of `(machine_key, value)` pairs — see
+  `../usbeehive/CHANGELOG.md` "Devices2 wire" entry and
+  `../usbeehive/src/dbus.rs` for the authoritative shape. Methods
+  (`ListDevices`, `SnapshotJson`, `Diagnose`), properties (`Version`,
+  `DeviceCount`), and signals (`DeviceAdded`, `DeviceRemoved`,
+  `CapabilityDegraded`, `CapabilityRestored`) keep their names; only
+  the interface name and tuple shapes change. USBee is a pure D-Bus
+  client — it never reads `/sys` directly.
 - **Upstream inspiration**: The macOS menu-bar app
   [WhatCable](https://github.com/darrylmorley/whatcable). USBee copies
   what's possible; improvements are welcome if they align with the
@@ -169,4 +222,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-13 — milestone v1.1 (UI Rework) started after v1.0 shipped*
+*Last updated: 2026-05-14 — milestone v2.0 (Devices2 wire-shape migration) started after v1.1 shipped*
