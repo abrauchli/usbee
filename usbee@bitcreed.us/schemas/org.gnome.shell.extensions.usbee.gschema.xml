@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="usbee@bitcreed.us">
-  <schema id="us.bitcreed.usbee" path="/us/bitcreed/usbee/">
+  <schema id="org.gnome.shell.extensions.usbee" path="/org/gnome/shell/extensions/usbee/">
 
     <key name="port-mutes" type="as">
       <default>[]</default>

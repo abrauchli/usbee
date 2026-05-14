@@ -43,7 +43,7 @@ const SUPPRESSION_WINDOW_US = 2_500_000;
 
 export class Notifier {
     constructor(settings, registry, extension) {
-        // Gio.Settings bound to us.bitcreed.usbee — extension.getSettings().
+        // Gio.Settings bound to org.gnome.shell.extensions.usbee — extension.getSettings().
         this._settings = settings;
         // SignalRegistry — stored for symmetry with DBusClient. The
         // Notifier registers nothing on it today; per-Notification and
