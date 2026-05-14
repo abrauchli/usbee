@@ -23,7 +23,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {buildEmptyStateItem, buildDaemonOutOfDateItem} from './empty-state.js';
 import {hasIssue} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
-import {labelForKey} from './label-table.js';
+import {formatValueForKey, labelForKey} from './label-table.js';
 
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
@@ -204,7 +204,7 @@ function buildDeviceRow(device) {
     // render the raw key string (WIRE-04 forward-compat, label-table.js).
     for (const [key, value] of (device.properties || [])) {
         detailBox.add_child(buildPropertyRow(
-            labelForKey(key), value, device.category));
+            labelForKey(key), formatValueForKey(key, value), device.category));
     }
 
     row.menu.addMenuItem(detailItem);

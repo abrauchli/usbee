@@ -67,3 +67,28 @@ export function labelForKey(key) {
         _labelTable = buildLabelTable();
     return _labelTable.get(key) ?? key;
 }
+
+// Some daemon-emitted machine keys carry numeric values whose unit is
+// implicit in the key name (e.g. usb_power_ma → milliamps). USBee owns
+// user-facing presentation (CONTEXT D-2.0-04) — append the unit at the
+// renderer so the daemon does not encode it in the value string. Keys
+// absent from this table render verbatim (forward-compat fallthrough).
+const UNIT_BY_KEY = new Map([
+    ['usb_power_ma', 'mA'],
+]);
+
+/**
+ * Format a property value with its key-implied unit, if any. Empty
+ * values pass through unchanged so the row renders nothing rather than
+ * a dangling unit (e.g. "mA" alone).
+ *
+ * @param {string} key    The machine key from `properties: a(ss)`.
+ * @param {string} value  The raw value string from the daemon.
+ * @returns {string}      Value with unit suffix where applicable.
+ */
+export function formatValueForKey(key, value) {
+    const unit = UNIT_BY_KEY.get(key);
+    if (!unit || value === '' || value === null || value === undefined)
+        return value;
+    return `${value} ${unit}`;
+}
