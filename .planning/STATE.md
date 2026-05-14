@@ -63,7 +63,7 @@ Last activity: 2026-05-14 — Plan-checker PASS after B-1 (atomic-commit) + B-2 
 
 ### Open Questions (v2.0 — surface during Plan 04-01)
 
-- `MIN_USBEEHIVE_VERSION` constant value. usbeehive Cargo.toml currently reads `0.5.1` (unchanged from prior release; Devices2 commit landed on top without a version bump); CHANGELOG section is `[Unreleased]`. Assumption pending confirmation: usbeehive will be released as `0.6.0` to carry Devices2.
+- ✅ **CONFIRMED 2026-05-14:** `MIN_USBEEHIVE_VERSION = "0.6.0"`. usbeehive cut release 0.6.0 (Cargo.toml `0.6.0`, release commit `1258de4` "Release 0.6.0 — Devices2 wire (breaking)") — no remaining ambiguity for the version pin.
 - `primary_driver == ""` UI treatment: badge on the device row vs. note in the detail panel vs. ignore for v2.0. Decided during Plan 04-01.
 - `device_subclass` rendering: append to row title (`"Storage · SSD"`), surface only in the detail panel, or ignore for v2.0 (subclass-aware icons explicitly out per CHANGELOG). Decided during Plan 04-01.
 - Adwaita symbolic icon picks for the four daemon `device_class` variants without an obvious fit: `SmartcardReader`, `Bluetooth`, `Serial`, `VideoCapture`. Decided during Plan 04-01 icon audit.
@@ -76,7 +76,7 @@ Last activity: 2026-05-14 — Plan-checker PASS after B-1 (atomic-commit) + B-2 
 
 ()
 
-- Pre-Devices2 orphan `.planning/phases/01-tile-popover-hotplug-daemon-missing-state-v0-1/01-RESEARCH.md` (1386 lines, untracked) was wiped by `gsd-sdk query phases.clear` at milestone switch (2026-05-14). Never committed; not recoverable from git. Low-stakes loss — Phase 01 closed; historical-only value.
+- Pre-Devices2 orphan `.planning/phases/01-tile-popover-hotplug-daemon-missing-state-v0-1/01-RESEARCH.md` (1386 lines, untracked) was wiped by `gsd-sdk query phases.clear` at milestone switch (2026-05-14). Never committed; not in git, not on disk anywhere on the host, no SDK archive. Genuinely unrecoverable. Acknowledged 2026-05-14 — historical-only value, Phase 01 closed, not blocking anything.
 
 ### Risks Being Carried
 
