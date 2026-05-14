@@ -178,6 +178,14 @@ function buildDeviceRow(device) {
         detailBox.add_child(driverRow);
     }
 
+    // DISP-05 / UX-2: detail-panel-only treatment for the daemon's advisory
+    // subclass hint. Empty subclass strings (default) render nothing; the
+    // row title is intentionally unchanged (UX-2 rejects "append to title").
+    if (device.device_subclass) {
+        detailBox.add_child(buildPropertyRow(
+            _('Subclass'), device.device_subclass, device.category));
+    }
+
     // One property row per machine-key pair from the Devices2 properties bag
     // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
     // deliberate order and labelForKey() is a pure resolver. Unknown keys
