@@ -6,10 +6,10 @@
 // CONTEXT D-2.0-04). This module is staged by Plan 04-01 and consumed by
 // Plan 04-02 Task 9 (popover.js::buildDeviceRow detail-panel rendering).
 //
-// Why a table rather than `keyForBullet()`-style regex: Devices2 emits
-// stable machine keys (`serial`, `mount`, `drivers`, …) that USBee maps
-// 1:1 to translated labels. The v1 regex layer for parsing prose bullets
-// is deleted in Plan 04-02 — this table replaces it (DISP-01).
+// Why a table rather than the v1 regex-driven label-inference helper:
+// Devices2 emits stable machine keys (`serial`, `mount`, `drivers`, …)
+// that USBee maps 1:1 to translated labels. The v1 regex layer for parsing
+// prose bullets is deleted in Plan 04-02 — this table replaces it (DISP-01).
 //
 // Forward-compat contract (WIRE-04): unknown keys MUST NOT throw and
 // MUST NOT log an error — they fall through to the raw key string so a
