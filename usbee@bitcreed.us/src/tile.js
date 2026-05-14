@@ -9,6 +9,7 @@
 // Per D-16: this file does NOT mount the indicator on the panel —
 // extension.js owns the addExternal* / destroy lifecycle.
 
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
@@ -23,10 +24,17 @@ const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
     constructor(store, registry, extension, dbusClient) {
         const initial = store.tileText;
+        // USB trident logo. Adwaita does not ship a 'usb-symbolic' icon-name,
+        // so the SVG is bundled in the extension and loaded by absolute path
+        // via Gio.FileIcon. Using gicon (not iconName) bypasses the system
+        // icon-theme lookup entirely, so the rendering is independent of the
+        // user's GTK icon theme.
+        const usbGicon = Gio.icon_new_for_string(
+            `${extension.path}/icons/usb-symbolic.svg`);
         super({
             title:    initial.title,
             subtitle: initial.subtitle,
-            iconName: 'ac-adapter-symbolic',
+            gicon:    usbGicon,
             toggleMode: false,  // UI-SPEC #interactions — informational tile (no daemon toggle)
         });
         this._store = store;
