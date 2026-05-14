@@ -24,6 +24,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {buildEmptyStateItem} from './empty-state.js';
 import {hasIssue} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
+import {labelForKey} from './label-table.js';
 
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
@@ -123,35 +124,6 @@ export function populateEmptyState(section) {
     section.addMenuItem(buildEmptyStateItem());
 }
 
-// ---------------------------------------------------------------------------
-// Key-derivation heuristic for the Adwaita detail panel left-column labels.
-// Cheap substring + regex scan; no parsing guarantees. If no keyword matches,
-// falls through to the generic 'Detail' label.
-// ---------------------------------------------------------------------------
-
-/**
- * Derive a translated left-column property label for a daemon bullet string.
- * @param {string} bullet  A single bullets[] entry from the device.
- * @param {string} category  Device category (e.g. 'TypeCPort').
- * @returns {string}  Gettext-marked label string.
- */
-function keyForBullet(bullet, category) {
-    if (/\d+\s*W\b/i.test(bullet))                         return _('Power');
-    if (/Gb\/s|Mb\/s|Kb\/s/i.test(bullet))                 return _('Speed');
-    if (/USB\s+\d/i.test(bullet))                          return _('Version');
-    // WR-04: anchor on category so non-TypeCPort bullets containing
-    // "open source", "source cable", or product names like "SinkMaster"
-    // do NOT get the USB-PD 'Direction' label. Word boundaries also tighten
-    // the match against substrings inside unrelated words.
-    if (/\b(sink|source)\b/i.test(bullet) && category === 'TypeCPort')
-                                                            return _('Direction');
-    if (/host|device/i.test(bullet) && category === 'TypeCPort')
-                                                            return _('Role');
-    if (/cable|limited|degraded|slower|swap|expected|unable|cannot|mismatch/i.test(bullet))
-                                                            return _('Diagnostic');
-    return _('Detail');
-}
-
 /**
  * Build one accordion row for a device.
  *
@@ -196,10 +168,13 @@ function buildDeviceRow(device) {
             _('Summary'), device.subtitle, device.category));
     }
 
-    // One property row per bullet string.
-    for (const bullet of (device.bullets || [])) {
+    // One property row per machine-key pair from the Devices2 properties bag
+    // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
+    // deliberate order and labelForKey() is a pure resolver. Unknown keys
+    // render the raw key string (WIRE-04 forward-compat, label-table.js).
+    for (const [key, value] of (device.properties || [])) {
         detailBox.add_child(buildPropertyRow(
-            keyForBullet(bullet, device.category), bullet, device.category));
+            labelForKey(key), value, device.category));
     }
 
     row.menu.addMenuItem(detailItem);
