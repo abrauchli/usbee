@@ -168,6 +168,16 @@ function buildDeviceRow(device) {
             _('Summary'), device.subtitle, device.category));
     }
 
+    // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
+    // Empty Type-C ports already say nothing about drivers — suppress the
+    // row in that case (`status !== 'Empty'` gate).
+    if (device.primary_driver === '' && device.status !== 'Empty') {
+        const driverRow = buildPropertyRow(
+            _('Driver'), _('not bound'), device.category);
+        driverRow.add_style_class_name('usbee-detail-driver-missing');
+        detailBox.add_child(driverRow);
+    }
+
     // One property row per machine-key pair from the Devices2 properties bag
     // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
     // deliberate order and labelForKey() is a pure resolver. Unknown keys

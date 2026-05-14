@@ -52,3 +52,8 @@
     font-family: monospace;
     font-size: 0.95em;
 }
+
+/* DISP-04 / UX-1: italic flag for driver-less devices. */
+.usbee-detail-driver-missing .usbee-detail-value {
+    font-style: italic;
+}
