@@ -6,6 +6,76 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.0.0] — 2026-05-14
+
+Requires usbeehive >= 0.6.0 (the value declared in `src/dbus-client.js` as
+`MIN_USBEEHIVE_VERSION`). USBee refuses to consume any older daemon, surfacing
+a dedicated "Daemon out of date" empty state instead. `MIN_USBEEHIVE_VERSION`
+is declared in `src/dbus-client.js` and is the single source of truth for
+the gate.
+
+### Changed (breaking — D-Bus interface)
+
+- Migrated to `org.usbeehive.Devices2` (was `Devices1`). 19-field structured
+  `DeviceEntry` replaces the v1 prose-bullets shape. `Diagnose(port)` return
+  type is now `(bsssb)` with a leading present bool.
+- Daemon-version gate: USBee reads the `Version` D-Bus property on proxy-ready
+  and refuses daemons older than `MIN_USBEEHIVE_VERSION` (currently `0.6.0`).
+
+### Added
+
+- `src/label-table.js` — machine-key to gettext display-label resolver covering
+  `serial`, `mount`, `drivers`, `data_role`, `power_mode`, `pd_revision`,
+  `plug_orientation`, `pd_contract`, `cable_speed`, `cable_current`,
+  `cable_max_power`, `cable_type`, `cable_vendor`, `charger_max`,
+  `usb_power_ma`. Unknown keys render the raw key (forward-compatible per
+  D-2.0-06).
+- `device_class` enum lookup table for symbolic icons (19 daemon variants).
+  Daemon-supplied `icon` field is preferred when it passes the
+  `SYMBOLIC_ICON_RE` guard.
+- `Status::Sourcing` surfaced in the tile subtitle as "Powering: N W out".
+  Sourcing entries do not trigger the issue-first sort.
+- `primary_driver == ""` flag: an italic "Driver: not bound" row appears at
+  the top of the detail panel for devices the daemon could not bind a driver to.
+- `device_subclass` detail-panel row when the daemon emits a non-empty subclass
+  string.
+- New empty-state variant: "Daemon out of date — please update usbeehive" with
+  copy distinct from the existing "Daemon not running".
+- Forward-compatibility regression test (`src/forward-compat.test.js`)
+  asserting unknown enum values fall through to safe defaults.
+
+### Fixed (GNOME 46 compatibility)
+
+- `St.BoxLayout` rows use the boolean `vertical: true/false` property (not the
+  `orientation: Clutter.Orientation.*` enum, which is unavailable on GNOME 46).
+- `_setOpenedSubMenu` shimmed on both `this.menu` and `this._rowsSection` to
+  satisfy the GNOME 46 `QuickMenuToggle` subclass contract.
+
+### Removed (regex layer)
+
+Deleted from `src/device-store.js`:
+- `WATT_RE`, `DIRECTION_RE`, `USB_VERSION_RE` (incl. WR-03 lookahead patch),
+  `SPEED_RE`
+- `parseWatts`, `parseDirection`, `parseLinkSpeed`, `DIAG_PHRASES`
+
+Deleted from `src/popover.js`:
+- `keyForBullet` (regex/keyword label-inference helper)
+
+Deleted from `src/device-icon.js`:
+- `KEYWORD_MAP` (driver/headline keyword table) and the headline-scan
+  resolution path
+
+Preserved (intentional):
+- `SYMBOLIC_ICON_RE` in `src/device-icon.js` (security mitigation T-03-01)
+- `formatWatts` in `src/device-store.js` (UI formatting helper)
+
+### Notes
+
+- First EGO submission. v1.0, v1.1, and v1.2 were built but never uploaded
+  to extensions.gnome.org per CONTEXT D-2.0-08.
+- `shell-version` array unchanged at `["46", "47", "48", "49", "50"]`; no
+  GNOME Shell API surface change.
+
 ## [1.2.0] — 2026-05-13
 
 Initial public release.
@@ -30,4 +100,5 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.0.0]: https://github.com/abrauchli/usbee/releases/tag/v2.0.0
 [1.2.0]: https://github.com/abrauchli/usbee/releases/tag/v1.2.0
