@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: USBee 2.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-14 18:00+0000\n"
+"POT-Creation-Date: 2026-05-14 11:20-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,76 +16,6 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-#: usbee@bitcreed.us/prefs.js:38 usbee@bitcreed.us/prefs.js:116
-msgid "General"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:51
-msgid "Notifications"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:52
-msgid "Manage which USB-C ports may raise degradation warnings"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:66
-msgid "No muted ports"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:67
-msgid "Mute a port from a notification to see it here"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:81
-#, javascript-format
-msgid "USB-C Port %d"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:82
-msgid "Notifications muted"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:86
-msgid "Unmute this port"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:120
-msgid "Hide empty USB-C ports"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:121
-msgid "Don't list ports with nothing attached"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:130
-msgid "About"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:134 usbee@bitcreed.us/src/popover.js:180
-msgid "Version"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:140
-msgid "usbeehive daemon"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:141
-msgid "Checking…"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:153
-#, javascript-format
-msgid "Running — v%s"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:154
-msgid "Running"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:157
-msgid "Start usbeehived daemon"
-msgstr ""
 
 #: usbee@bitcreed.us/src/device-store.js:73
 msgid "—"
@@ -107,7 +37,9 @@ msgstr ""
 msgid "charging"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:166 usbee@bitcreed.us/src/device-store.js:174 usbee@bitcreed.us/src/device-store.js:225
+#: usbee@bitcreed.us/src/device-store.js:166
+#: usbee@bitcreed.us/src/device-store.js:174
+#: usbee@bitcreed.us/src/device-store.js:225
 msgid "USB"
 msgstr ""
 
@@ -141,7 +73,8 @@ msgid "usbeehive daemon out of date"
 msgstr ""
 
 #: usbee@bitcreed.us/src/empty-state.js:92
-msgid "Update usbeehive, then restart it. This list will populate automatically:"
+msgid ""
+"Update usbeehive, then restart it. This list will populate automatically:"
 msgstr ""
 
 #: usbee@bitcreed.us/src/label-table.js:35
@@ -204,7 +137,7 @@ msgstr ""
 msgid "USB bus power"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:108 usbee@bitcreed.us/src/tile.js:26
+#: usbee@bitcreed.us/src/notifier.js:108
 msgid "USBee"
 msgstr ""
 
@@ -247,4 +180,74 @@ msgstr ""
 
 #: usbee@bitcreed.us/src/tile.js:147
 msgid "Preferences…"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:38 usbee@bitcreed.us/prefs.js:116
+msgid "General"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:51
+msgid "Notifications"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:52
+msgid "Manage which USB-C ports may raise degradation warnings"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:66
+msgid "No muted ports"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:67
+msgid "Mute a port from a notification to see it here"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:81
+#, javascript-format
+msgid "USB-C Port %d"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:82
+msgid "Notifications muted"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:86
+msgid "Unmute this port"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:120
+msgid "Hide empty USB-C ports"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:121
+msgid "Don't list ports with nothing attached"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:130
+msgid "About"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:134
+msgid "Version"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:140
+msgid "usbeehive daemon"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:141
+msgid "Checking…"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:153
+#, javascript-format
+msgid "Running — v%s"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:154
+msgid "Running"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:157
+msgid "Start usbeehived daemon"
 msgstr ""
