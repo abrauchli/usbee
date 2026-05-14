@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: USBee 1.1.0\n"
+"Project-Id-Version: USBee 2.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-12 22:31-0700\n"
+"POT-Creation-Date: 2026-05-14 18:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -62,7 +62,7 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:134 usbee@bitcreed.us/src/popover.js:140
+#: usbee@bitcreed.us/prefs.js:134 usbee@bitcreed.us/src/popover.js:180
 msgid "Version"
 msgstr ""
 
@@ -87,43 +87,44 @@ msgstr ""
 msgid "Start usbeehived daemon"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:115
+#: usbee@bitcreed.us/src/device-store.js:73
 msgid "—"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:147
-#, javascript-format
-msgid "Charging: %s in"
+#: usbee@bitcreed.us/src/device-store.js:131
+msgid "Charging"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:149
-#, javascript-format
-msgid "Powering: %s out"
+#: usbee@bitcreed.us/src/device-store.js:133
+msgid "Powering"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:152
-#, javascript-format
-msgid "USB-C: %s"
+#: usbee@bitcreed.us/src/device-store.js:136
+msgid "USB-C"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:153
-msgid "USB-C: charging"
+#: usbee@bitcreed.us/src/device-store.js:137
+msgid "charging"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:172
+#: usbee@bitcreed.us/src/device-store.js:166 usbee@bitcreed.us/src/device-store.js:174 usbee@bitcreed.us/src/device-store.js:225
+msgid "USB"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:168
 msgid "1 device"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:173
+#: usbee@bitcreed.us/src/device-store.js:169
 #, javascript-format
 msgid "%d devices"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:177
+#: usbee@bitcreed.us/src/device-store.js:174
 msgid "Nothing connected"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:243
+#: usbee@bitcreed.us/src/device-store.js:225
 msgid "Daemon not running"
 msgstr ""
 
@@ -133,6 +134,74 @@ msgstr ""
 
 #: usbee@bitcreed.us/src/empty-state.js:37
 msgid "Run this command, then this list will populate automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:83
+msgid "usbeehive daemon out of date"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:92
+msgid "Update usbeehive, then restart it. This list will populate automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:35
+msgid "Serial"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:36
+msgid "Mount"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:37
+msgid "Drivers"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:38
+msgid "Data role"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:39
+msgid "Power mode"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:40
+msgid "PD revision"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:41
+msgid "Plug orientation"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:42
+msgid "PD contract"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:43
+msgid "Cable speed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:44
+msgid "Cable current"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:45
+msgid "Cable max power"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:46
+msgid "Cable type"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:47
+msgid "Cable vendor"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:48
+msgid "Charger max"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:49
+msgid "USB bus power"
 msgstr ""
 
 #: usbee@bitcreed.us/src/notifier.js:108 usbee@bitcreed.us/src/tile.js:26
@@ -152,42 +221,30 @@ msgstr ""
 msgid "Open Preferences"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:76
+#: usbee@bitcreed.us/src/popover.js:77
 msgid "No USB devices attached"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:138
-msgid "Power"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:139
-msgid "Speed"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:146
-msgid "Direction"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:148
-msgid "Role"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:150
-msgid "Diagnostic"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:151
-msgid "Detail"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:195
+#: usbee@bitcreed.us/src/popover.js:180
 msgid "Summary"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:37
+#: usbee@bitcreed.us/src/popover.js:188
+msgid "Driver"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:188
+msgid "not bound"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:198
+msgid "Subclass"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:55
 msgid "USB devices"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:86
+#: usbee@bitcreed.us/src/tile.js:147
 msgid "Preferences…"
 msgstr ""
