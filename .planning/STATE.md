@@ -71,6 +71,7 @@ Last activity: 2026-05-14 -- Completed quick task 260514-mq0: fix EGO shexli lin
 ### Todos
 
 - `.planning/todos/pending/2026-05-14-migrate-to-usbeehive-devices2-wire-shape.md` — full v2.0 phase context (locked wire spec + hard "no compat" rule). Tagged for Phase 4 in step 10.5.
+- `.planning/todos/pending/2026-05-15-show-warning-badges-and-in-panel-charging-diagnostics-in-pop.md` — UI: warning badge on popover rows with `is_warning`, show `charging_diag.summary/detail` in expanded detail panel; daemon: fix dead `ChargerLimit` enum variant.
 
 ### Blockers
 
