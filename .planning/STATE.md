@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: complete
-last_updated: "2026-05-26T12:30:00.000Z"
-last_activity: 2026-05-26 - Quick task 260526-dmj: Devices3 wire migration + cable trust row + transport pill strip + structured Charger PDOs block
+last_updated: "2026-05-26T20:15:00.000Z"
+last_activity: 2026-05-26 - Quick task 260526-i7q: daemon-state hints (install/update) + shorter notify-changes ComboRow labels
 progress:
   total_phases: 1
   completed_phases: 1
@@ -30,7 +30,7 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
 Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-05-26 -- Quick task 260526-c6p: device-change notifications + show-technical-details toggle
+Last activity: 2026-05-26 -- Quick task 260526-i7q: daemon-state hints (install/update) + shorter notify-changes ComboRow labels
 
 ## Performance Metrics
 
@@ -148,6 +148,7 @@ Steps:
 | 260526-warning-badges | Warning badge (amber border) on is_warning popover rows + charging_diag.summary/detail in expanded detail panel | 2026-05-26 | 1306c09 | [260526-warning-badges-charging-diag](./quick/260526-warning-badges-charging-diag/) |
 | 260526-c6p | Device-change notifications (DeviceAdded/Removed toasts, scope enum all/power/off) + Show technical details toggle gating 8 advanced property rows | 2026-05-26 | 286c85f | [260526-c6p-connect-disconnect-notifications-tech-de](./quick/260526-c6p-connect-disconnect-notifications-tech-de/) |
 | 260526-dmj | Devices3 wire migration (MIN_USBEEHIVE 0.7.0, pdo_list/active_pdo_index) + cable trust row + transport pill strip + structured Charger PDOs block | 2026-05-26 | ed7acd6, c130b50, 6cad52f | [260526-dmj-devices3-wire-migration-pdo-list-trust-s](./quick/260526-dmj-devices3-wire-migration-pdo-list-trust-s/) |
+| 260526-i7q | Three-way daemon-state hints (not-installed / not-running / out-of-date) with `usbeehived --install-service` and `cargo install usbeehive --features=dbus` commands; shorter notify-changes ComboRow item labels | 2026-05-26 | 4b8c7bb, dec4dbb | [260526-i7q-daemon-status-hints-shorter-notify-chang](./quick/260526-i7q-daemon-status-hints-shorter-notify-chang/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
