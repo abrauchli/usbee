@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: executing
 last_updated: "2026-05-14T09:10:00.000Z"
-last_activity: 2026-05-14 - Popover header icon + dynamic device count in header title
+last_activity: 2026-05-26 - Warning badges on is_warning rows + charging diag in detail panel
 progress:
   total_phases: 1
   completed_phases: 0
@@ -71,7 +71,7 @@ Last activity: 2026-05-14 -- Completed quick task 260514-mq0: fix EGO shexli lin
 ### Todos
 
 - `.planning/todos/pending/2026-05-14-migrate-to-usbeehive-devices2-wire-shape.md` — full v2.0 phase context (locked wire spec + hard "no compat" rule). Tagged for Phase 4 in step 10.5.
-- `.planning/todos/pending/2026-05-15-show-warning-badges-and-in-panel-charging-diagnostics-in-pop.md` — UI: warning badge on popover rows with `is_warning`, show `charging_diag.summary/detail` in expanded detail panel; daemon: fix dead `ChargerLimit` enum variant.
+- ~~`.planning/todos/pending/2026-05-15-show-warning-badges-and-in-panel-charging-diagnostics-in-pop.md`~~ — **Done (2026-05-26, commit 1306c09).** Daemon-side `ChargerLimit` dead variant deferred upstream.
 
 ### Blockers
 
@@ -104,7 +104,17 @@ Last activity: 2026-05-14 -- Completed quick task 260514-mq0: fix EGO shexli lin
 
 ### Next Action
 
-Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the captured-todo decisions need to be revisited live). All decisions needed for planning are already locked in the seed todo; expect the planner to surface the daemon-version constant and the four §Open-Questions UX picks as Plan 04-01 deliverables rather than mid-plan blockers.
+**Release v2.1.0 → first EGO submission.**
+
+v2.0.0 was tagged and pushed to GitHub but never submitted to EGO. The warning badge feature (commit 1306c09) was added after the tag, so the first EGO submission will be v2.1.0.
+
+Steps:
+1. Bump `metadata.json` `version-name` → `"2.1.0"`, `version` → `3`.
+2. Write `## [2.1.0]` CHANGELOG entry (warning badge + charging diag rows).
+3. Regenerate `.pot` (already done in 1306c09 — re-run after any further string churn).
+4. `gnome-extensions pack` + smoke-test + create annotated tag `v2.1.0`.
+5. Push tag → release.yml builds zip + GitHub Release.
+6. Upload zip to https://extensions.gnome.org/upload/ — first ever EGO submission.
 
 **Pending — post-EGO-upload only (do NOT block submission on this):**
 
@@ -135,6 +145,7 @@ Run `/gsd-plan-phase 04` (or `/gsd-discuss-phase 04` first if any of the capture
 | fast | Storage→media-removable-symbolic; daemon version format; Show USB Hubs pref | 2026-05-14 | c5ce0b1 | — |
 | 20260514-screenshot-and-release-prep | Add screenshot to README, move v2.0.0 tag to HEAD, push | 2026-05-14 | 8ea3c50 | [20260514-screenshot-and-release-prep](./quick/20260514-screenshot-and-release-prep/) |
 | 260514-mq0 | Fix 3 EGO shexli lint errors: rename GSettings schema to org.gnome.shell.extensions namespace, move test file out of extension dir | 2026-05-14 | 3172694 | [260514-mq0-fix-ego-shexli-lint](./quick/260514-mq0-fix-ego-shexli-lint/) |
+| 260526-warning-badges | Warning badge (amber border) on is_warning popover rows + charging_diag.summary/detail in expanded detail panel | 2026-05-26 | 1306c09 | [260526-warning-badges-charging-diag](./quick/260526-warning-badges-charging-diag/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
