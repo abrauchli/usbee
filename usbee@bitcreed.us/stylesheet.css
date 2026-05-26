@@ -77,3 +77,17 @@
 .usbee-detail-warning {
     color: #e5a50a;
 }
+
+/* Transport pill strip (quick task 260526-dmj §C). Sits as the first child
+ * of the expanded device menu, above the detail panel. Left padding matches
+ * .usbee-detail-panel so pills align under the row icon. */
+.usbee-pill-strip {
+    spacing: 6px;
+    padding: 6px 12px 0 32px;
+}
+
+.usbee-pill {
+    border-radius: 999px;
+    padding: 2px 10px;
+    background-color: rgba(255, 255, 255, 0.10);
+}

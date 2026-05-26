@@ -41,6 +41,22 @@ const GATED_KEYS = new Set([
     'drivers',
 ]);
 
+// Property-bag keys consumed by dedicated UI surfaces (transport pill strip,
+// cable-trust row — quick task 260526-dmj §B/§C). Pulled out of the generic
+// property-bag loop UNCONDITIONALLY so they never double-render as bare
+// rows alongside their dedicated handler. Forward-compat (CONTEXT §E): the
+// generic loop still renders unknown keys — this set is a small explicit
+// deny-list, not an allow-list.
+const HANDLED_BY_DEDICATED_UI = new Set([
+    'cable.trust.zero_vid',
+    'cable.trust.vid_unknown',
+    'cable.trust.reserved_bits',
+    'transport.usb2',
+    'transport.usb3',
+    'transport.dp_altmode',
+    'transport.tb',
+]);
+
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
  *
@@ -181,6 +197,11 @@ export function populateOutOfDateState(section) {
 function buildDeviceRow(device, showTech) {
     const headline = device.headline || device.id || '';
 
+    // Property-bag lookup map — built once per row build. Daemon values
+    // are STRINGS on the wire (a(ss)), so every boolean-flag check below
+    // compares to the literal 'true', not a JS boolean.
+    const props = new Map(device.properties || []);
+
     // Second arg `true` enables the built-in .icon slot on the row.
     const row = new PopupMenu.PopupSubMenuMenuItem(headline, true);
     const devIcon = iconForDevice(device);
@@ -191,6 +212,15 @@ function buildDeviceRow(device, showTech) {
     row.add_style_class_name('usbee-device-row');
     if (device.charging_diag?.is_warning)
         row.add_style_class_name('usbee-row-warning');
+
+    // --- Transport pill strip (CONTEXT 260526-dmj §C) ---
+    // First child of the expanded menu, ABOVE the detailItem. Renders only
+    // when the device exposes an "interesting" non-baseline transport: a
+    // displayed alt-mode (DisplayPort), Thunderbolt, or a Type-C port that
+    // negotiated USB 2 only (worth flagging as a slow-port surprise).
+    const pillStripItem = buildTransportPillStrip(device, props);
+    if (pillStripItem)
+        row.menu.addMenuItem(pillStripItem);
 
     // --- Detail panel (UI-05) ---
     // One non-reactive PopupBaseMenuItem wrapping a vertical St.BoxLayout.
@@ -233,6 +263,27 @@ function buildDeviceRow(device, showTech) {
         }
     }
 
+    // Cable trust row (CONTEXT 260526-dmj §B). Always visible when any
+    // cable.trust.* flag is set — independent of show-technical-details
+    // because cable safety is glance-priority. Reasons are joined in a
+    // fixed order (zero VID → unknown VID → reserved bits) so the row's
+    // contents are deterministic across renders.
+    const trustReasons = [];
+    if (props.get('cable.trust.zero_vid') === 'true')
+        trustReasons.push(_('vendor ID is zero'));
+    if (props.get('cable.trust.vid_unknown') === 'true')
+        trustReasons.push(_('vendor ID not in USB-IF list'));
+    if (props.get('cable.trust.reserved_bits') === 'true')
+        trustReasons.push(_('reserved bits set in Cable VDO'));
+    if (trustReasons.length > 0) {
+        const trustValue = _('This cable looks unusual: %s')
+            .format(trustReasons.join(_(', ')));
+        const trustRow = buildPropertyRow(
+            _('Cable trust'), trustValue, device.category);
+        trustRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+        detailBox.add_child(trustRow);
+    }
+
     // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
     // Empty Type-C ports already say nothing about drivers — suppress the
     // row in that case (`status !== 'Empty'` gate).
@@ -259,7 +310,12 @@ function buildDeviceRow(device, showTech) {
     // Quick task 260526-c6p: when showTech is false, skip the explicit-deny
     // GATED_KEYS set (CONTEXT 260526-c6p D-2). Unknown keys are NEVER gated
     // — forward-compat by design (deny-list, not allow-list).
+    //
+    // Quick task 260526-dmj: HANDLED_BY_DEDICATED_UI keys never render as
+    // bare rows — they are owned by the trust row and the pill strip above.
+    // Filtered unconditionally, regardless of show-technical-details.
     for (const [key, value] of (device.properties || [])) {
+        if (HANDLED_BY_DEDICATED_UI.has(key)) continue;
         if (!showTech && GATED_KEYS.has(key)) continue;
         detailBox.add_child(buildPropertyRow(
             labelForKey(key), formatValueForKey(key, value), device.category));
@@ -267,6 +323,56 @@ function buildDeviceRow(device, showTech) {
 
     row.menu.addMenuItem(detailItem);
     return row;
+}
+
+/**
+ * Build the transport pill strip menu item (CONTEXT 260526-dmj §C).
+ *
+ * "Interesting" predicate: a DisplayPort alt-mode or Thunderbolt flag fires
+ * unconditionally; the USB 2 flag only fires for Type-C ports (a Type-C
+ * port that only negotiated USB 2 is the surprise; USB 2 on a USB-A device
+ * is the expected baseline and would be noise).
+ *
+ * Pills render in a fixed order — USB → DisplayPort → Thunderbolt — so
+ * grouping reads predictably across devices.
+ *
+ * @param {object} device  Unpacked DeviceEntry.
+ * @param {Map<string,string>} props  device.properties as a Map.
+ * @returns {PopupMenu.PopupBaseMenuItem|null}  null when no pill should render.
+ */
+function buildTransportPillStrip(device, props) {
+    const usb2 = props.get('transport.usb2') === 'true';
+    const usb3 = props.get('transport.usb3') === 'true';
+    const dp   = props.get('transport.dp_altmode') === 'true';
+    const tb   = props.get('transport.tb') === 'true';
+
+    const interesting = dp || tb || (usb2 && device.category === 'TypeCPort');
+    if (!interesting) return null;
+
+    const pills = [];
+    if (usb2) pills.push(_('USB 2'));
+    if (usb3) pills.push(_('USB 3'));
+    if (dp)   pills.push(_('DisplayPort'));
+    if (tb)   pills.push(_('Thunderbolt'));
+    if (pills.length === 0) return null;
+
+    const item = new PopupMenu.PopupBaseMenuItem({
+        reactive:  false,
+        can_focus: false,
+    });
+    const strip = new St.BoxLayout({
+        vertical:    false,
+        x_expand:    true,
+        style_class: 'usbee-pill-strip',
+    });
+    for (const label of pills) {
+        strip.add_child(new St.Label({
+            text:        label,
+            style_class: 'usbee-pill',
+        }));
+    }
+    item.add_child(strip);
+    return item;
 }
 
 /**
