@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Devices2 wire-shape migration
-status: executing
+status: complete
 last_updated: "2026-05-14T09:10:00.000Z"
 last_activity: 2026-05-26 - Warning badges on is_warning rows + charging diag in detail panel
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # State: USBee
@@ -27,10 +27,10 @@ progress:
 
 ## Current Position
 
-Phase: 04 (devices2-wire-shape-migration-v2-0) — EXECUTING
-Plan: 3 of 3 (next: 04-03 release coordination)
-Status: Wave 2 complete (04-02 Task 14 approved); paused before Wave 3
-Last activity: 2026-05-14 -- Completed quick task 260514-mq0: fix EGO shexli lint (schema rename + test file move)
+Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
+Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
+Status: v2.0.0 tagged + on GitHub; warning badge added (1306c09); ready for v2.1.0 release + first EGO submission
+Last activity: 2026-05-26 -- Warning badges on is_warning rows + charging diag in detail panel
 
 ## Performance Metrics
 
