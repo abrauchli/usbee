@@ -12,7 +12,7 @@ import Adw from 'gi://Adw?version=1';
 import {ExtensionPreferences, gettext as _}
     from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-// Daemon bus coordinates — must match src/dbus-client.js. The "1" lives
+// Daemon bus coordinates — must match src/dbus-client.js. The "3" lives
 // only on the interface name, not on bus name or object path.
 const USBEEHIVE_BUS_NAME    = 'org.usbeehive.Devices';
 const USBEEHIVE_OBJECT_PATH = '/org/usbeehive/Devices';
@@ -21,7 +21,7 @@ const USBEEHIVE_OBJECT_PATH = '/org/usbeehive/Devices';
 // declaring it lets makeProxyWrapper synthesise the cached-property
 // accessor (no separate Get call needed at runtime).
 const USBEEHIVE_IFACE_XML = `<node>
-  <interface name="org.usbeehive.Devices2">
+  <interface name="org.usbeehive.Devices3">
     <property name="Version" type="s" access="read"/>
   </interface>
 </node>`;

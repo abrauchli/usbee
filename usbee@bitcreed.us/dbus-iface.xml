@@ -1,9 +1,9 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="org.usbeehive.Devices2">
+  <interface name="org.usbeehive.Devices3">
     <method name="ListDevices">
-      <arg type="a(ssssssssssqqsa(ss)ius(uus)(bsssb))" direction="out" name="entries"/>
+      <arg type="a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)" direction="out" name="entries"/>
     </method>
     <method name="ListPorts">
       <arg type="ai" direction="out" name="ports"/>

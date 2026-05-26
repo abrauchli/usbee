@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/label-table.js
 //
-// Machine-key → gettext-wrapped display-label resolver for the Devices2
+// Machine-key → gettext-wrapped display-label resolver for the daemon's
 // property bag (`properties: a(ss)` of `(machine_key, value)` pairs per
 // CONTEXT D-2.0-04). This module is staged by Plan 04-01 and consumed by
 // Plan 04-02 Task 9 (popover.js::buildDeviceRow detail-panel rendering).
 //
 // Why a table rather than the v1 regex-driven label-inference helper:
-// Devices2 emits stable machine keys (`serial`, `mount`, `drivers`, …)
+// the daemon emits stable machine keys (`serial`, `mount`, `drivers`, …)
 // that USBee maps 1:1 to translated labels. The v1 regex layer for parsing
 // prose bullets is deleted in Plan 04-02 — this table replaces it (DISP-01).
 //
@@ -51,7 +51,7 @@ function buildLabelTable() {
 }
 
 /**
- * Resolve a Devices2 property machine-key to a translated display label.
+ * Resolve a property-bag machine-key to a translated display label.
  *
  * Unknown keys fall through to the raw key string — this is intentional
  * forward-compat behaviour (CONTEXT D-2.0-04 acceptance: "unknown keys

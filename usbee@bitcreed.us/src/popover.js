@@ -251,7 +251,7 @@ function buildDeviceRow(device, showTech) {
             _('Subclass'), device.device_subclass, device.category));
     }
 
-    // One property row per machine-key pair from the Devices2 properties bag
+    // One property row per machine-key pair from the daemon's properties bag
     // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
     // deliberate order and labelForKey() is a pure resolver. Unknown keys
     // render the raw key string (WIRE-04 forward-compat, label-table.js).

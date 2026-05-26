@@ -5,28 +5,32 @@
 // D-Bus, no UI here. The DBusClient mutates this store; the USBeeToggle
 // binds its subtitle to store.subhead via 'changed'.
 //
-// As of Plan 04-02 (v2.0) this module consumes the org.usbeehive.Devices2
-// wire — a 19-field structured DeviceEntry tuple. The bullet-prose parsing
-// helpers the v1.x device-store maintained (wattage scan, direction scan,
-// link-speed scan, diagnostic-phrase scan) are deleted: every fact the
-// daemon used to encode in bullet strings is now a named field on the
-// DeviceEntry. `formatWatts` is preserved because it is pure UI formatting
-// (mW → human display) the daemon does not perform on its side.
+// As of quick task 260526-dmj (v2.0+) this module consumes the
+// org.usbeehive.Devices3 wire — a 21-field structured DeviceEntry tuple
+// (the prior 19 fields plus trailing pdo_list + active_pdo_index). The
+// bullet-prose parsing helpers the v1.x device-store maintained (wattage
+// scan, direction scan, link-speed scan, diagnostic-phrase scan) are deleted:
+// every fact the daemon used to encode in bullet strings is now a named
+// field on the DeviceEntry. `formatWatts` is preserved because it is pure
+// UI formatting (mW → human display) the daemon does not perform on its
+// side; `formatVolts` and `formatAmps` join it for the structured PDO
+// renderer (quick task 260526-dmj Task 3).
 
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-// DeviceEntry tuple from ListDevices on org.usbeehive.Devices2:
-//   a(ssssssssssqqsa(ss)ius(uus)(bsssb))
-// 19 fields in declaration order — see CONTEXT D-2.0-02 / Plan 04-02
-// <interfaces> block / ../usbeehive/src/dbus.rs:108-260.
+// DeviceEntry tuple from ListDevices on org.usbeehive.Devices3:
+//   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)
+// 21 fields in declaration order — see CONTEXT 260526-dmj §A /
+// ../usbeehive/src/dbus.rs:25-52.
 //
-// The nested (uus) and (bsssb) tuples are unpacked into named inner
-// objects so every consumer reads structured fields (WIRE-02 acceptance:
-// no downstream consumer indexes by tuple position).
+// The nested (uus), (bsssb), and per-PDO (usuuuub) tuples are unpacked
+// into named inner objects so every consumer reads structured fields
+// (WIRE-02 acceptance: no downstream consumer indexes by tuple position).
 function unpackDeviceEntry(tuple) {
     const power = tuple[17] || [0, 0, ''];
     const diag  = tuple[18] || [false, '', '', '', false];
+    const rawPdos = tuple[19] || [];
     return {
         id:              tuple[0],
         category:        tuple[1],
@@ -57,6 +61,16 @@ function unpackDeviceEntry(tuple) {
             detail:     diag[3],
             is_warning: diag[4],
         },
+        pdo_list: rawPdos.map(p => ({
+            index:          p[0],
+            kind:           p[1],
+            voltage_mv:     p[2],
+            max_voltage_mv: p[3],
+            current_ma:     p[4],
+            power_mw:       p[5],
+            is_active:      p[6],
+        })),
+        active_pdo_index: tuple[20] ?? -1,
     };
 }
 
@@ -235,8 +249,9 @@ export const DeviceStore = GObject.registerClass({
 
     /**
      * Replace the device list wholesale (D-08 full re-snapshot strategy).
-     * @param {Array} rawEntries  19-field DeviceEntry tuples from
-     *   ListDevicesRemote (signature a(ssssssssssqqsa(ss)ius(uus)(bsssb))).
+     * @param {Array} rawEntries  21-field DeviceEntry tuples from
+     *   ListDevicesRemote on org.usbeehive.Devices3 (signature
+     *   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)).
      */
     setDevices(rawEntries) {
         this._devices = (rawEntries || []).map(unpackDeviceEntry);
