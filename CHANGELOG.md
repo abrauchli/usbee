@@ -6,6 +6,35 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.2.0] — 2026-05-26
+
+Requires usbeehive >= 0.7.0 (unchanged from v2.1.0 — the new
+`transport.usb4` property is additive on the existing Devices3 wire, so
+USBee 2.2.0 runs against both 0.7.0 and 0.8.0 daemons; the USB4 pill
+only renders when the 0.8.0 daemon's thunderbolt sysfs scan emits the
+flag).
+
+### Added
+
+- `USB 4` pill in the transport pill strip when the daemon emits
+  `transport.usb4=true` (usbeehive 0.8.0+). Renders between USB 3 and
+  DisplayPort, preserving the locked
+  USB → DisplayPort → Thunderbolt pill order.
+- `transport.usb4` added to the `HANDLED_BY_DEDICATED_UI` deny-list so
+  it never double-renders as a bare property row.
+- "Interesting" predicate now fires on `transport.usb4` directly: a
+  USB4 link is glance-worthy on its own, alongside DisplayPort
+  alt-mode and Thunderbolt.
+
+### Notes
+
+- Active-PDO inference (the other usbeehive 0.8.0 change — nearest-PDO
+  matching against live UCSI voltage) needs no client work. USBee's
+  existing belt-and-braces active-PDO check (`is_active` OR `index
+  === active_pdo_index`) already picks up the daemon's improved
+  inference through the same wire fields.
+- D-Bus interface name and signature unchanged from v2.1.0.
+
 ## [2.1.0] — 2026-05-26
 
 Requires usbeehive >= 0.7.0. USBee now consumes
@@ -158,6 +187,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.2.0]: https://github.com/abrauchli/usbee/releases/tag/v2.2.0
 [2.1.0]: https://github.com/abrauchli/usbee/releases/tag/v2.1.0
 [2.0.0]: https://github.com/abrauchli/usbee/releases/tag/v2.0.0
 [1.2.0]: https://github.com/abrauchli/usbee/releases/tag/v1.2.0
