@@ -14,7 +14,7 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehive';
+const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehived';
 
 /**
  * Build the empty-state row. Returns a PopupMenu.PopupMenuItem.
@@ -73,7 +73,7 @@ export function buildEmptyStateItem() {
  * triggered by the DBusClient 'daemon-too-old' signal (see ADR).
  */
 export function buildDaemonOutOfDateItem() {
-    const RESTART_CMD = 'systemctl --user restart usbeehive';
+    const RESTART_CMD = 'systemctl --user restart usbeehived';
 
     const item = new PopupMenu.PopupMenuItem('', {
         reactive: false,
