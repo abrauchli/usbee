@@ -17,7 +17,8 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {populateDeviceRows, populateEmptyState, populateOutOfDateState} from './popover.js';
+import {populateDeviceRows, populateEmptyState, populateNotInstalledState, populateOutOfDateState} from './popover.js';
+import {isUsbeehiveServiceInstalled} from './empty-state.js';
 
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
@@ -169,17 +170,25 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _rebuildPopover() {
-        // COMPAT-02 takes precedence over the daemon-not-running state:
-        // the user is being shown reachable-but-too-old, which is a
-        // distinct copy from "daemon not running". The latch clears on
-        // the next 'ready' signal from DBusClient.
+        // Routing precedence (quick task 260526-i7q — three-way daemon state):
+        //   1. _daemonTooOld    — daemon IS reachable, version known to be too old.
+        //                         Highest precedence; distinct copy from "not running".
+        //   2. !daemonRunning   — daemon is not on the bus. Split into:
+        //                         a. not installed → install hint (no unit file on disk)
+        //                         b. installed but stopped → systemctl enable --now hint
+        //   3. daemonRunning    — render device rows.
+        // The _daemonTooOld latch clears on the next 'ready' signal from DBusClient.
         let n = -1;
-        if (this._daemonTooOld)
+        if (this._daemonTooOld) {
             populateOutOfDateState(this._rowsSection);
-        else if (!this._store.daemonRunning)
-            populateEmptyState(this._rowsSection);
-        else
+        } else if (!this._store.daemonRunning) {
+            if (!isUsbeehiveServiceInstalled())
+                populateNotInstalledState(this._rowsSection);
+            else
+                populateEmptyState(this._rowsSection);
+        } else {
             n = populateDeviceRows(this._rowsSection, this._store, this._extension);
+        }
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
         this.menu.setHeader('drive-harddisk-usb-symbolic', hdrTitle, '');

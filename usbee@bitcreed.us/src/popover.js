@@ -20,7 +20,7 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {buildEmptyStateItem, buildDaemonOutOfDateItem} from './empty-state.js';
+import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateItem} from './empty-state.js';
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
@@ -160,6 +160,19 @@ export function populateDeviceRows(section, store, extension) {
 export function populateEmptyState(section) {
     section.removeAll();
     section.addMenuItem(buildEmptyStateItem());
+}
+
+/**
+ * Render the "daemon not installed" empty state (quick task 260526-i7q).
+ * Wired from tile.js _rebuildPopover() when the daemon is not running AND
+ * isUsbeehiveServiceInstalled() returns false. Mirrors the populateEmptyState
+ * shape but uses the dedicated copy from src/empty-state.js.
+ *
+ * @param {PopupMenuSection} section
+ */
+export function populateNotInstalledState(section) {
+    section.removeAll();
+    section.addMenuItem(buildDaemonNotInstalledItem());
 }
 
 /**
