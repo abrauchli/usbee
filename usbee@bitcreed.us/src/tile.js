@@ -109,6 +109,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
 
             const readyId = dbusClient.connect('ready', () => {
                 this._daemonTooOld = false;
+                // Symmetric with the 'daemon-too-old' branch above: when the
+                // user is staring at the out-of-date empty state while the
+                // daemon gets upgraded under them, the popover must rebuild
+                // so they see device rows instead of the stale message.
+                if (this.menu.isOpen)
+                    this._rebuildPopover();
             });
             registry.addSignal(dbusClient, readyId);
         }
