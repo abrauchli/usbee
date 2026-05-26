@@ -34,6 +34,7 @@ jobs:
           gnome-extensions pack usbee@bitcreed.us \
             --podir=../po \
             --extra-source=src \
+            --extra-source=icons \
             --force
 
       - name: Extract release notes from CHANGELOG

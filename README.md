@@ -65,7 +65,7 @@ systemctl --user enable --now usbeehived
 ```
 git clone https://github.com/abrauchli/usbee.git
 cd usbee
-gnome-extensions pack usbee@bitcreed.us --extra-source=src --force
+gnome-extensions pack usbee@bitcreed.us --extra-source=src --extra-source=icons --force
 gnome-extensions install --force usbee@bitcreed.us.shell-extension.zip
 ```
 
