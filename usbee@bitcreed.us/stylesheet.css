@@ -91,3 +91,9 @@
     padding: 2px 10px;
     background-color: rgba(255, 255, 255, 0.10);
 }
+
+/* Active PDO marker (quick task 260526-dmj §D). Bolder key label
+ * complements the ◀ glyph as a belt-and-braces active indicator. */
+.usbee-pdo-active .usbee-detail-key {
+    font-weight: bold;
+}

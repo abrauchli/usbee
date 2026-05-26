@@ -83,9 +83,39 @@ function unpackDeviceEntry(tuple) {
  * @param {number} w
  * @returns {string}
  */
-function formatWatts(w) {
+export function formatWatts(w) {
     if (!Number.isFinite(w) || w < 0) return _('—');
     return w >= 10 ? `${Math.round(w)} W` : `${w.toFixed(1)} W`;
+}
+
+/**
+ * Format a millivolt count for display.
+ * Whole-volt values drop the decimal ("5 V"); fractional values keep one
+ * decimal ("5.5 V"). Non-finite or negative inputs render as the gettext
+ * em-dash placeholder (mirrors formatWatts WR-05 defensive guard).
+ * @param {number} mv  Millivolts (e.g. 5000 → "5 V").
+ * @returns {string}
+ */
+export function formatVolts(mv) {
+    if (!Number.isFinite(mv) || mv < 0) return _('—');
+    return mv % 1000 === 0
+        ? `${mv / 1000} V`
+        : `${(mv / 1000).toFixed(1)} V`;
+}
+
+/**
+ * Format a milliamp count for display.
+ * Whole-amp values drop the decimal ("3 A"); fractional values keep one
+ * decimal ("1.5 A"). Non-finite or negative inputs render as the gettext
+ * em-dash placeholder (mirrors formatWatts WR-05 defensive guard).
+ * @param {number} ma  Milliamps (e.g. 3000 → "3 A").
+ * @returns {string}
+ */
+export function formatAmps(ma) {
+    if (!Number.isFinite(ma) || ma < 0) return _('—');
+    return ma % 1000 === 0
+        ? `${ma / 1000} A`
+        : `${(ma / 1000).toFixed(1)} A`;
 }
 
 /**

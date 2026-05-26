@@ -21,7 +21,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buildEmptyStateItem, buildDaemonOutOfDateItem} from './empty-state.js';
-import {hasIssue} from './device-store.js';
+import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
 
@@ -284,6 +284,11 @@ function buildDeviceRow(device, showTech) {
         detailBox.add_child(trustRow);
     }
 
+    // Structured Charger PDOs (CONTEXT 260526-dmj §D). Always visible when
+    // pdo_list is non-empty (not gated on show-technical-details — charging
+    // capability is glance priority). No-op when pdo_list is empty.
+    buildPdoListBlock(detailBox, device);
+
     // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
     // Empty Type-C ports already say nothing about drivers — suppress the
     // row in that case (`status !== 'Empty'` gate).
@@ -314,7 +319,14 @@ function buildDeviceRow(device, showTech) {
     // Quick task 260526-dmj: HANDLED_BY_DEDICATED_UI keys never render as
     // bare rows — they are owned by the trust row and the pill strip above.
     // Filtered unconditionally, regardless of show-technical-details.
+    //
+    // Quick task 260526-dmj §D: legacy charger_max stringly row is
+    // suppressed when the structured pdo_list is non-empty (the Charger
+    // PDOs block above already covers that capability). When pdo_list is
+    // empty, charger_max still renders — back-compat for daemons that emit
+    // the property without the structured list.
     for (const [key, value] of (device.properties || [])) {
+        if (key === 'charger_max' && device.pdo_list?.length > 0) continue;
         if (HANDLED_BY_DEDICATED_UI.has(key)) continue;
         if (!showTech && GATED_KEYS.has(key)) continue;
         detailBox.add_child(buildPropertyRow(
@@ -373,6 +385,63 @@ function buildTransportPillStrip(device, props) {
     }
     item.add_child(strip);
     return item;
+}
+
+/**
+ * Render the structured Charger PDOs block (CONTEXT 260526-dmj §D).
+ *
+ * No-op when the device has no PDO list (the daemon emits an empty array
+ * for entries without a companion PowerDeliveryPort). When non-empty,
+ * renders a header row followed by one row per advertised PDO. The active
+ * PDO is marked with a leading ◀ and a bolder key label (belt-and-braces:
+ * either `is_active` true or `index === active_pdo_index` flips it).
+ *
+ * Voltage rendering:
+ *   - PPS PDOs (kind === 'PPS') and PDOs that advertise a max_voltage
+ *     greater than voltage render as a range "5–11 V".
+ *   - Fixed PDOs (and anything with a flat voltage) render as "5 V".
+ *
+ * Kind annotation: anything other than 'Fixed' is appended as " (Kind)".
+ * The kind string is passed through raw — forward-compat with new PD
+ * revisions adding kinds USBee doesn't yet recognise.
+ *
+ * @param {St.BoxLayout} detailBox  Parent vertical box from buildDeviceRow.
+ * @param {object} device           Unpacked DeviceEntry from the store.
+ */
+function buildPdoListBlock(detailBox, device) {
+    const pdos = device.pdo_list || [];
+    if (pdos.length === 0) return;
+
+    detailBox.add_child(buildPropertyRow(
+        _('Charger PDOs'), '', device.category));
+
+    for (const pdo of pdos) {
+        const isActive = pdo.is_active === true
+            || pdo.index === device.active_pdo_index;
+
+        const isRange = pdo.kind === 'PPS'
+            || (pdo.max_voltage_mv > pdo.voltage_mv);
+        const voltsText = isRange
+            // Strip the trailing " V" from the min side so the unit only
+            // appears once after the en-dash (e.g. "5–11 V", not "5 V–11 V").
+            ? `${formatVolts(pdo.voltage_mv).replace(' V', '')}–${formatVolts(pdo.max_voltage_mv)}`
+            : formatVolts(pdo.voltage_mv);
+        const ampsText = formatAmps(pdo.current_ma);
+        const wattsText = formatWatts(pdo.power_mw / 1000);
+
+        let valueText = `${voltsText} — ${ampsText} — ${wattsText}`;
+        if (pdo.kind && pdo.kind !== 'Fixed')
+            valueText += ` (${pdo.kind})`;
+
+        const keyText = isActive
+            ? `${_('◀')} ${pdo.index}`
+            : `${pdo.index}`;
+
+        const pdoRow = buildPropertyRow(keyText, valueText, device.category);
+        if (isActive)
+            pdoRow.add_style_class_name('usbee-pdo-active');
+        detailBox.add_child(pdoRow);
+    }
 }
 
 /**
