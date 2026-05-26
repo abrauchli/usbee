@@ -37,5 +37,40 @@
       </description>
     </key>
 
+    <key name="show-technical-details" type="b">
+      <default>false</default>
+      <summary>Show technical detail rows in the device popover</summary>
+      <description>
+        When false (the default), the device detail panel hides an
+        explicit deny-list of advanced property rows: serial, data_role,
+        power_mode, pd_revision, plug_orientation, cable_current,
+        cable_type, drivers. All other property rows (including unknown
+        keys emitted by future daemon versions) remain visible — the
+        gate is explicit-deny, not allow-list. Toggled from the "Show
+        technical details" switch in the preferences window. Read once
+        per popover rebuild by src/popover.js populateDeviceRows.
+      </description>
+    </key>
+
+    <key name="device-change-notify-scope" type="s">
+      <choices>
+        <choice value='all'/>
+        <choice value='power'/>
+        <choice value='off'/>
+      </choices>
+      <default>'all'</default>
+      <summary>Scope of device-change toast notifications</summary>
+      <description>
+        Controls whether DeviceAdded / DeviceRemoved D-Bus signals raise
+        transient MessageTray toasts. "all" (the default) notifies on
+        every device change. "power" restricts toasts to charging-
+        relevant devices (TypeCPort category, or Phone / Storage device
+        class). "off" suppresses device-change toasts entirely — this
+        does NOT affect CapabilityDegraded notifications, which remain
+        gated by port-mutes. Read live on every DeviceAdded /
+        DeviceRemoved signal by src/notifier.js.
+      </description>
+    </key>
+
   </schema>
 </schemalist>

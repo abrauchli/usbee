@@ -10,6 +10,8 @@
 //   onDaemonVanished()      — destroy every live notification + clear map
 //   onCapabilityDegraded(portNumber, summary, detail)
 //   onCapabilityRestored(portNumber)
+//   onDeviceAdded(id, headline, kind?)    — transient "Connected: …" toast
+//   onDeviceRemoved(id, headline, kind?)  — transient "Disconnected: …" toast
 //   dispose()               — destroy source + all notifications
 //
 // Invariants:
@@ -99,6 +101,89 @@ export class Notifier {
         } catch (_e) {
             // Already destroyed — the destroy handler will null the map entry.
         }
+    }
+
+    /**
+     * Transient "Connected: <headline>" toast for a DeviceAdded D-Bus signal.
+     * Deliberately stateless — does NOT participate in the per-port
+     * coalescing map (CONTEXT 260526-c6p "transient (do NOT persist across
+     * emit)"). The caller resolves the headline string.
+     *
+     * @param {string} _id        Daemon-emitted device id (unused — present
+     *                            for API symmetry with onDeviceRemoved).
+     * @param {string} headline   Pre-resolved title string (daemon-sourced).
+     * @param {?{category: string, deviceClass: string}} kind  Optional
+     *   classification for the 'power' scope filter. When undefined,
+     *   default-allow (avoids dropping toasts when DeviceStore lacks the
+     *   entry, e.g. DeviceAdded racing ahead of ListDevices).
+     */
+    onDeviceAdded(_id, headline, kind) {
+        this._emitDeviceChange(headline, kind, /* added */ true);
+    }
+
+    /**
+     * Transient "Disconnected: <headline>" toast for a DeviceRemoved D-Bus
+     * signal. The caller (DBusClient) MUST resolve `headline` from the
+     * pre-removal DeviceStore snapshot — by the time this method runs the
+     * store may already have been mutated.
+     *
+     * @param {string} _id        Daemon-emitted device id (unused — present
+     *                            for API symmetry).
+     * @param {string} headline   Pre-resolved title string (falls back to
+     *                            id at the call site).
+     * @param {?{category: string, deviceClass: string}} kind  Optional
+     *   classification for the 'power' scope filter. When undefined,
+     *   default-allow.
+     */
+    onDeviceRemoved(_id, headline, kind) {
+        this._emitDeviceChange(headline, kind, /* added */ false);
+    }
+
+    _emitDeviceChange(headline, kind, added) {
+        // Suppression guard — same 2.5 s window as CapabilityDegraded.
+        // Drops the burst of stale Add/Remove events the daemon may replay
+        // immediately after NameOwnerChanged null->owner.
+        if (GLib.get_monotonic_time() < this._suppressUntil) return;
+
+        // LIVE read — never cache (RESEARCH §Pitfall G / §Pattern 2).
+        const scope = this._settings.get_string('device-change-notify-scope');
+        if (scope === 'off') return;
+        if (scope === 'power' && kind !== undefined) {
+            // 'power' filter: TypeCPort category, OR Phone / Storage class.
+            // Unknown scope values (other than 'off' / 'power') default-allow
+            // — matches the GSettings <choices> guard plus the forward-compat
+            // intent in CONTEXT 260526-c6p.
+            const isPower = kind.category === 'TypeCPort'
+                         || kind.deviceClass === 'Phone'
+                         || kind.deviceClass === 'Storage';
+            if (!isPower) return;
+        }
+        // kind === undefined under any scope: default-allow (avoids silently
+        // dropping toasts when DeviceStore has no entry yet).
+
+        const source = this._ensureSource();
+
+        // Title via _('…').format(…) — xgettext silently skips template
+        // literals (RESEARCH §Pitfall I), so the literal stays intact.
+        const title = added
+            ? _('Connected: %s').format(headline)
+            : _('Disconnected: %s').format(headline);
+
+        // Title-only toast — body is empty so the tray renders compactly
+        // and the icon column stays meaningful. Daemon string `headline`
+        // flows ONLY into the .title property (T-01-02 invariant).
+        const notification = new MessageTray.Notification({
+            source,
+            title,
+            body: '',
+            iconName: 'network-usb-symbolic',
+            urgency: MessageTray.Urgency.NORMAL,
+        });
+
+        // Deliberately NOT added to this._notifications — device-change
+        // toasts are transient (CONTEXT decision). No actions either —
+        // there is no actionable user choice for a connect / disconnect.
+        source.addNotification(notification);
     }
 
     _ensureSource() {
