@@ -6,6 +6,64 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.1.0] — 2026-05-26
+
+Requires usbeehive >= 0.7.0. USBee now consumes
+`org.usbeehive.Devices3`, surfaces cable trust signals, transport-altmode
+pills, and the new structured Charger PDO list.
+
+### Changed (breaking — D-Bus interface)
+
+- Hard cut from `org.usbeehive.Devices2` to `org.usbeehive.Devices3`, no
+  alias. `MIN_USBEEHIVE_VERSION` bumped to `0.7.0`; 0.6.x daemons fall
+  through to the existing "Daemon out of date" empty state.
+- `ListDevices` inner-tuple signature gains two trailing fields:
+  `a(usuuuub)` for `pdo_list` and `i` for `active_pdo_index` (full
+  signature: `a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)`).
+
+### Added
+
+- Cable-trust amber detail row appears whenever any
+  `cable.trust.zero_vid`, `cable.trust.vid_unknown`, or
+  `cable.trust.reserved_bits` flag fires. Always visible — independent
+  of the `show-technical-details` toggle, because cable safety is
+  glance-priority.
+- Transport pill strip at the top of the expanded device row when the
+  device exposes a non-baseline transport: a DisplayPort alt-mode flag,
+  a Thunderbolt flag, or a Type-C port that only negotiated USB 2.
+  Pills render in fixed `USB → DisplayPort → Thunderbolt` order with
+  rounded ends and a theme-neutral muted background.
+- Structured `Charger PDOs` block renders one row per advertised PDO
+  when `pdo_list` is non-empty. PPS / range-voltage PDOs render as
+  `5–11 V`; non-Fixed kinds are appended as `(Kind)`. The active PDO
+  gets a `◀` marker and a bolder key label (belt-and-braces:
+  `is_active` OR `index === active_pdo_index`). Always visible — not
+  gated on `show-technical-details`.
+- `formatVolts(mv)` and `formatAmps(ma)` helpers in
+  `src/device-store.js` joining `formatWatts` (now exported). All
+  three share the WR-05 defensive guard for malformed inputs.
+- `.usbee-pill-strip`, `.usbee-pill`, and `.usbee-pdo-active` style
+  classes in `stylesheet.css`.
+
+### Filtered
+
+- `cable.trust.*` and `transport.*` property-bag keys are filtered out
+  of the generic property-bag loop unconditionally (new
+  `HANDLED_BY_DEDICATED_UI` deny-list) so they never double-render
+  alongside their dedicated handlers. Forward-compat: unknown keys
+  still fall through to the generic loop.
+- Legacy `charger_max` row is suppressed in the generic loop when the
+  structured `pdo_list` is non-empty; still renders for daemons that
+  emit `charger_max` without the structured list.
+
+### Notes
+
+- `shell-version` array unchanged at `["46", "47", "48", "49", "50"]`;
+  no GNOME Shell API surface change.
+- The embedded `IFACE_XML` in `src/dbus-client.js` and the on-disk
+  `usbee@bitcreed.us/dbus-iface.xml` are kept byte-equal (less the
+  doctype) per the long-standing 04-02 Task 13 invariant.
+
 ## [2.0.0] — 2026-05-14
 
 Requires usbeehive >= 0.6.0 (the value declared in `src/dbus-client.js` as
@@ -100,5 +158,6 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.1.0]: https://github.com/abrauchli/usbee/releases/tag/v2.1.0
 [2.0.0]: https://github.com/abrauchli/usbee/releases/tag/v2.0.0
 [1.2.0]: https://github.com/abrauchli/usbee/releases/tag/v1.2.0
