@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: complete
-last_updated: "2026-05-14T09:10:00.000Z"
-last_activity: 2026-05-26 - Quick task 260526-c6p: device-change notifications + show-technical-details toggle
+last_updated: "2026-05-26T12:30:00.000Z"
+last_activity: 2026-05-26 - Quick task 260526-dmj: Devices3 wire migration + cable trust row + transport pill strip + structured Charger PDOs block
 progress:
   total_phases: 1
   completed_phases: 1
@@ -147,6 +147,7 @@ Steps:
 | 260514-mq0 | Fix 3 EGO shexli lint errors: rename GSettings schema to org.gnome.shell.extensions namespace, move test file out of extension dir | 2026-05-14 | 3172694 | [260514-mq0-fix-ego-shexli-lint](./quick/260514-mq0-fix-ego-shexli-lint/) |
 | 260526-warning-badges | Warning badge (amber border) on is_warning popover rows + charging_diag.summary/detail in expanded detail panel | 2026-05-26 | 1306c09 | [260526-warning-badges-charging-diag](./quick/260526-warning-badges-charging-diag/) |
 | 260526-c6p | Device-change notifications (DeviceAdded/Removed toasts, scope enum all/power/off) + Show technical details toggle gating 8 advanced property rows | 2026-05-26 | 286c85f | [260526-c6p-connect-disconnect-notifications-tech-de](./quick/260526-c6p-connect-disconnect-notifications-tech-de/) |
+| 260526-dmj | Devices3 wire migration (MIN_USBEEHIVE 0.7.0, pdo_list/active_pdo_index) + cable trust row + transport pill strip + structured Charger PDOs block | 2026-05-26 | ed7acd6, c130b50, 6cad52f | [260526-dmj-devices3-wire-migration-pdo-list-trust-s](./quick/260526-dmj-devices3-wire-migration-pdo-list-trust-s/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
