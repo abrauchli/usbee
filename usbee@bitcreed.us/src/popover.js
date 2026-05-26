@@ -53,6 +53,7 @@ const HANDLED_BY_DEDICATED_UI = new Set([
     'cable.trust.reserved_bits',
     'transport.usb2',
     'transport.usb3',
+    'transport.usb4',
     'transport.dp_altmode',
     'transport.tb',
 ]);
@@ -340,13 +341,14 @@ function buildDeviceRow(device, showTech) {
 /**
  * Build the transport pill strip menu item (CONTEXT 260526-dmj §C).
  *
- * "Interesting" predicate: a DisplayPort alt-mode or Thunderbolt flag fires
- * unconditionally; the USB 2 flag only fires for Type-C ports (a Type-C
- * port that only negotiated USB 2 is the surprise; USB 2 on a USB-A device
- * is the expected baseline and would be noise).
+ * "Interesting" predicate: a DisplayPort alt-mode, Thunderbolt, or USB4
+ * flag fires unconditionally; the USB 2 flag only fires for Type-C ports
+ * (a Type-C port that only negotiated USB 2 is the surprise; USB 2 on a
+ * USB-A device is the expected baseline and would be noise).
  *
  * Pills render in a fixed order — USB → DisplayPort → Thunderbolt — so
- * grouping reads predictably across devices.
+ * grouping reads predictably across devices. USB4 joins the USB group
+ * after USB 3 (added in v2.2.0 alongside usbeehive 0.8.0).
  *
  * @param {object} device  Unpacked DeviceEntry.
  * @param {Map<string,string>} props  device.properties as a Map.
@@ -355,15 +357,18 @@ function buildDeviceRow(device, showTech) {
 function buildTransportPillStrip(device, props) {
     const usb2 = props.get('transport.usb2') === 'true';
     const usb3 = props.get('transport.usb3') === 'true';
+    const usb4 = props.get('transport.usb4') === 'true';
     const dp   = props.get('transport.dp_altmode') === 'true';
     const tb   = props.get('transport.tb') === 'true';
 
-    const interesting = dp || tb || (usb2 && device.category === 'TypeCPort');
+    const interesting = dp || tb || usb4
+        || (usb2 && device.category === 'TypeCPort');
     if (!interesting) return null;
 
     const pills = [];
     if (usb2) pills.push(_('USB 2'));
     if (usb3) pills.push(_('USB 3'));
+    if (usb4) pills.push(_('USB 4'));
     if (dp)   pills.push(_('DisplayPort'));
     if (tb)   pills.push(_('Thunderbolt'));
     if (pills.length === 0) return null;
