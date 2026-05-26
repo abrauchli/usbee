@@ -65,3 +65,15 @@
 .usbee-detail-driver-missing .usbee-detail-value {
     font-style: italic;
 }
+
+/* Warning indicator on popover rows with charging_diag.is_warning.
+ * Amber left-border keeps the row readable under both light and dark themes. */
+.usbee-row-warning {
+    border-left: 3px solid #e5a50a;
+    padding-left: 4px;
+}
+
+/* Warning accent on charging diagnostic key labels in the detail panel. */
+.usbee-detail-warning {
+    color: #e5a50a;
+}

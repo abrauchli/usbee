@@ -166,6 +166,8 @@ function buildDeviceRow(device) {
     else
         row.icon.gicon = devIcon;  // Gio.FileIcon for bundled SVGs
     row.add_style_class_name('usbee-device-row');
+    if (device.charging_diag?.is_warning)
+        row.add_style_class_name('usbee-row-warning');
 
     // --- Detail panel (UI-05) ---
     // One non-reactive PopupBaseMenuItem wrapping a vertical St.BoxLayout.
@@ -185,6 +187,27 @@ function buildDeviceRow(device) {
     if (device.subtitle) {
         detailBox.add_child(buildPropertyRow(
             _('Summary'), device.subtitle, device.category));
+    }
+
+    // Charging diagnostic rows — rendered before the properties bag so the
+    // most actionable info appears at the top of the detail panel.
+    // summary is always shown when present; detail is shown when non-empty.
+    // is_warning drives both the row style and the key label copy.
+    if (device.charging_diag?.present) {
+        const isWarn = device.charging_diag.is_warning;
+        const diagKey = isWarn ? _('Charging issue') : _('Charging');
+        const diagRow = buildPropertyRow(
+            diagKey, device.charging_diag.summary, device.category);
+        if (isWarn)
+            diagRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+        detailBox.add_child(diagRow);
+        if (device.charging_diag.detail) {
+            const detailRow = buildPropertyRow(
+                _('Detail'), device.charging_diag.detail, device.category);
+            if (isWarn)
+                detailRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+            detailBox.add_child(detailRow);
+        }
     }
 
     // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
