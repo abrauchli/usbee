@@ -250,31 +250,27 @@ function buildDeviceRow(device, showTech) {
     });
     detailItem.add_child(detailBox);
 
-    // Subtitle row (when non-empty) — key: 'Summary'. Daemon subtitles can
-    // be multi-clause prose, so opt into wrap (quick task 260526-wobble).
+    // Subtitle row (when non-empty) — key: 'Summary'.
     if (device.subtitle) {
         detailBox.add_child(buildPropertyRow(
-            _('Summary'), device.subtitle, device.category, {wrap: true}));
+            _('Summary'), device.subtitle, device.category));
     }
 
     // Charging diagnostic rows — rendered before the properties bag so the
     // most actionable info appears at the top of the detail panel.
     // summary is always shown when present; detail is shown when non-empty.
     // is_warning drives both the row style and the key label copy.
-    //
-    // DIAG-02 strings are explicitly multi-line — opt into Pango wrap on
-    // both rows (quick task 260526-wobble).
     if (device.charging_diag?.present) {
         const isWarn = device.charging_diag.is_warning;
         const diagKey = isWarn ? _('Charging issue') : _('Charging');
         const diagRow = buildPropertyRow(
-            diagKey, device.charging_diag.summary, device.category, {wrap: true});
+            diagKey, device.charging_diag.summary, device.category);
         if (isWarn)
             diagRow.get_children()[0].add_style_class_name('usbee-detail-warning');
         detailBox.add_child(diagRow);
         if (device.charging_diag.detail) {
             const detailRow = buildPropertyRow(
-                _('Detail'), device.charging_diag.detail, device.category, {wrap: true});
+                _('Detail'), device.charging_diag.detail, device.category);
             if (isWarn)
                 detailRow.get_children()[0].add_style_class_name('usbee-detail-warning');
             detailBox.add_child(detailRow);
@@ -286,10 +282,6 @@ function buildDeviceRow(device, showTech) {
     // because cable safety is glance-priority. Reasons are joined in a
     // fixed order (zero VID → unknown VID → reserved bits) so the row's
     // contents are deterministic across renders.
-    //
-    // Joined prose grows with multiple reasons — opt into wrap so the
-    // value flows onto a second line on narrower allocations (quick task
-    // 260526-wobble).
     const trustReasons = [];
     if (props.get('cable.trust.zero_vid') === 'true')
         trustReasons.push(_('vendor ID is zero'));
@@ -301,7 +293,7 @@ function buildDeviceRow(device, showTech) {
         const trustValue = _('This cable looks unusual: %s')
             .format(trustReasons.join(_(', ')));
         const trustRow = buildPropertyRow(
-            _('Cable trust'), trustValue, device.category, {wrap: true});
+            _('Cable trust'), trustValue, device.category);
         trustRow.get_children()[0].add_style_class_name('usbee-detail-warning');
         detailBox.add_child(trustRow);
     }
@@ -475,33 +467,14 @@ function buildPdoListBlock(detailBox, device) {
  *
  * The key label uses .usbee-detail-key (dim secondary colour).
  * The value label uses .usbee-detail-value (regular weight).
- *
- * Pango wrap is opt-in via `opts.wrap` (quick task 260526-wobble). When
- * `wrap` is false (default), the value label uses Clutter's default
- * single-line behaviour — no Pango two-pass natural-height measurement.
- * When `wrap` is true, the value label wraps cleanly at word boundaries
- * via clutter_text.line_wrap (DIAG-02 multi-line diagnostic strings).
- *
- * Background: every value label previously enabled line_wrap = true
- * unconditionally. Pango then performs a two-pass measurement on the
- * label (natural-width first pass, constrained-width second pass) even
- * when the text fits on one line. The second pass can return a few
- * pixels less, producing a visible "wobble" — the detail panel shrinks
- * a few px after the PopupSubMenu open animation captures the initial
- * allocation. Gating wrap to legitimately-multi-line labels removes the
- * wobble for the common case (Summary / Detail / Cable trust are the
- * only rows whose value can legitimately wrap).
+ * DIAG-02: value wraps cleanly via clutter_text.line_wrap.
  *
  * @param {string} key    Translated left-column label (e.g. 'Speed').
  * @param {string} value  Raw daemon string — rendered via .text, never markup.
  * @param {string} _category  Device category (unused here; passed for forward use).
- * @param {object} [opts]  Optional named flags.
- * @param {boolean} [opts.wrap=false]  Enable Pango line wrap on the value label.
  * @returns {St.BoxLayout}
  */
-function buildPropertyRow(key, value, _category, opts = {}) {
-    const {wrap = false} = opts;
-
+function buildPropertyRow(key, value, _category) {
     // WR-06: St.BoxLayout defaults to horizontal (vertical: false). The
     // .usbee-detail-row style_class gives the inter-column spacing instead of
     // a generic descendant selector on StBoxLayout.
@@ -522,11 +495,9 @@ function buildPropertyRow(key, value, _category, opts = {}) {
         x_expand:    true,
         style_class: 'usbee-detail-value',
     });
-    if (wrap) {
-        // DIAG-02: multi-line diagnostic strings must wrap cleanly.
-        valLbl.clutter_text.line_wrap      = true;
-        valLbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-    }
+    // DIAG-02: multi-line diagnostic strings must wrap cleanly.
+    valLbl.clutter_text.line_wrap      = true;
+    valLbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
 
     row.add_child(keyLbl);
     row.add_child(valLbl);
