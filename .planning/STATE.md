@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Devices2 wire-shape migration
 status: complete
 last_updated: "2026-05-14T09:10:00.000Z"
-last_activity: 2026-05-26 - Warning badges on is_warning rows + charging diag in detail panel
+last_activity: 2026-05-26 - Quick task 260526-c6p: device-change notifications + show-technical-details toggle
 progress:
   total_phases: 1
   completed_phases: 1
@@ -29,8 +29,8 @@ progress:
 
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
-Status: v2.0.0 tagged + on GitHub; warning badge added (1306c09); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-05-26 -- Warning badges on is_warning rows + charging diag in detail panel
+Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
+Last activity: 2026-05-26 -- Quick task 260526-c6p: device-change notifications + show-technical-details toggle
 
 ## Performance Metrics
 
@@ -146,6 +146,7 @@ Steps:
 | 20260514-screenshot-and-release-prep | Add screenshot to README, move v2.0.0 tag to HEAD, push | 2026-05-14 | 8ea3c50 | [20260514-screenshot-and-release-prep](./quick/20260514-screenshot-and-release-prep/) |
 | 260514-mq0 | Fix 3 EGO shexli lint errors: rename GSettings schema to org.gnome.shell.extensions namespace, move test file out of extension dir | 2026-05-14 | 3172694 | [260514-mq0-fix-ego-shexli-lint](./quick/260514-mq0-fix-ego-shexli-lint/) |
 | 260526-warning-badges | Warning badge (amber border) on is_warning popover rows + charging_diag.summary/detail in expanded detail panel | 2026-05-26 | 1306c09 | [260526-warning-badges-charging-diag](./quick/260526-warning-badges-charging-diag/) |
+| 260526-c6p | Device-change notifications (DeviceAdded/Removed toasts, scope enum all/power/off) + Show technical details toggle gating 8 advanced property rows | 2026-05-26 | 286c85f | [260526-c6p-connect-disconnect-notifications-tech-de](./quick/260526-c6p-connect-disconnect-notifications-tech-de/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*

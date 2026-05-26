@@ -43,7 +43,6 @@
   "agent_skills": {},
   "features": {},
   "resolve_model_ids": "omit",
-  "branching_strategy": "none",
   "intel": {
     "enabled": false
   },
