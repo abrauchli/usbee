@@ -25,6 +25,22 @@ import {hasIssue} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
 
+// Explicit-deny list of property-bag keys gated behind the
+// `show-technical-details` GSettings boolean. Anchored in CONTEXT
+// 260526-c6p §"Property split — Balanced" (LOCKED). Forward-compat:
+// any property key NOT in this set always renders, regardless of the
+// toggle — the gate is deny-list, never allow-list (CONTEXT D-2).
+const GATED_KEYS = new Set([
+    'serial',
+    'data_role',
+    'power_mode',
+    'pd_revision',
+    'plug_orientation',
+    'cable_current',
+    'cable_type',
+    'drivers',
+]);
+
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
  *
@@ -68,6 +84,9 @@ export function populateDeviceRows(section, store, extension) {
     const settings = extension.getSettings();
     const hideEmpty = settings.get_boolean('hide-empty-ports');
     const showHubs  = settings.get_boolean('show-hubs');
+    // Quick task 260526-c6p — live read parallel to the two above. Gates
+    // the GATED_KEYS deny-list inside the property-bag loop of buildDeviceRow.
+    const showTech  = settings.get_boolean('show-technical-details');
     let devices = store.devices;
     if (hideEmpty)
         devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
@@ -90,7 +109,7 @@ export function populateDeviceRows(section, store, extension) {
     // Build one accordion row per device and wire the single-open constraint.
     const rows = [];
     for (const device of devices) {
-        const row = buildDeviceRow(device);
+        const row = buildDeviceRow(device, showTech);
         section.addMenuItem(row);
         rows.push(row);
     }
@@ -152,10 +171,14 @@ export function populateOutOfDateState(section) {
  *
  * Value-column labels use .text = (never .set_markup) — T-01-02 mitigation.
  *
- * @param {object} device  Unpacked DeviceEntry from the store.
+ * @param {object} device   Unpacked DeviceEntry from the store.
+ * @param {boolean} showTech  Live read of show-technical-details GSettings.
+ *   When false, keys in GATED_KEYS are skipped in the property-bag loop;
+ *   all other rows (Summary, charging_diag, driver-not-bound, Subclass,
+ *   and unknown property keys) render unconditionally.
  * @returns {PopupMenu.PopupSubMenuMenuItem}
  */
-function buildDeviceRow(device) {
+function buildDeviceRow(device, showTech) {
     const headline = device.headline || device.id || '';
 
     // Second arg `true` enables the built-in .icon slot on the row.
@@ -232,7 +255,12 @@ function buildDeviceRow(device) {
     // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
     // deliberate order and labelForKey() is a pure resolver. Unknown keys
     // render the raw key string (WIRE-04 forward-compat, label-table.js).
+    //
+    // Quick task 260526-c6p: when showTech is false, skip the explicit-deny
+    // GATED_KEYS set (CONTEXT 260526-c6p D-2). Unknown keys are NEVER gated
+    // — forward-compat by design (deny-list, not allow-list).
     for (const [key, value] of (device.properties || [])) {
+        if (!showTech && GATED_KEYS.has(key)) continue;
         detailBox.add_child(buildPropertyRow(
             labelForKey(key), formatValueForKey(key, value), device.category));
     }
