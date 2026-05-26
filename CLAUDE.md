@@ -27,9 +27,11 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 - **Heavy lifting belongs in `usbeehive`**, not USBee. If a desired
   capability would require non-trivial logic in the indicator, push
   the work upstream into the daemon and consume the result via D-Bus
-- **Settings**: `GSettings` schema `us.bitcreed.usbee` (not TOML / not
-  ad-hoc dotfile). The `us.bitcreed.*` namespace is the project's own
-  vendor ID; `org.gnome.*` is reserved for GNOME-endorsed components.
+- **Settings**: `GSettings` schema `org.gnome.shell.extensions.usbee`
+  (not TOML / not ad-hoc dotfile). The `org.gnome.shell.extensions.*`
+  namespace is mandated by EGO's `shexli` lint for extension settings
+  schemas (renamed from the project's own `us.bitcreed.usbee` in quick
+  task 260514-mq0 on 2026-05-14).
 - **i18n**: English strings only for v1, but every user-visible
   string must go through gettext
 <!-- GSD:project-end -->
@@ -52,7 +54,7 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 | **`Gio.DBusProxy`** (via `makeProxyWrapper`) | Gio 2.80+ (GLib bundled with GNOME 46) | D-Bus client for `org.usbeehive.Devices1` on the session bus | First-class D-Bus support in GJS. `makeProxyWrapper(xml)` produces a typed class with `MethodRemote()` async wrappers and `connectSignal()` for signals. Caches properties; `g-properties-changed` notifies on change. |
 | **`Gio.DBusWatchName`** (`Gio.bus_watch_name`) | Gio 2.80+ | Detect when `org.usbeehive.Devices1` appears / disappears | Required for the "daemon not running" empty state and auto-light-up. Native primitive — no polling. |
 | **`MessageTray.Source` + `MessageTray.Notification`** | resource://…/ui/messageTray.js | Desktop notifications for `CapabilityDegraded` events | The documented extension API. Supports actions (the "Don't notify for this port" button). `Gio.Notification` is for standalone GTK apps with a `.desktop` file — wrong tool for an extension. |
-| **`Extension.getSettings()` (GSettings)** | Provided by base `Extension` class | Persisting per-port mute preferences under `us.bitcreed.usbee` | One call returns a `Gio.Settings` bound to the extension's compiled schema. Native — visible in `dconf-editor`, Flatpak-safe. |
+| **`Extension.getSettings()` (GSettings)** | Provided by base `Extension` class | Persisting per-port mute preferences under `org.gnome.shell.extensions.usbee` | One call returns a `Gio.Settings` bound to the extension's compiled schema. Native — visible in `dconf-editor`, Flatpak-safe. |
 | **`gettext` (from extension module)** | bundled | i18n scaffolding for v1 English-only strings | `import {Extension, gettext as _} from '…/extension.js'`. Auto-initialised when `gettext-domain` is set in `metadata.json`. |
 ### Supporting Libraries (also via GI, no npm)
 | Library | Version | Purpose | When to Use |
@@ -87,7 +89,7 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 | **GNOME 46+ Quick Settings** | Top-panel `PanelMenu.Button` (legacy panel indicator) | If you needed to support GNOME 42–44. We don't — `PROJECT.md` pins min GNOME 46. The modern QuickSettings tile is the user-visible answer to "matches Wi-Fi/Bluetooth UX". |
 | **`Gio.DBusProxy.makeProxyWrapper`** | Hand-rolled `Gio.DBusProxy` subclass / raw `Gio.DBusConnection.call()` | If the introspection XML is missing or has unstable types. `usbeehive` already publishes a stable XML interface description — wrapper is the right tool. |
 | **`MessageTray.Source/Notification`** | `Gio.Notification` + `Gio.Application.send_notification()` | Standalone GTK apps with a `.desktop` ID. An extension does not have its own GApplication identity inside the Shell process. |
-| **GSettings (`us.bitcreed.usbee`)** | TOML under `$XDG_CONFIG_HOME/usbee/config.toml` | Never — `PROJECT.md` constraint pins GSettings. Also: GSettings is Flatpak-safe and visible in dconf-editor. |
+| **GSettings (`org.gnome.shell.extensions.usbee`)** | TOML under `$XDG_CONFIG_HOME/usbee/config.toml` | Never — `PROJECT.md` constraint pins GSettings. Also: GSettings is Flatpak-safe and visible in dconf-editor. |
 | **`tokio` (Rust)** | `async-std` (Rust) | Only relevant if a Rust binary existed. It doesn't. GJS uses GLib's main loop — there is no choice to make. |
 ## What NOT to Use
 | Avoid | Why | Use Instead |

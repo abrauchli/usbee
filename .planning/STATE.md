@@ -52,7 +52,7 @@ Last activity: 2026-05-26 -- Quick task 260526-c6p: device-change notifications 
 - **License:** GPL-3.0 (matches GNOME ecosystem norms; explicitly different from `usbeehive`'s permissive license).
 - **Distribution:** extensions.gnome.org (EGO) as a single zip produced by `gnome-extensions pack`. No Flatpak for the extension itself.
 - **Min target:** GNOME Shell 46. `metadata.json` `shell-version` will declare `["46", "47", "48"]`.
-- **Settings storage:** GSettings schema `us.bitcreed.usbee`. No TOML, no dotfiles. (`org.gnome.*` is GNOME-endorsement namespace, not appropriate for a third-party extension; renamed 2026-05-12.)
+- **Settings storage:** GSettings schema `org.gnome.shell.extensions.usbee`. No TOML, no dotfiles. (EGO `shexli` lint requires the `org.gnome.shell.extensions.*` namespace for extension settings schemas; renamed from the original `us.bitcreed.usbee` in quick task `260514-mq0` on 2026-05-14.)
 - **i18n:** English strings only in v1; every user-visible string wrapped in `gettext` `_()` markers from day one. Translations deferred to v2.
 - **Architecture rule:** All USB knowledge flows through `usbeehive` via D-Bus. USBee performs no `/sys` or udev access of its own.
 - **D-Bus wire names (Plan 01):** `BUS_NAME='org.usbeehive.Devices'` and `OBJECT_PATH='/org/usbeehive/Devices'` (NO trailing 1); `INTERFACE_NAME='org.usbeehive.Devices1'` (the `1` is only on the interface). Verified against `../usbeehive/src/dbus.rs:290-292`; CONTEXT.md's original wording had this wrong.

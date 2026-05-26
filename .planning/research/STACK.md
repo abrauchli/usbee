@@ -33,7 +33,7 @@ The GTK4 + libadwaita + zbus + tokio stack from `USBEE.md` is a fine stack for a
 | **`Gio.DBusProxy`** (via `makeProxyWrapper`) | Gio 2.80+ (GLib bundled with GNOME 46) | D-Bus client for `org.usbeehive.Devices1` on the session bus | First-class D-Bus support in GJS. `makeProxyWrapper(xml)` produces a typed class with `MethodRemote()` async wrappers and `connectSignal()` for signals. Caches properties; `g-properties-changed` notifies on change. |
 | **`Gio.DBusWatchName`** (`Gio.bus_watch_name`) | Gio 2.80+ | Detect when `org.usbeehive.Devices1` appears / disappears | Required for the "daemon not running" empty state and auto-light-up. Native primitive — no polling. |
 | **`MessageTray.Source` + `MessageTray.Notification`** | resource://…/ui/messageTray.js | Desktop notifications for `CapabilityDegraded` events | The documented extension API. Supports actions (the "Don't notify for this port" button). `Gio.Notification` is for standalone GTK apps with a `.desktop` file — wrong tool for an extension. |
-| **`Extension.getSettings()` (GSettings)** | Provided by base `Extension` class | Persisting per-port mute preferences under `org.gnome.usbee` | One call returns a `Gio.Settings` bound to the extension's compiled schema. Native — visible in `dconf-editor`, Flatpak-safe. |
+| **`Extension.getSettings()` (GSettings)** | Provided by base `Extension` class | Persisting per-port mute preferences under `org.gnome.shell.extensions.usbee` | One call returns a `Gio.Settings` bound to the extension's compiled schema. Native — visible in `dconf-editor`, Flatpak-safe. |
 | **`gettext` (from extension module)** | bundled | i18n scaffolding for v1 English-only strings | `import {Extension, gettext as _} from '…/extension.js'`. Auto-initialised when `gettext-domain` is set in `metadata.json`. |
 
 ### Supporting Libraries (also via GI, no npm)
@@ -73,7 +73,7 @@ usbee@bitcreed.us/
 │   ├── notifications.js      # MessageTray.Source wrapper
 │   └── deviceRow.js          # St-based row widget for the device list
 ├── schemas/
-│   ├── org.gnome.usbee.gschema.xml
+│   ├── org.gnome.shell.extensions.usbee.gschema.xml
 │   └── gschemas.compiled     # generated
 ├── locale/
 │   └── en/LC_MESSAGES/usbee@bitcreed.us.mo
@@ -96,7 +96,7 @@ usbee@bitcreed.us/
   "shell-version": ["46", "47", "48"],
   "url": "https://github.com/<owner>/usbee",
   "gettext-domain": "usbee@bitcreed.us",
-  "settings-schema": "org.gnome.usbee"
+  "settings-schema": "org.gnome.shell.extensions.usbee"
 }
 ```
 
@@ -132,7 +132,7 @@ busctl --user monitor org.usbeehive.Devices1
 | **GNOME 46+ Quick Settings** | Top-panel `PanelMenu.Button` (legacy panel indicator) | If you needed to support GNOME 42–44. We don't — `PROJECT.md` pins min GNOME 46. The modern QuickSettings tile is the user-visible answer to "matches Wi-Fi/Bluetooth UX". |
 | **`Gio.DBusProxy.makeProxyWrapper`** | Hand-rolled `Gio.DBusProxy` subclass / raw `Gio.DBusConnection.call()` | If the introspection XML is missing or has unstable types. `usbeehive` already publishes a stable XML interface description — wrapper is the right tool. |
 | **`MessageTray.Source/Notification`** | `Gio.Notification` + `Gio.Application.send_notification()` | Standalone GTK apps with a `.desktop` ID. An extension does not have its own GApplication identity inside the Shell process. |
-| **GSettings (`org.gnome.usbee`)** | TOML under `$XDG_CONFIG_HOME/usbee/config.toml` | Never — `PROJECT.md` constraint pins GSettings. Also: GSettings is Flatpak-safe and visible in dconf-editor. |
+| **GSettings (`org.gnome.shell.extensions.usbee`)** | TOML under `$XDG_CONFIG_HOME/usbee/config.toml` | Never — `PROJECT.md` constraint pins GSettings. Also: GSettings is Flatpak-safe and visible in dconf-editor. |
 | **`tokio` (Rust)** | `async-std` (Rust) | Only relevant if a Rust binary existed. It doesn't. GJS uses GLib's main loop — there is no choice to make. |
 
 ---

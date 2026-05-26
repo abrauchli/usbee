@@ -79,7 +79,7 @@ usbeehive version constant and the first EGO submission.
       `NameOwnerChanged` and lights up automatically when usbeehive
       appears on the session bus
 - [x] Per-port mute preferences persisted in GSettings
-      (`us.bitcreed.usbee`)
+      (`org.gnome.shell.extensions.usbee`)
 - [x] Strings wrapped in gettext markers so localisation can be
       added later without churn
 - [x] Ship as a GNOME Shell extension for the GNOME 46+ Quick
@@ -183,10 +183,11 @@ usbeehive version constant and the first EGO submission.
 - **Heavy lifting belongs in `usbeehive`**, not USBee. If a desired
   capability would require non-trivial logic in the indicator, push
   the work upstream into the daemon and consume the result via D-Bus
-- **Settings**: `GSettings` schema `us.bitcreed.usbee` (not TOML / not
-  ad-hoc dotfile). The `us.bitcreed.*` namespace is the project's own
-  vendor ID — `org.gnome.*` is reserved for components endorsed by the
-  GNOME project, which USBee is not.
+- **Settings**: `GSettings` schema `org.gnome.shell.extensions.usbee`
+  (not TOML / not ad-hoc dotfile). The `org.gnome.shell.extensions.*`
+  namespace is mandated by EGO's `shexli` lint for extension settings
+  schemas (renamed from the project's own `us.bitcreed.usbee` in quick
+  task 260514-mq0 on 2026-05-14).
 - **i18n**: English strings only for v1, but every user-visible
   string must go through gettext
 
@@ -200,7 +201,7 @@ usbeehive version constant and the first EGO submission.
 | All USB data via `org.usbeehive.Devices1` D-Bus interface | usbeehive already implements it; avoids duplicate enumeration logic | — Pending |
 | `usbeehive` runs as user-level systemd unit (`systemctl --user`) | Predictable lifecycle, simpler than D-Bus activation, matches user default | — Pending |
 | Notify once per `CapabilityDegraded` event with per-port mute | Loud-enough-to-notice without becoming notification spam | — Pending |
-| GSettings schema `us.bitcreed.usbee` for preferences | GNOME-native, visible in `dconf-editor`, integrates with Flatpak | — Pending |
+| GSettings schema `org.gnome.shell.extensions.usbee` for preferences | GNOME-native, visible in `dconf-editor`, integrates with Flatpak; namespace required by EGO `shexli` (renamed from `us.bitcreed.usbee` 2026-05-14) | — Pending |
 | English-only strings + gettext markers in v1 | Defer translation cost without locking it out | — Pending |
 | Pick async runtime / tile-host language during research | User left these open ("evaluate, pick best") — research phase will decide | — Pending |
 
