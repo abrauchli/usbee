@@ -149,10 +149,19 @@ export default class USBeePreferences extends ExtensionPreferences {
         // (a uint index) to a string value, so we wire both directions
         // manually and disconnect both handlers on window close-request
         // (mirrors the _buildNotificationsGroup teardown pattern).
+        // Quick task 260526-i7q — labels shortened so the ComboRow's
+        // collapsed-state selected-value display fits without ellipsis at
+        // the default prefs window width (~150-200 px of selected-value
+        // real estate fits ~22-26 chars). The row title and subtitle carry
+        // the "Notify..." verb context, so the option strings can drop the
+        // prefix without losing meaning (mirrors GNOME settings convention
+        // for similar enum rows, e.g. Privacy → "File History & Trash").
+        // The GSettings value strings ('all', 'power', 'off') are the
+        // schema-bound identifiers and remain unchanged.
         const scopeChoices = [
-            {value: 'all',   label: _('Notify on all device changes')},
-            {value: 'power', label: _('Notify only on charging-relevant changes')},
-            {value: 'off',   label: _('Do not notify on device changes')},
+            {value: 'all',   label: _('All device changes')},
+            {value: 'power', label: _('Charging-relevant only')},
+            {value: 'off',   label: _('Off')},
         ];
         const scopeModel = new Gtk.StringList();
         for (const c of scopeChoices) scopeModel.append(c.label);
