@@ -41,7 +41,7 @@ export default class USBeePreferences extends ExtensionPreferences {
         window.add(page);
 
         this._buildNotificationsGroup(page, settings, window);
-        this._buildGeneralGroup(page, settings);
+        this._buildGeneralGroup(page, settings, window);
         this._buildAboutGroup(page, window);
     }
 
@@ -111,8 +111,9 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
     }
 
-    // ── Group 2: General (hide-empty-ports, show-hubs) ───────────────
-    _buildGeneralGroup(page, settings) {
+    // ── Group 2: General (hide-empty-ports, show-hubs, show-technical-details,
+    //              device-change-notify-scope) ──────────────────────────
+    _buildGeneralGroup(page, settings, window) {
         const generalGroup = new Adw.PreferencesGroup({title: _('General')});
         page.add(generalGroup);
 
@@ -131,6 +132,67 @@ export default class USBeePreferences extends ExtensionPreferences {
         generalGroup.add(hubRow);
         settings.bind('show-hubs', hubRow, 'active',
                       Gio.SettingsBindFlags.DEFAULT);
+
+        // Quick task 260526-c6p — gate the explicit-deny GATED_KEYS list
+        // in src/popover.js behind a user-facing toggle. Default false keeps
+        // the popover glanceable for non-technical users (CONTEXT D-2).
+        const techRow = new Adw.SwitchRow({
+            title: _('Show technical details'),
+            subtitle: _('Include advanced rows (serial, data role, cable details, drivers) in the device popover'),
+        });
+        generalGroup.add(techRow);
+        settings.bind('show-technical-details', techRow, 'active',
+                      Gio.SettingsBindFlags.DEFAULT);
+
+        // Notify-scope ComboRow — three-option enum exposed as a GSettings
+        // string with <choices>. GSettings cannot auto-bind ComboRow.selected
+        // (a uint index) to a string value, so we wire both directions
+        // manually and disconnect both handlers on window close-request
+        // (mirrors the _buildNotificationsGroup teardown pattern).
+        const scopeChoices = [
+            {value: 'all',   label: _('Notify on all device changes')},
+            {value: 'power', label: _('Notify only on charging-relevant changes')},
+            {value: 'off',   label: _('Do not notify on device changes')},
+        ];
+        const scopeModel = new Gtk.StringList();
+        for (const c of scopeChoices) scopeModel.append(c.label);
+
+        const scopeRow = new Adw.ComboRow({
+            title: _('Notify on device changes'),
+            subtitle: _('Toasts when a USB device is connected or disconnected'),
+            model: scopeModel,
+        });
+        generalGroup.add(scopeRow);
+
+        // Initial selection from current setting value. An unknown value
+        // (e.g. set out-of-band by `gsettings set`) collapses to index 0
+        // — matches the Notifier's default-allow on unknown scope.
+        const currentScope = settings.get_string('device-change-notify-scope');
+        const initialIdx = scopeChoices.findIndex(c => c.value === currentScope);
+        scopeRow.selected = initialIdx >= 0 ? initialIdx : 0;
+
+        // Two-way wiring: row → settings, settings → row.
+        const rowSelectedId = scopeRow.connect('notify::selected', () => {
+            const sel = scopeRow.selected;
+            if (sel < 0 || sel >= scopeChoices.length) return;
+            settings.set_string('device-change-notify-scope', scopeChoices[sel].value);
+        });
+        const settingsScopeId = settings.connect(
+            'changed::device-change-notify-scope', () => {
+                const v = settings.get_string('device-change-notify-scope');
+                const idx = scopeChoices.findIndex(c => c.value === v);
+                if (idx >= 0 && scopeRow.selected !== idx) scopeRow.selected = idx;
+            });
+
+        // Prefs-process lifecycle teardown — disconnect both handler ids
+        // so the row and the GSettings object aren't held alive by stale
+        // signal references after the window closes (parallel to the
+        // mutesChangedId disconnect in _buildNotificationsGroup).
+        window.connect('close-request', () => {
+            scopeRow.disconnect(rowSelectedId);
+            settings.disconnect(settingsScopeId);
+            return false; // don't prevent close
+        });
     }
 
     // ── Group 3: About ───────────────────────────────────────────────

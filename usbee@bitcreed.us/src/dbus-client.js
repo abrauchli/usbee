@@ -216,12 +216,46 @@ export const DBusClient = GObject.registerClass({
                 // Phase 2 NOTIF-* work (RESEARCH.md §Pitfall F).
                 // Use proxy.connectSignal (NOT .connect) — these are D-Bus
                 // signals, not GObject property notifies (RESEARCH §Pitfall E).
+                //
+                // Quick task 260526-c6p: forward Add/Remove to the Notifier
+                // for transient connect/disconnect toasts. Critical ordering:
+                // the Notifier call resolves the headline against the CURRENT
+                // (pre-mutation) store snapshot BEFORE _scheduleRefresh()
+                // queues the snapshot reload. _scheduleRefresh debounces
+                // 150 ms anyway, but reading the store synchronously here
+                // makes the "pre-removal lookup" contract explicit at the
+                // call site rather than relying on the debounce window.
                 const addedId = this._proxy.connectSignal('DeviceAdded',
-                    () => this._scheduleRefresh());
+                    (_proxy, _sender, [id, headline]) => {
+                        // DeviceStore lookup is racy here — the daemon may
+                        // not have appeared in ListDevices yet for this id.
+                        // We still need a `kind` for the 'power' scope
+                        // filter, so try the store but fall back to undefined
+                        // (which the Notifier treats as default-allow).
+                        const dev = this._store?.devices?.find(d => d.id === id);
+                        const kind = dev
+                            ? {category: dev.category, deviceClass: dev.device_class}
+                            : undefined;
+                        this._notifier?.onDeviceAdded(id, headline, kind);
+                        this._scheduleRefresh();
+                    });
                 this._registry.addProxySignal(this._proxy, addedId);
 
                 const removedId = this._proxy.connectSignal('DeviceRemoved',
-                    () => this._scheduleRefresh());
+                    (_proxy, _sender, [id]) => {
+                        // Resolve id → headline against the pre-removal
+                        // snapshot. The DeviceRemoved payload only carries
+                        // `id`; on snapshot miss, fall back to the id string
+                        // (defensive — keeps the toast self-describing even
+                        // when the store never saw this device).
+                        const dev = this._store?.devices?.find(d => d.id === id);
+                        const headline = dev?.headline || id;
+                        const kind = dev
+                            ? {category: dev.category, deviceClass: dev.device_class}
+                            : undefined;
+                        this._notifier?.onDeviceRemoved(id, headline, kind);
+                        this._scheduleRefresh();
+                    });
                 this._registry.addProxySignal(this._proxy, removedId);
 
                 // Phase 2: forward Capability* signals to the Notifier
