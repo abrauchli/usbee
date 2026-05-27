@@ -176,7 +176,7 @@ export class Notifier {
             source,
             title,
             body: '',
-            iconName: 'network-usb-symbolic',
+            iconName: 'drive-harddisk-usb-symbolic',
             urgency: MessageTray.Urgency.NORMAL,
         });
 
@@ -191,7 +191,7 @@ export class Notifier {
 
         this._source = new MessageTray.Source({
             title: _('USBee'),
-            iconName: 'network-usb-symbolic',
+            iconName: 'drive-harddisk-usb-symbolic',
         });
 
         // RESEARCH §Pitfall B — Source destroys itself when the user
@@ -233,7 +233,7 @@ export class Notifier {
             source,
             title,
             body,
-            iconName: 'network-usb-symbolic',
+            iconName: 'drive-harddisk-usb-symbolic',
             urgency: MessageTray.Urgency.NORMAL,
         });
 
