@@ -6,7 +6,7 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
-## [Unreleased]
+## [2.2.1] — 2026-06-08
 
 ### Fixed
 
@@ -202,6 +202,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.2.1]: https://github.com/abrauchli/usbee/releases/tag/v2.2.1
 [2.2.0]: https://github.com/abrauchli/usbee/releases/tag/v2.2.0
 [2.1.0]: https://github.com/abrauchli/usbee/releases/tag/v2.1.0
 [2.0.0]: https://github.com/abrauchli/usbee/releases/tag/v2.0.0
