@@ -6,6 +6,18 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.3.1] — 2026-06-08
+
+### Fixed
+
+- Daemon-state empty popover no longer renders an orphaned, ellipsized
+  title (e.g. a stray "u…"). `PopupMenuItem` lays its children out
+  horizontally, so the built-in label was starved of width by the
+  `x_expand` body box. The title now lives inside the vertical body box
+  (new `.usbee-empty-state-title` style) and stacks cleanly above the
+  hint and command across all three states: "usbeehive not installed",
+  "usbeehive daemon not running", and "usbeehive daemon out of date".
+
 ## [2.3.0] — 2026-06-08
 
 Requires usbeehive >= 0.9.0 (up from 0.7.0). usbeehive 0.9.0 cut the
@@ -222,6 +234,8 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.3.1]: https://github.com/abrauchli/usbee/releases/tag/v2.3.1
+[2.3.0]: https://github.com/abrauchli/usbee/releases/tag/v2.3.0
 [2.2.1]: https://github.com/abrauchli/usbee/releases/tag/v2.2.1
 [2.2.0]: https://github.com/abrauchli/usbee/releases/tag/v2.2.0
 [2.1.0]: https://github.com/abrauchli/usbee/releases/tag/v2.1.0
