@@ -43,7 +43,7 @@
       <description>
         When false (the default), the device detail panel hides an
         explicit deny-list of advanced property rows: serial, data_role,
-        power_mode, pd_revision, plug_orientation, cable_current,
+        power_mode, pd_revision, plug_orientation, cable_max_current,
         cable_type, drivers. All other property rows (including unknown
         keys emitted by future daemon versions) remain visible — the
         gate is explicit-deny, not allow-list. Toggled from the "Show

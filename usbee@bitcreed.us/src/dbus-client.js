@@ -17,20 +17,21 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// VERIFIED against ../usbeehive/src/dbus.rs:336-455 (the
-// `#[interface(name = "org.usbeehive.Devices3")]` block shipped in
-// usbeehive 0.7.0). The "3" lives ONLY on the interface name — not on
-// the bus name or object path; both are version-agnostic.
+// VERIFIED against ../usbeehive/src/dbus.rs (the
+// `#[interface(name = "org.usbeehive.Devices4")]` block shipped in
+// usbeehive 0.9.0). The generation digit lives ONLY on the interface
+// name — not on the bus name or object path; both are version-agnostic.
 const BUS_NAME       = 'org.usbeehive.Devices';     // version-agnostic
 const OBJECT_PATH    = '/org/usbeehive/Devices';    // version-agnostic
-const INTERFACE_NAME = 'org.usbeehive.Devices3';    // CONTEXT 260526-dmj §A
+const INTERFACE_NAME = 'org.usbeehive.Devices4';    // CONTEXT 260526-dmj §A
 
-// Minimum supported usbeehive daemon version. usbeehive 0.7.0 hard-cuts
-// the prior interface generation to Devices3 (no alias) per
-// ../usbeehive/CHANGELOG.md §[0.7.0] (2026-05-26); 0.6.x daemons route
-// into the existing populateOutOfDateState empty state via
-// isVersionAtLeast below.
-const MIN_USBEEHIVE_VERSION = '0.7.0';
+// Minimum supported usbeehive daemon version. usbeehive 0.9.0 hard-cuts
+// the prior interface generation to Devices4 (no alias) per
+// ../usbeehive/CHANGELOG.md §[0.9.0] (2026-06-08), which renamed the
+// usb_power_ma / cable_current property keys to usb_max_power_ma /
+// cable_max_current. Older daemons (Devices3, < 0.9.0) route into the
+// existing populateOutOfDateState empty state via isVersionAtLeast below.
+const MIN_USBEEHIVE_VERSION = '0.9.0';
 
 // Fail-closed lexical-tuple semver compare. Returns true iff `actual >= minimum`.
 // Any parse failure returns false — the gate routes to 'daemon-too-old'
@@ -68,7 +69,7 @@ function isVersionAtLeast(actual, minimum) {
 const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="org.usbeehive.Devices3">
+  <interface name="org.usbeehive.Devices4">
     <method name="ListDevices">
       <arg type="a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)" direction="out" name="entries"/>
     </method>

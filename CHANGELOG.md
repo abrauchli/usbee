@@ -6,6 +6,26 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.3.0] — 2026-06-08
+
+Requires usbeehive >= 0.9.0 (up from 0.7.0). usbeehive 0.9.0 cut the
+D-Bus interface `org.usbeehive.Devices3` → `Devices4` — a narrow break
+that renamed two property keys so they stop reading as live
+measurements (each is a declared maximum, not instantaneous draw).
+
+### Changed
+
+- Track the Devices4 wire: `INTERFACE_NAME` and the minimum-daemon gate
+  `MIN_USBEEHIVE_VERSION` move to `org.usbeehive.Devices4` / `0.9.0`.
+  Daemons older than 0.9.0 (the `Devices3` generation) now route into
+  the existing "daemon out of date" empty state instead of connecting.
+- Property keys renamed to match the daemon, with honest labels:
+  `usb_power_ma` → `usb_max_power_ma` (shown as **"Max bus power"**),
+  `cable_current` → `cable_max_current` (shown as **"Cable max
+  current"**). Both were declared maxima — the USB `bMaxPower` draw
+  ceiling and the cable e-marker current rating — that the old labels
+  presented as if they were live readings.
+
 ## [2.2.1] — 2026-06-08
 
 ### Fixed

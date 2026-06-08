@@ -6,7 +6,7 @@
 // binds its subtitle to store.subhead via 'changed'.
 //
 // As of quick task 260526-dmj (v2.0+) this module consumes the
-// org.usbeehive.Devices3 wire — a 21-field structured DeviceEntry tuple
+// org.usbeehive.Devices4 wire — a 21-field structured DeviceEntry tuple
 // (the prior 19 fields plus trailing pdo_list + active_pdo_index). The
 // bullet-prose parsing helpers the v1.x device-store maintained (wattage
 // scan, direction scan, link-speed scan, diagnostic-phrase scan) are deleted:
@@ -19,7 +19,7 @@
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-// DeviceEntry tuple from ListDevices on org.usbeehive.Devices3:
+// DeviceEntry tuple from ListDevices on org.usbeehive.Devices4:
 //   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)
 // 21 fields in declaration order — see CONTEXT 260526-dmj §A /
 // ../usbeehive/src/dbus.rs:25-52.
@@ -280,7 +280,7 @@ export const DeviceStore = GObject.registerClass({
     /**
      * Replace the device list wholesale (D-08 full re-snapshot strategy).
      * @param {Array} rawEntries  21-field DeviceEntry tuples from
-     *   ListDevicesRemote on org.usbeehive.Devices3 (signature
+     *   ListDevicesRemote on org.usbeehive.Devices4 (signature
      *   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)).
      */
     setDevices(rawEntries) {

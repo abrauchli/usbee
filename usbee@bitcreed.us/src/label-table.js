@@ -41,12 +41,12 @@ function buildLabelTable() {
         ['plug_orientation', _('Plug orientation')],
         ['pd_contract',      _('PD contract')],
         ['cable_speed',      _('Cable speed')],
-        ['cable_current',    _('Cable current')],
+        ['cable_max_current', _('Cable max current')],
         ['cable_max_power',  _('Cable max power')],
         ['cable_type',       _('Cable type')],
         ['cable_vendor',     _('Cable vendor')],
         ['charger_max',      _('Charger max')],
-        ['usb_power_ma',     _('USB bus power')],
+        ['usb_max_power_ma',  _('Max bus power')],
     ]);
 }
 
@@ -69,12 +69,12 @@ export function labelForKey(key) {
 }
 
 // Some daemon-emitted machine keys carry numeric values whose unit is
-// implicit in the key name (e.g. usb_power_ma → milliamps). USBee owns
+// implicit in the key name (e.g. usb_max_power_ma → milliamps). USBee owns
 // user-facing presentation (CONTEXT D-2.0-04) — append the unit at the
 // renderer so the daemon does not encode it in the value string. Keys
 // absent from this table render verbatim (forward-compat fallthrough).
 const UNIT_BY_KEY = new Map([
-    ['usb_power_ma', 'mA'],
+    ['usb_max_power_ma', 'mA'],
 ]);
 
 /**

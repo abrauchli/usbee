@@ -36,7 +36,7 @@ const GATED_KEYS = new Set([
     'power_mode',
     'pd_revision',
     'plug_orientation',
-    'cable_current',
+    'cable_max_current',
     'cable_type',
     'drivers',
 ]);

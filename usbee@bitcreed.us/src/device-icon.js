@@ -7,8 +7,8 @@
 // mapping helper; keeps popover.js free of the icon switch").
 //
 // As of Plan 04-02 (v2.0) this module consumes the `device_class` field
-// from the org.usbeehive.Devices3 wire (CONTEXT D-2.0-02; field carried
-// across the Devices3 cut). The v1.x
+// from the org.usbeehive.Devices4 wire (CONTEXT D-2.0-02; field carried
+// across the Devices4 cut). The v1.x
 // keyword/headline-scan heuristic is deleted; daemon-side classification
 // is the source of truth and forward-compat is owned by Map.get() ?? null
 // (WIRE-04: unknown variants fall through to the generic USB icon).
