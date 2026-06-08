@@ -160,14 +160,11 @@ export const DBusClient = GObject.registerClass({
         if (this._proxy !== null) {
             // Owner-transition orderings can deliver this callback before the
             // proxy's g-name-owner has propagated. Snapshotting against a
-            // null owner yields NameHasNoOwner; skip and wait for the
-            // notify::g-name-owner path (or the next bus_watch_name appear)
-            // to drive the refresh.
-            if (this._proxy.gNameOwner === null) return;
-            this._store.setDaemonRunning(true);
-            this._notifier?.onDaemonAppeared(); // RESEARCH §Code Example #3 — 2.5 s suppression
-            this._snapshotImmediate();
-            this.emit('ready');
+            // null owner yields NameHasNoOwner; skip — the proxy's
+            // notify::g-name-owner handler drives the refresh once the new
+            // owner lands (it fires for BOTH the acquire and the lose
+            // transition; see _onProxyOwnerAcquired / _onVanished).
+            if (this._proxy.gNameOwner !== null) this._onProxyOwnerAcquired();
             return;
         }
         new UsbeehiveProxy(
@@ -196,18 +193,19 @@ export const DBusClient = GObject.registerClass({
                     return;
                 }
 
-                // D-07: notify::g-name-owner handles future owner transitions.
+                // D-07: notify::g-name-owner handles future owner transitions
+                // in BOTH directions. A daemon restart drives owner null ->
+                // new-owner; the bus_watch_name "appeared" callback often
+                // fires before that propagates, so _onAppeared returns early
+                // and THIS handler is the path that re-drives the snapshot.
+                // Lose (-> null) routes to _onVanished; acquire (-> non-null)
+                // routes to _onProxyOwnerAcquired. Both are idempotent so a
+                // coincident watch-appeared call does not double-fire.
                 // This is a GObject property notify, NOT a D-Bus signal —
                 // use plain connect/disconnect (RESEARCH.md §Pitfall E).
                 const ownerId = this._proxy.connect(
-                    'notify::g-name-owner', () => {
-                        // Defensive: if a future teardown path nulls _proxy
-                        // before the registry disconnects this handler, the
-                        // dereference would throw. Paired with the CR-01
-                        // idempotency guard in _onVanished.
-                        if (this._proxy && this._proxy.gNameOwner === null)
-                            this._onVanished();
-                    });
+                    'notify::g-name-owner',
+                    () => this._onProxyOwnerChanged());
                 this._registry.addSignal(this._proxy, ownerId);
 
                 // D-06: subscribe to DeviceAdded / DeviceRemoved for the
@@ -279,6 +277,50 @@ export const DBusClient = GObject.registerClass({
                 this.emit('ready');
             },
         );
+    }
+
+    /**
+     * notify::g-name-owner handler for the constructed proxy. The owner
+     * changes in BOTH directions over the extension lifetime: a daemon exit
+     * drives it to null, a daemon (re)start drives it to a new owner string.
+     *
+     * The bus_watch_name "appeared" callback frequently fires before the
+     * proxy propagates the new owner, so _onAppeared's re-entrant branch
+     * returns early — THIS handler is the path that re-drives the snapshot on
+     * restart (the bug fixed in 260608: previously only the null transition
+     * was handled, so the tile stayed stuck in "daemon not running").
+     *
+     * Defensive null check: if a future teardown path nulls _proxy before the
+     * registry disconnects this handler, the dereference would throw. Both
+     * routed methods are idempotent (CR-01 guards), so a coincident
+     * watch-appeared call does not double-fire.
+     */
+    _onProxyOwnerChanged() {
+        if (!this._proxy) return;
+        if (this._proxy.gNameOwner === null)
+            this._onVanished();
+        else
+            this._onProxyOwnerAcquired();
+    }
+
+    /**
+     * Owner-acquired path for an already-constructed proxy: the daemon is
+     * (back) on the bus with a live g-name-owner. Marks the store running,
+     * un-suppresses notifications, takes an immediate snapshot, and signals
+     * 'ready' so the tile leaves the "daemon not running" empty state.
+     *
+     * Idempotent: reached from both the bus_watch_name "appeared" callback
+     * and the proxy's notify::g-name-owner handler, which can fire in either
+     * order on a restart. The daemonRunning guard collapses a coincident pair
+     * to a single snapshot + 'ready'. (First-ever construction takes the
+     * inline path in _onAppeared's proxy callback, not this method.)
+     */
+    _onProxyOwnerAcquired() {
+        if (this._store.daemonRunning) return;
+        this._store.setDaemonRunning(true);
+        this._notifier?.onDaemonAppeared(); // RESEARCH §Code Example #3 — 2.5 s suppression
+        this._snapshotImmediate();
+        this.emit('ready');
     }
 
     /**

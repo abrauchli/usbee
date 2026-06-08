@@ -6,6 +6,21 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [Unreleased]
+
+### Fixed
+
+- Quick Settings tile no longer stays stuck in the "daemon not running"
+  empty state after a `usbeehive` restart. The proxy's
+  `notify::g-name-owner` handler previously acted only on the owner-lost
+  transition; on reconnect the `bus_watch_name` "appeared" callback
+  fires before the proxy propagates the new owner, so `_onAppeared`
+  returned early and nothing re-drove the snapshot. The handler now
+  routes both transitions (lose → `_onVanished`, acquire →
+  `_onProxyOwnerAcquired`), each idempotent so a coincident
+  watch-appeared call does not double-fire. The preferences window was
+  unaffected because it builds a fresh proxy on every open.
+
 ## [2.2.0] — 2026-05-26
 
 Requires usbeehive >= 0.7.0 (unchanged from v2.1.0 — the new
