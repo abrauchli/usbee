@@ -23,7 +23,10 @@ jobs:
       - name: Run shexli
         run: |
           . venv/bin/activate
-          shexli usbee@bitcreed.us
+          # Pass an absolute path: shexli >=… regressed and crashes with a
+          # ValueError in package_path() when given a relative package dir
+          # (it compares absolute file paths against the relative root).
+          shexli "$PWD/usbee@bitcreed.us"
 
   unit-tests:
     name: Unit tests (gjs)
