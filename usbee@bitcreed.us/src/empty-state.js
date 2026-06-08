@@ -92,13 +92,20 @@ export function buildEmptyStateItem() {
         can_focus: false,
     });
     item.add_style_class_name('usbee-empty-state');
-    item.label.text = _('usbeehive daemon not running');
+    item.label.hide();
 
     const box = new St.BoxLayout({
         vertical: true,
         x_expand: true,
         style_class: 'usbee-empty-state-body',
     });
+
+    const title = new St.Label({
+        text: _('usbeehive daemon not running'),
+        style_class: 'usbee-empty-state-title',
+        x_expand: true,
+    });
+    title.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Run this command, then this list will populate automatically:'),
@@ -120,6 +127,7 @@ export function buildEmptyStateItem() {
     entry.clutter_text.editable = false;
     entry.clutter_text.selectable = true;
 
+    box.add_child(title);
     box.add_child(hint);
     box.add_child(entry);
     item.add_child(box);
@@ -144,13 +152,20 @@ export function buildDaemonNotInstalledItem() {
         can_focus: false,
     });
     item.add_style_class_name('usbee-empty-state');
-    item.label.text = _('usbeehive not installed');
+    item.label.hide();
 
     const box = new St.BoxLayout({
         vertical: true,
         x_expand: true,
         style_class: 'usbee-empty-state-body',
     });
+
+    const title = new St.Label({
+        text: _('usbeehive not installed'),
+        style_class: 'usbee-empty-state-title',
+        x_expand: true,
+    });
+    title.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Install usbeehive, then start it. This list will populate automatically:'),
@@ -168,6 +183,7 @@ export function buildDaemonNotInstalledItem() {
     entry.clutter_text.editable = false;
     entry.clutter_text.selectable = true;
 
+    box.add_child(title);
     box.add_child(hint);
     box.add_child(entry);
     item.add_child(box);
@@ -197,13 +213,20 @@ export function buildDaemonOutOfDateItem() {
         can_focus: false,
     });
     item.add_style_class_name('usbee-empty-state');
-    item.label.text = _('usbeehive daemon out of date');
+    item.label.hide();
 
     const box = new St.BoxLayout({
         vertical: true,
         x_expand: true,
         style_class: 'usbee-empty-state-body',
     });
+
+    const title = new St.Label({
+        text: _('usbeehive daemon out of date'),
+        style_class: 'usbee-empty-state-title',
+        x_expand: true,
+    });
+    title.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Update usbeehive, then restart the daemon. This list will populate automatically:'),
@@ -221,6 +244,7 @@ export function buildDaemonOutOfDateItem() {
     entry.clutter_text.editable = false;
     entry.clutter_text.selectable = true;
 
+    box.add_child(title);
     box.add_child(hint);
     box.add_child(entry);
     item.add_child(box);
