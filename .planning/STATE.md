@@ -30,7 +30,7 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
 Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-05-26 -- Quick task 260526-i7q: daemon-state hints (install/update) + shorter notify-changes ComboRow labels
+Last activity: 2026-06-08 -- Quick task 260608-hug: fix clipped empty-state title ("u...") in Quick Settings popover
 
 ## Performance Metrics
 
@@ -149,6 +149,7 @@ Steps:
 | 260526-c6p | Device-change notifications (DeviceAdded/Removed toasts, scope enum all/power/off) + Show technical details toggle gating 8 advanced property rows | 2026-05-26 | 286c85f | [260526-c6p-connect-disconnect-notifications-tech-de](./quick/260526-c6p-connect-disconnect-notifications-tech-de/) |
 | 260526-dmj | Devices3 wire migration (MIN_USBEEHIVE 0.7.0, pdo_list/active_pdo_index) + cable trust row + transport pill strip + structured Charger PDOs block | 2026-05-26 | ed7acd6, c130b50, 6cad52f | [260526-dmj-devices3-wire-migration-pdo-list-trust-s](./quick/260526-dmj-devices3-wire-migration-pdo-list-trust-s/) |
 | 260526-i7q | Three-way daemon-state hints (not-installed / not-running / out-of-date) with `usbeehived --install-service` and `cargo install usbeehive --features=dbus` commands; shorter notify-changes ComboRow item labels | 2026-05-26 | 4b8c7bb, dec4dbb | [260526-i7q-daemon-status-hints-shorter-notify-chang](./quick/260526-i7q-daemon-status-hints-shorter-notify-chang/) |
+| 260608-hug | Fix clipped empty-state title ("u...") — move titles into the vertical body box (hide built-in horizontal PopupMenuItem label) across all three daemon-state builders + `.usbee-empty-state-title` CSS rule | 2026-06-08 | 3229281, c6a2d43 | [260608-hug-fix-clipped-empty-state-title-u-in-quick](./quick/260608-hug-fix-clipped-empty-state-title-u-in-quick/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
