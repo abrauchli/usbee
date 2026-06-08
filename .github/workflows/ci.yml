@@ -24,3 +24,26 @@ jobs:
         run: |
           . venv/bin/activate
           shexli usbee@bitcreed.us
+
+  unit-tests:
+    name: Unit tests (gjs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install gjs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gjs
+
+      # Only self-contained tests run here: those importing solely gi://
+      # modules. Tests whose targets import the gnome-shell extension
+      # resource URI (resource:///org/gnome/shell/extensions/extension.js)
+      # — e.g. tests/forward-compat.test.js, via device-store.js's gettext
+      # import — can ONLY run inside gnome-shell, not bare CI gjs. Add new
+      # CI-safe test files to this list as they appear.
+      - name: Run unit tests
+        run: |
+          gjs --version
+          gjs -m tests/dbus-client.test.js
