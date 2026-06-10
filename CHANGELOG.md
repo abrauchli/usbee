@@ -38,6 +38,14 @@ a bad cable.
   existing diagnostic rows (its summary/detail explain the
   battery-charge-limit case); it ships `is_warning == false`, so it
   never raises a degradation notification — no notifier change needed.
+- Labels for the two new usbeehive 0.10.0 capability hint properties
+  (additive Devices5 keys — no wire or gate change): `cable.no_emarker`
+  renders as **"Cable e-marker: not visible (3 A limit may apply)"**,
+  `cable.data_speed_limit` as **"Cable data limit: USB 2.0"** (value is
+  the daemon's cable-speed label). The related `CableNoEMarker`
+  bottleneck flows through the existing diagnostic rows like every
+  other variant. Older usbee builds render the raw keys via the
+  standard unknown-key fallthrough.
 
 ## [2.3.1] — 2026-06-08
 

@@ -45,6 +45,9 @@ function buildLabelTable() {
         ['cable_max_power',  _('Cable max power')],
         ['cable_type',       _('Cable type')],
         ['cable_vendor',     _('Cable vendor')],
+        // usbeehive 0.10.0 capability hints (additive Devices5 keys).
+        ['cable.no_emarker', _('Cable e-marker')],
+        ['cable.data_speed_limit', _('Cable data limit')],
         ['charger_max',      _('Charger max')],
         ['usb_max_power_ma',  _('Max bus power')],
     ]);
@@ -77,6 +80,21 @@ const UNIT_BY_KEY = new Map([
     ['usb_max_power_ma', 'mA'],
 ]);
 
+// Flag keys whose wire value is the literal string "true" but whose row
+// should read as prose, not a bare boolean. Lazy for the same gettext
+// reason as LABEL_TABLE. Wording matches the daemon's CLI: "not visible",
+// never "missing" — some UCSI firmwares simply don't populate cable nodes.
+let _flagValueTable = null;
+
+function flagValueTable() {
+    if (_flagValueTable === null) {
+        _flagValueTable = new Map([
+            ['cable.no_emarker', _('not visible (3 A limit may apply)')],
+        ]);
+    }
+    return _flagValueTable;
+}
+
 /**
  * Format a property value with its key-implied unit, if any. Empty
  * values pass through unchanged so the row renders nothing rather than
@@ -87,6 +105,11 @@ const UNIT_BY_KEY = new Map([
  * @returns {string}      Value with unit suffix where applicable.
  */
 export function formatValueForKey(key, value) {
+    if (value === 'true') {
+        const prose = flagValueTable().get(key);
+        if (prose !== undefined)
+            return prose;
+    }
     const unit = UNIT_BY_KEY.get(key);
     if (!unit || value === '' || value === null || value === undefined)
         return value;
