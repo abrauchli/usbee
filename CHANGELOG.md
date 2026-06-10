@@ -6,6 +6,39 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [2.4.0] — 2026-06-10
+
+Requires usbeehive >= 0.10.0 (up from 0.9.0). usbeehive 0.10.0 cut the
+D-Bus interface `org.usbeehive.Devices4` → `Devices5`: USB-PD wattages
+on the wire are negotiated ceilings, never measured flow, and the wire
+now says so structurally. The per-entry `power` tuple grew a
+`contract_mw` field (`(uus)` → `(uuus)`) separating what the sink
+*requested* (`power_in_mw`, the RDO operating power) from what the
+active contract *allows* (`contract_mw`, 0 = unknown). Motivating case:
+a laptop with an 80% battery charge limit holds a healthy 65 W contract
+while requesting only 15 W — previously rendered indistinguishably from
+a bad cable.
+
+### Changed
+
+- Track the Devices5 wire: `INTERFACE_NAME`, all three IFACE_XML copies
+  (dbus-client.js literal, dbus-iface.xml, prefs.js Version-only stub),
+  and the minimum-daemon gate `MIN_USBEEHIVE_VERSION` move to
+  `org.usbeehive.Devices5` / `0.10.0`. Older daemons route into the
+  existing "daemon out of date" empty state.
+- `unpackDeviceEntry` unpacks the new 4-field power tuple
+  (`power_role` shifted from index 2 to 3) and exposes
+  `power.contract_mw` on every device object.
+- Tile subtitle is honest about sink-limited charging: when the daemon
+  reports `contract_mw > power_in_mw`, the Charging tile renders
+  "up to 15 W" instead of presenting the sink's own request as if it
+  were the measured charging rate. Request-≈-contract and
+  contract-unknown cases render unchanged ("65 W").
+- The new benign `SinkLimit` bottleneck variant flows through the
+  existing diagnostic rows (its summary/detail explain the
+  battery-charge-limit case); it ships `is_warning == false`, so it
+  never raises a degradation notification — no notifier change needed.
+
 ## [2.3.1] — 2026-06-08
 
 ### Fixed

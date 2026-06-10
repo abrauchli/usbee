@@ -26,6 +26,13 @@ msgstr ""
 msgid "Charging"
 msgstr ""
 
+#. Tile subtitle when the sink requests less than its PD contract allows
+#. (e.g. a battery charge limit); %s is a formatted wattage like "15 W".
+#: usbee@bitcreed.us/src/device-store.js:188
+#, javascript-format
+msgid "up to %s"
+msgstr ""
+
 #: usbee@bitcreed.us/src/device-store.js:133
 msgid "Powering"
 msgstr ""

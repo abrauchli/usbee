@@ -18,20 +18,22 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 // VERIFIED against ../usbeehive/src/dbus.rs (the
-// `#[interface(name = "org.usbeehive.Devices4")]` block shipped in
-// usbeehive 0.9.0). The generation digit lives ONLY on the interface
+// `#[interface(name = "org.usbeehive.Devices5")]` block shipped in
+// usbeehive 0.10.0). The generation digit lives ONLY on the interface
 // name — not on the bus name or object path; both are version-agnostic.
 const BUS_NAME       = 'org.usbeehive.Devices';     // version-agnostic
 const OBJECT_PATH    = '/org/usbeehive/Devices';    // version-agnostic
-const INTERFACE_NAME = 'org.usbeehive.Devices4';    // CONTEXT 260526-dmj §A
+const INTERFACE_NAME = 'org.usbeehive.Devices5';
 
-// Minimum supported usbeehive daemon version. usbeehive 0.9.0 hard-cuts
-// the prior interface generation to Devices4 (no alias) per
-// ../usbeehive/CHANGELOG.md §[0.9.0] (2026-06-08), which renamed the
-// usb_power_ma / cable_current property keys to usb_max_power_ma /
-// cable_max_current. Older daemons (Devices3, < 0.9.0) route into the
-// existing populateOutOfDateState empty state via isVersionAtLeast below.
-const MIN_USBEEHIVE_VERSION = '0.9.0';
+// Minimum supported usbeehive daemon version. usbeehive 0.10.0 hard-cuts
+// the prior interface generation to Devices5 (no alias) per
+// ../usbeehive/CHANGELOG.md §[0.10.0] (2026-06-10): the per-entry power
+// tuple grew a `contract_mw` field ((uus) → (uuus)) so the sink's
+// *requested* operating power and what the contract *allows* travel
+// separately, and the bottleneck enum gained the benign `SinkLimit`
+// variant. Older daemons (Devices4, < 0.10.0) route into the existing
+// populateOutOfDateState empty state via isVersionAtLeast below.
+const MIN_USBEEHIVE_VERSION = '0.10.0';
 
 // Fail-closed lexical-tuple semver compare. Returns true iff `actual >= minimum`.
 // Any parse failure returns false — the gate routes to 'daemon-too-old'
@@ -69,9 +71,9 @@ function isVersionAtLeast(actual, minimum) {
 const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="org.usbeehive.Devices4">
+  <interface name="org.usbeehive.Devices5">
     <method name="ListDevices">
-      <arg type="a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)" direction="out" name="entries"/>
+      <arg type="a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)" direction="out" name="entries"/>
     </method>
     <method name="ListPorts">
       <arg type="ai" direction="out" name="ports"/>

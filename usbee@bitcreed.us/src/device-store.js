@@ -5,9 +5,12 @@
 // D-Bus, no UI here. The DBusClient mutates this store; the USBeeToggle
 // binds its subtitle to store.subhead via 'changed'.
 //
-// As of quick task 260526-dmj (v2.0+) this module consumes the
-// org.usbeehive.Devices4 wire — a 21-field structured DeviceEntry tuple
-// (the prior 19 fields plus trailing pdo_list + active_pdo_index). The
+// As of v2.4 this module consumes the org.usbeehive.Devices5 wire — a
+// 21-field structured DeviceEntry tuple whose nested power tuple is
+// (uuus): (power_in_mw, power_out_mw, contract_mw, power_role). All PD
+// wattages on the wire are negotiated ceilings, never measured flow —
+// power_in_mw is what the sink *requested* (RDO operating power),
+// contract_mw what the active contract *allows* (0 = unknown). The
 // bullet-prose parsing helpers the v1.x device-store maintained (wattage
 // scan, direction scan, link-speed scan, diagnostic-phrase scan) are deleted:
 // every fact the daemon used to encode in bullet strings is now a named
@@ -19,16 +22,16 @@
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-// DeviceEntry tuple from ListDevices on org.usbeehive.Devices4:
-//   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)
-// 21 fields in declaration order — see CONTEXT 260526-dmj §A /
-// ../usbeehive/src/dbus.rs:25-52.
+// DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
+//   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)
+// 21 fields in declaration order — see ../usbeehive/src/dbus.rs module
+// docs ("ListDevices element shape" table).
 //
-// The nested (uus), (bsssb), and per-PDO (usuuuub) tuples are unpacked
+// The nested (uuus), (bsssb), and per-PDO (usuuuub) tuples are unpacked
 // into named inner objects so every consumer reads structured fields
 // (WIRE-02 acceptance: no downstream consumer indexes by tuple position).
 function unpackDeviceEntry(tuple) {
-    const power = tuple[17] || [0, 0, ''];
+    const power = tuple[17] || [0, 0, 0, ''];
     const diag  = tuple[18] || [false, '', '', '', false];
     const rawPdos = tuple[19] || [];
     return {
@@ -52,7 +55,8 @@ function unpackDeviceEntry(tuple) {
         power: {
             power_in_mw:  power[0],
             power_out_mw: power[1],
-            power_role:   power[2],
+            contract_mw:  power[2],
+            power_role:   power[3],
         },
         charging_diag: {
             present:    diag[0],
@@ -154,7 +158,7 @@ export function deriveTileText(devices) {
                 if (role === 'Sink')   direction = 'sink';
                 if (role === 'Source') direction = 'source';
                 // Wattage: prefer the side that matches the role; if the
-                // role itself is unknown, take whichever leg of the (uus)
+                // role itself is unknown, take whichever leg of the (uuus)
                 // tuple is non-zero (the daemon's invariant guarantees at
                 // most one of in/out is non-zero at a time).
                 const wattsMw = direction === 'source'
@@ -166,13 +170,25 @@ export function deriveTileText(devices) {
                     port:      p,
                     watts:     wattsMw / 1000,
                     direction,
+                    // Devices5: contract_mw > power_in_mw means the sink is
+                    // requesting less than the negotiated contract allows
+                    // (e.g. a battery charge limit) — the wattage is then a
+                    // self-imposed ceiling worth flagging as "up to".
+                    sinkLimited: direction === 'sink'
+                        && (p.power?.contract_mw || 0) > inMw,
                 };
             })
             .sort((a, b) => b.watts - a.watts
                          || a.port.port_number - b.port.port_number);
         const top = ranked[0];
-        if (top.direction === 'sink')
-            return {title: _('Charging'), subtitle: formatWatts(top.watts)};
+        if (top.direction === 'sink') {
+            return {
+                title: _('Charging'),
+                subtitle: top.sinkLimited
+                    ? _('up to %s').format(formatWatts(top.watts))
+                    : formatWatts(top.watts),
+            };
+        }
         if (top.direction === 'source')
             return {title: _('Powering'), subtitle: formatWatts(top.watts)};
         // Unknown direction — still Tier 1 (charging port is user's focus)
@@ -280,8 +296,8 @@ export const DeviceStore = GObject.registerClass({
     /**
      * Replace the device list wholesale (D-08 full re-snapshot strategy).
      * @param {Array} rawEntries  21-field DeviceEntry tuples from
-     *   ListDevicesRemote on org.usbeehive.Devices4 (signature
-     *   a(ssssssssssqqsa(ss)ius(uus)(bsssb)a(usuuuub)i)).
+     *   ListDevicesRemote on org.usbeehive.Devices5 (signature
+     *   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)).
      */
     setDevices(rawEntries) {
         this._devices = (rawEntries || []).map(unpackDeviceEntry);
