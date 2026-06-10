@@ -19,6 +19,18 @@ a laptop with an 80% battery charge limit holds a healthy 65 W contract
 while requesting only 15 W — previously rendered indistinguishably from
 a bad cable.
 
+### Added
+
+- **`usb_device` cross-reference label.** The daemon now correlates
+  Type-C ports with their enumerated USB device (via the partner's USB
+  child node in sysfs) and emits an additive `usb_device` property
+  (`usb:<bus_port>`) on ports whose partner enumerated a USB device.
+  Ports whose partner has no PD identity now show the USB product string
+  (e.g. "Pixel 7") instead of "Device connected" in the subtitle.
+  Label added: `usb_device` → "USB device". No wire change;
+  `MIN_USBEEHIVE_VERSION` stays `0.10.0`. Older usbee builds render the
+  raw key via the standard unknown-key fallthrough.
+
 ### Changed
 
 - Track the Devices5 wire: `INTERFACE_NAME`, all three IFACE_XML copies

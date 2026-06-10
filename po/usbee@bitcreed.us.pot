@@ -41,6 +41,10 @@ msgstr ""
 msgid "Cable data limit"
 msgstr ""
 
+#: usbee@bitcreed.us/src/label-table.js:56
+msgid "USB device"
+msgstr ""
+
 #. Row value for cable.no_emarker=true — the charger offers >3A but no
 #. cable e-marker is visible (non-e-marked cables are limited to 3A).
 #: usbee@bitcreed.us/src/label-table.js:103

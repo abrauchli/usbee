@@ -48,6 +48,7 @@ function buildLabelTable() {
         // usbeehive 0.10.0 capability hints (additive Devices5 keys).
         ['cable.no_emarker', _('Cable e-marker')],
         ['cable.data_speed_limit', _('Cable data limit')],
+        ['usb_device',       _('USB device')],
         ['charger_max',      _('Charger max')],
         ['usb_max_power_ma',  _('Max bus power')],
     ]);
