@@ -287,6 +287,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.4.0]: https://github.com/abrauchli/usbee/releases/tag/v2.4.0
 [2.3.1]: https://github.com/abrauchli/usbee/releases/tag/v2.3.1
 [2.3.0]: https://github.com/abrauchli/usbee/releases/tag/v2.3.0
 [2.2.1]: https://github.com/abrauchli/usbee/releases/tag/v2.2.1
