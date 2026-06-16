@@ -30,7 +30,7 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
 Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-06-08 -- Quick task 260608-hug: fix clipped empty-state title ("u...") in Quick Settings popover
+Last activity: 2026-06-16 -- Quick task 260616-c18: subscribe to daemon DeviceChanged signal so the tile re-snapshots on benign present-port transitions (fixes stale "Charging 15W" after AC unplug)
 
 ## Performance Metrics
 
@@ -150,6 +150,7 @@ Steps:
 | 260526-dmj | Devices3 wire migration (MIN_USBEEHIVE 0.7.0, pdo_list/active_pdo_index) + cable trust row + transport pill strip + structured Charger PDOs block | 2026-05-26 | ed7acd6, c130b50, 6cad52f | [260526-dmj-devices3-wire-migration-pdo-list-trust-s](./quick/260526-dmj-devices3-wire-migration-pdo-list-trust-s/) |
 | 260526-i7q | Three-way daemon-state hints (not-installed / not-running / out-of-date) with `usbeehived --install-service` and `cargo install usbeehive --features=dbus` commands; shorter notify-changes ComboRow item labels | 2026-05-26 | 4b8c7bb, dec4dbb | [260526-i7q-daemon-status-hints-shorter-notify-chang](./quick/260526-i7q-daemon-status-hints-shorter-notify-chang/) |
 | 260608-hug | Fix clipped empty-state title ("u...") — move titles into the vertical body box (hide built-in horizontal PopupMenuItem label) across all three daemon-state builders + `.usbee-empty-state-title` CSS rule | 2026-06-08 | 3229281, c6a2d43 | [260608-hug-fix-clipped-empty-state-title-u-in-quick](./quick/260608-hug-fix-clipped-empty-state-title-u-in-quick/) |
+| 260616-c18 | Subscribe to the daemon's additive `DeviceChanged` signal and `_scheduleRefresh()` the tile (no notification) — consumer half of the stale "Charging 15W" after-unplug fix; byte-equal IFACE_XML/dbus-iface.xml preserved | 2026-06-16 | 5d6f6a4, 0395206, 10ce59d | [260616-c18-subscribe-to-devicechanged-signal-and-re](./quick/260616-c18-subscribe-to-devicechanged-signal-and-re/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
