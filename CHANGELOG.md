@@ -6,7 +6,7 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
-## [Unreleased]
+## [2.5.0] — 2026-06-16
 
 ### Added
 
@@ -20,11 +20,14 @@ unrelated.
   unplug that leaves the Type-C port present: previously none of
   `DeviceAdded` / `DeviceRemoved` / `CapabilityDegraded` /
   `CapabilityRestored` fired for that transition, so the tile never
-  reloaded. `DeviceChanged` was added to usbeehive in the 0.10.x series
-  as an additive signal (no wire-format bump, no `MIN_USBEEHIVE_VERSION`
-  change — still requires usbeehive ≥ 0.10.0). The signal is declared
-  in both the embedded `IFACE_XML` literal in `src/dbus-client.js` and
-  the on-disk `dbus-iface.xml` (byte-equal invariant preserved).
+  reloaded. `DeviceChanged` was added to usbeehive in **0.11.0** as an
+  additive signal (no wire-format bump, no `MIN_USBEEHIVE_VERSION` change).
+  `MIN_USBEEHIVE_VERSION` stays `0.10.0`: USBee still connects to 0.10.x
+  daemons and simply behaves as before (the signal never arrives, so the
+  stale-tile case persists); the fix activates automatically once the
+  daemon is **≥ 0.11.0**. The signal is declared in both the embedded
+  `IFACE_XML` literal in `src/dbus-client.js` and the on-disk
+  `dbus-iface.xml` (byte-equal invariant preserved).
 
 ## [2.4.0] — 2026-06-10
 
@@ -307,6 +310,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.5.0]: https://github.com/abrauchli/usbee/releases/tag/v2.5.0
 [2.4.0]: https://github.com/abrauchli/usbee/releases/tag/v2.4.0
 [2.3.1]: https://github.com/abrauchli/usbee/releases/tag/v2.3.1
 [2.3.0]: https://github.com/abrauchli/usbee/releases/tag/v2.3.0
