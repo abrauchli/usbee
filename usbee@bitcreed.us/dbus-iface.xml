@@ -27,6 +27,9 @@
     <signal name="DeviceRemoved">
       <arg type="s" name="id"/>
     </signal>
+    <signal name="DeviceChanged">
+      <arg type="s" name="id"/>
+    </signal>
     <signal name="CapabilityDegraded">
       <arg type="i" name="port_number"/>
       <arg type="s" name="summary"/>

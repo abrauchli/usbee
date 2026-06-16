@@ -97,6 +97,9 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
     <signal name="DeviceRemoved">
       <arg type="s" name="id"/>
     </signal>
+    <signal name="DeviceChanged">
+      <arg type="s" name="id"/>
+    </signal>
     <signal name="CapabilityDegraded">
       <arg type="i" name="port_number"/>
       <arg type="s" name="summary"/>
@@ -258,6 +261,20 @@ export const DBusClient = GObject.registerClass({
                         this._scheduleRefresh();
                     });
                 this._registry.addProxySignal(this._proxy, removedId);
+
+                // Re-snapshot trigger for benign present-port transitions:
+                // status/role/transport/link-speed/USB-version/active-PDO/driver
+                // changed on a device that stayed present (e.g. AC unplug that
+                // leaves the Type-C port attached). None of DeviceAdded/Removed/
+                // CapabilityDegraded/Restored fire for this case, so the tile
+                // would otherwise keep showing a stale wattage forever.
+                // Deliberately does NOT notify — unlike CapabilityDegraded/Restored,
+                // a benign state transition requires a tile re-draw, not a toast.
+                const changedId = this._proxy.connectSignal('DeviceChanged',
+                    (_proxy, _sender, [id]) => { // eslint-disable-line no-unused-vars
+                        this._scheduleRefresh();
+                    });
+                this._registry.addProxySignal(this._proxy, changedId);
 
                 // Phase 2: forward Capability* signals to the Notifier
                 // (NOTIF-01..04). Destructured payload matches IFACE_XML
