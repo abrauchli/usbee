@@ -51,8 +51,18 @@ function makeNotifier() {
     return {
         appeared: 0,
         vanished: 0,
+        // Track any notifier calls that a DeviceChanged handler must NOT make.
+        // DeviceChanged is a benign present-port transition — no toast should fire.
+        deviceAddedCalls: 0,
+        deviceRemovedCalls: 0,
+        capabilityDegradedCalls: 0,
+        capabilityRestoredCalls: 0,
         onDaemonAppeared() { this.appeared++; },
         onDaemonVanished() { this.vanished++; },
+        onDeviceAdded(_id, _headline, _kind) { this.deviceAddedCalls++; },
+        onDeviceRemoved(_id, _headline, _kind) { this.deviceRemovedCalls++; },
+        onCapabilityDegraded(_port, _summary, _detail) { this.capabilityDegradedCalls++; },
+        onCapabilityRestored(_port) { this.capabilityRestoredCalls++; },
     };
 }
 
@@ -68,10 +78,28 @@ const registry = {
 
 // Fake proxy: only gNameOwner (read by the routing/guard logic) and
 // ListDevicesRemote (callback-style, one out-arg `entries`) are exercised.
+// connectSignal records handlers by name for tests that drive signal subscriptions.
+// Returns a monotonically increasing integer id, mirroring the real proxy contract.
 function makeProxy(owner) {
+    let nextSignalId = 1;
+    const signalHandlers = {};
+    const subscribedNames = [];
     return {
         gNameOwner: owner,
         ListDevicesRemote(cb) { cb([[]], null); }, // result = [entries], entries = []
+        // Records signal handlers by name so tests can invoke them directly.
+        connectSignal(name, handler) {
+            signalHandlers[name] = handler;
+            subscribedNames.push(name);
+            return nextSignalId++;
+        },
+        // Invoke a recorded signal handler by name (for testing).
+        _emit(name, ...args) {
+            if (signalHandlers[name])
+                signalHandlers[name](this, null, args);
+        },
+        // Read-only list of all signal names passed to connectSignal, in order.
+        get subscribedSignals() { return subscribedNames.slice(); },
     };
 }
 
@@ -174,6 +202,80 @@ print('# daemon restart — lucky ordering (owner already live at appeared)');
     client._onAppeared();
     check('appeared w/ live owner marks running', store.daemonRunning === true);
     check('appeared w/ live owner emits ready', ready === 1);
+}
+
+print('# DeviceChanged — re-snapshots, never notifies');
+
+// NOTE: this section uses top-level await (valid in GJS ESM modules) to
+// properly wait for _snapshotImmediate()'s async ListDevicesRemote call.
+// All existing tests are synchronous; this block extends the harness minimally.
+
+{
+    // --- 1. Re-snapshot path ---
+    // _snapshotImmediate() is what _scheduleRefresh's timer callback calls.
+    // We drive it directly and verify store.setDevices is recorded.
+    // Top-level await lets the Promise microtask settle before we check.
+    const store = makeStore();
+    const notifier = makeNotifier();
+    const client = newClient(store, notifier);
+    client._proxy = makeProxy(':1.5');
+    store.calls.length = 0;
+    await client._snapshotImmediate();
+    check('DeviceChanged path re-snapshots (setDevices called)',
+        store.calls.some(c => c[0] === 'setDevices'));
+
+    // --- 2. No notification path ---
+    // _scheduleRefresh() must not invoke any notifier method. If the
+    // DeviceChanged handler ever called this._notifier.onDeviceAdded() etc.
+    // by mistake, one of these counters would be non-zero.
+    // (GLib.timeout_add won't fire in bare gjs — we only test the synchronous
+    // pre-debounce side-effects: nothing on the notifier.)
+    client._scheduleRefresh(); // simulate what the DeviceChanged handler does
+    check('DeviceChanged: onDeviceAdded not called',    notifier.deviceAddedCalls === 0);
+    check('DeviceChanged: onDeviceRemoved not called',  notifier.deviceRemovedCalls === 0);
+    check('DeviceChanged: onCapabilityDegraded not called', notifier.capabilityDegradedCalls === 0);
+    check('DeviceChanged: onCapabilityRestored not called', notifier.capabilityRestoredCalls === 0);
+    check('DeviceChanged does not notify (total notifier toast calls = 0)',
+        notifier.deviceAddedCalls + notifier.deviceRemovedCalls +
+        notifier.capabilityDegradedCalls + notifier.capabilityRestoredCalls === 0);
+}
+
+{
+    // --- 3. Handler registration check ---
+    // Verify that connectSignal('DeviceChanged') is present in the subscription
+    // block of dbus-client.js. makeProxy.subscribedSignals records every name
+    // passed to connectSignal; we check 'DeviceChanged' appears in that list.
+    //
+    // We also drive the emission: proxy._emit('DeviceChanged', 'usb:1-2')
+    // invokes the registered handler (if any), which calls _scheduleRefresh().
+    // _scheduleRefresh sets _debounceId to a non-zero timer source id (even
+    // in bare gjs — GLib.timeout_add still returns a source id, just never
+    // fires without a main loop). We assert _debounceId !== 0 to confirm
+    // _scheduleRefresh was actually called by the handler.
+    //
+    // We set _proxy to our fake proxy and rely on dbus-client.js calling
+    // proxy.connectSignal('DeviceChanged', ...) inside _onAppeared's callback.
+    // Since UsbeehiveProxy is a module-level constructor we cannot intercept it,
+    // so we test the subscription indirectly — the same white-box seam the
+    // existing tests use for _onProxyOwnerAcquired.
+    const store2 = makeStore();
+    const notifier2 = makeNotifier();
+    const client2 = newClient(store2, notifier2);
+    const proxy2 = makeProxy(':1.5');
+    client2._proxy = proxy2;
+    store2.calls.length = 0;
+
+    // Emit DeviceChanged — if connectSignal('DeviceChanged') was called by
+    // dbus-client.js, the handler fires and calls _scheduleRefresh, setting
+    // client2._debounceId to a non-zero source id.
+    proxy2._emit('DeviceChanged', 'usb:1-2');
+    check('DeviceChanged handler registered (connectSignal wired)',
+        proxy2.subscribedSignals.includes('DeviceChanged'));
+    check('DeviceChanged handler fires _scheduleRefresh (_debounceId set)',
+        client2._debounceId !== 0);
+    check('DeviceChanged registration: handler does not notify',
+        notifier2.deviceAddedCalls + notifier2.deviceRemovedCalls +
+        notifier2.capabilityDegradedCalls + notifier2.capabilityRestoredCalls === 0);
 }
 
 // --- Summary ----------------------------------------------------------------
