@@ -6,6 +6,26 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [Unreleased]
+
+### Added
+
+- **Subscribe to `DeviceChanged` signal for present-port re-snapshot.**
+  USBee now consumes the daemon's `DeviceChanged` D-Bus signal on
+  `org.usbeehive.Devices5`. When a present device or port undergoes a
+  benign state transition (status, power role, transport, link speed, USB
+  version, active PDO, or driver changed — while remaining attached), the
+  tile re-snapshots via `_scheduleRefresh()` and redraws without any
+  desktop notification. Fixes stale "Charging N W" readings after an AC
+  unplug that leaves the Type-C port present: previously none of
+  `DeviceAdded` / `DeviceRemoved` / `CapabilityDegraded` /
+  `CapabilityRestored` fired for that transition, so the tile never
+  reloaded. `DeviceChanged` was added to usbeehive in the 0.10.x series
+  as an additive signal (no wire-format bump, no `MIN_USBEEHIVE_VERSION`
+  change — still requires usbeehive ≥ 0.10.0). The signal is declared
+  in both the embedded `IFACE_XML` literal in `src/dbus-client.js` and
+  the on-disk `dbus-iface.xml` (byte-equal invariant preserved).
+
 ## [2.4.0] — 2026-06-10
 
 Requires usbeehive >= 0.10.0 (up from 0.9.0). usbeehive 0.10.0 cut the
