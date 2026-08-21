@@ -6,6 +6,81 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [Unreleased]
+
+No version fields changed: `MIN_USBEEHIVE_VERSION` stays `0.10.0` and
+`usbee@bitcreed.us/metadata.json` (`version`, `version-name`) is
+untouched. This release is entirely about telling the truth when the
+daemon version gate rejects a daemon.
+
+### Fixed
+
+- **The Quick Settings pill and the expanded popover no longer
+  disagree.** When the version gate rejected a daemon, the pill read
+  "Daemon not running" while the very same popover, expanded, read
+  "usbeehive daemon out of date". Two sources of truth caused it:
+  `DBusClient` called `store.setDaemonRunning(false)` before emitting
+  `daemon-too-old`, and the pill derived its subtitle from that boolean
+  while `src/tile.js` routed the popover from its own private
+  `_daemonTooOld` latch. `DeviceStore` now owns a single tri-state
+  (`running` / `stopped` / `out-of-date`) plus the detected daemon
+  version; `daemonRunning` is derived from it, so every existing call
+  site is unchanged, and both surfaces read the one field. The pill now
+  reads **"Daemon out of date"**.
+- **An out-of-date daemon that then exits returns to the stopped
+  state.** `DBusClient._onVanished()` guarded on `!daemonRunning`, which
+  is *already* false in the out-of-date state — so the store stayed
+  parked there forever and the pill kept claiming the daemon was out of
+  date with nothing on the bus. The guard now keys on the explicit
+  stopped state.
+
+### Added
+
+- **Both the required and the detected usbeehive version are now
+  shown** whenever the gate fails — in the popover ("Requires usbeehive
+  0.10.0 or newer — detected 0.11.0") and in the preferences About group
+  ("usbeehived 0.11.0 — out of date, requires 0.10.0 or newer"). When
+  the daemon's `Version` property could not be read at all, both say so
+  explicitly ("detected unknown" / "version unknown") rather than
+  silently blaming the user's daemon. A user staring at "Daemon not
+  running" while `systemctl --user status usbeehived` says the daemon is
+  up had no path forward; a stated version mismatch is a diagnosable
+  fact.
+- **A copy-to-clipboard button on every command line.** All three
+  popover daemon states (stopped, not installed, out of date) now render
+  their command through one shared row builder: the existing read-only
+  selectable entry plus a copy button that flashes a checkmark for 1.5 s.
+  The preferences About group gains a matching **Update command** row,
+  visible only when the gate fails, with its own copy button. The two
+  processes necessarily use different clipboard APIs (`St.Clipboard` in
+  the Shell, `Gdk.Clipboard` in prefs). No command is ever executed —
+  they are displayed and copied only (D-18 / EGO PACK-05).
+- **`usbee@bitcreed.us/src/daemon-status.js`** — a new module holding
+  `MIN_USBEEHIVE_VERSION`, `isVersionAtLeast`, `DaemonState` and
+  `UPDATE_CMD`. It deliberately has **zero imports**: that is the only
+  shape which loads in the gnome-shell process, in the separate
+  preferences process (where the gnome-shell extension resource URI does
+  not resolve at all), and under bare `gjs` in CI. `isVersionAtLeast`
+  moved here verbatim and keeps its fail-closed semantics — any
+  non-3-part, non-integer or non-string input still returns `false`.
+- **`tests/daemon-status.test.js`**, covering the version gate, the
+  module constants and the cross-file wiring, plus new state-machine
+  cases in `tests/dbus-client.test.js`. Both run in CI.
+
+### Changed
+
+- **The displayed update command now restarts the user unit**:
+  `cargo install usbeehive --features=dbus && systemctl --user restart
+  usbeehived`. `cargo install` replaces the binary on disk, but the
+  running unit keeps serving the old code until it is restarted — the
+  previous command left users upgraded but still gated.
+- Regenerated `po/usbee@bitcreed.us.pot`. It had gone stale since 2.2.0,
+  so this pass also picks up the accumulated strings from the device-
+  change notification, technical-details and cable-trust work. Two
+  translator comments that previously existed only inside the template
+  are now `Translators:` comments in the source, so they survive future
+  regenerations.
+
 ## [2.5.0] — 2026-06-16
 
 ### Added

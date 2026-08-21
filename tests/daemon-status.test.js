@@ -235,6 +235,28 @@ print('# stylesheet.css styles the copy affordance');
         src.includes('.usbee-copy-button:hover'));
 }
 
+print('# prefs.js gates the detected version (separate process, C5)');
+{
+    const src = readSource('usbee@bitcreed.us/prefs.js');
+    check('prefs.js source is readable', src.length > 0);
+    check('prefs.js imports the shared module by relative path',
+        src.includes("from './src/daemon-status.js'"));
+    check('prefs.js applies the version gate', src.includes('isVersionAtLeast('));
+    check('prefs.js names the required version',
+        src.includes('MIN_USBEEHIVE_VERSION'));
+    check('prefs.js renders the shared UPDATE_CMD', src.includes('UPDATE_CMD'));
+    check('prefs.js copies via the GTK4 clipboard', src.includes('get_clipboard()'));
+    check('prefs.js markup-escapes the daemon version (T-ke2-01)',
+        src.includes('GLib.markup_escape_text('));
+    check('prefs.js clamps the daemon version (T-ke2-01)',
+        src.includes('.slice(0, 32)'));
+    // C5: prefs.js runs where the gnome-shell extension resource URI does
+    // not resolve, so daemon-status.js must be its ONLY src/ import.
+    const srcImports = importSpecifiers(src).filter(s => s.startsWith('./'));
+    check('prefs.js imports no other src/ module',
+        srcImports.length === 1 && srcImports[0] === './src/daemon-status.js');
+}
+
 // --- Summary ----------------------------------------------------------------
 print('');
 if (failures === 0)

@@ -90,6 +90,9 @@ let _flagValueTable = null;
 function flagValueTable() {
     if (_flagValueTable === null) {
         _flagValueTable = new Map([
+            // Translators: Row value for cable.no_emarker=true — the charger
+            // offers >3A but no cable e-marker is visible (non-e-marked
+            // cables are limited to 3A).
             ['cable.no_emarker', _('not visible (3 A limit may apply)')],
         ]);
     }

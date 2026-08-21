@@ -187,6 +187,9 @@ export function deriveTileText(devices) {
             return {
                 title: _('Charging'),
                 subtitle: top.sinkLimited
+                    // Translators: Tile subtitle when the sink requests less
+                    // than its PD contract allows (e.g. a battery charge
+                    // limit); %s is a formatted wattage like "15 W".
                     ? _('up to %s').format(formatWatts(top.watts))
                     : formatWatts(top.watts),
             };

@@ -6,11 +6,20 @@
 // EGO rejection.
 
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 
 import {ExtensionPreferences, gettext as _}
     from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+// src/daemon-status.js is the ONLY src/ module this file may import, and
+// only because it imports nothing itself. This process cannot resolve
+// resource:///org/gnome/shell/extensions/extension.js, so importing
+// dbus-client.js or empty-state.js (which pull it in for gettext) would
+// fail at load time and leave the preferences window blank.
+import {MIN_USBEEHIVE_VERSION, UPDATE_CMD, isVersionAtLeast}
+    from './src/daemon-status.js';
 
 // Daemon bus coordinates — must match src/dbus-client.js. The generation
 // digit lives only on the interface name, not on bus name or object path.
@@ -221,6 +230,41 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
         aboutGroup.add(daemonRow);
 
+        // Shown only when the detected daemon version fails the gate — a
+        // user with a healthy daemon has no use for an update command.
+        const updateRow = new Adw.ActionRow({
+            title: _('Update command'),
+            subtitle: UPDATE_CMD,       // NOT translated — a literal command
+            subtitle_selectable: true,
+            visible: false,
+        });
+        const copyButton = new Gtk.Button({
+            icon_name: 'edit-copy-symbolic',
+            tooltip_text: _('Copy command'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+        });
+        // Pending copy-confirmation timeout, removed on window close so the
+        // source cannot outlive the widget (T-ke2-04, prefs-process half).
+        let copyFeedbackId = 0;
+        copyButton.connect('clicked', () => {
+            // GTK4 clipboard — a different API from the Shell's St.Clipboard
+            // in src/empty-state.js. The two processes cannot share one.
+            // Gdk.Clipboard.set_text is not introspectable under GJS; set()
+            // is.
+            window.get_display().get_clipboard().set(UPDATE_CMD);
+            copyButton.icon_name = 'object-select-symbolic';
+            if (copyFeedbackId !== 0) GLib.Source.remove(copyFeedbackId);
+            copyFeedbackId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+                copyFeedbackId = 0;
+                copyButton.icon_name = 'edit-copy-symbolic';
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+        updateRow.add_suffix(copyButton);
+        updateRow.set_activatable_widget(copyButton);
+        aboutGroup.add(updateRow);
+
         // Live daemon-version probe — async (D-15: no sync D-Bus).
         // We hold a single proxy reference; bus_watch_name re-fires on
         // owner transitions and re-reads the cached Version property.
@@ -228,11 +272,32 @@ export default class USBeePreferences extends ExtensionPreferences {
 
         const setRunning = () => {
             const v = proxy?.Version;
-            // Show "usbeehived 0.6.0" when the version is known.
-            daemonRow.subtitle = v ? `usbeehived ${v}` : _('usbeehived');
+            // T-ke2-01: `v` is bus data — any session process can own
+            // org.usbeehive.Devices. Adwaita subtitles parse Pango markup
+            // (including <a href>), so clamp AND escape before display.
+            const escaped = GLib.markup_escape_text(String(v).slice(0, 32), -1);
+            if (isVersionAtLeast(v, MIN_USBEEHIVE_VERSION)) {
+                // Show "usbeehived 0.11.0" when the version is acceptable.
+                daemonRow.subtitle = `usbeehived ${escaped}`;
+                updateRow.visible = false;
+                return;
+            }
+            // Reachable but rejected. Distinguish "we couldn't read a
+            // version at all" from "we read one and it's too old" — the
+            // first is the shape of a false positive worth surfacing
+            // honestly rather than blaming the user's daemon.
+            daemonRow.subtitle = typeof v === 'string' && v
+                ? _('usbeehived %s — out of date, requires %s or newer')
+                    .format(escaped, MIN_USBEEHIVE_VERSION)
+                : _('usbeehived — version unknown, requires %s or newer')
+                    .format(MIN_USBEEHIVE_VERSION);
+            updateRow.visible = true;
         };
         const setStopped = () => {
             daemonRow.subtitle = _('Start usbeehived daemon');
+            // Nothing on the bus — starting the daemon is the right advice,
+            // not updating it.
+            updateRow.visible = false;
         };
 
         const ensureProxy = () => {
@@ -272,6 +337,10 @@ export default class USBeePreferences extends ExtensionPreferences {
         // group pattern. The Shell-side SignalRegistry doesn't reach here.
         window.connect('close-request', () => {
             Gio.bus_unwatch_name(busWatchId);
+            if (copyFeedbackId !== 0) {
+                GLib.Source.remove(copyFeedbackId);
+                copyFeedbackId = 0;
+            }
             proxy = null;
             return false;  // don't prevent close
         });
