@@ -19,6 +19,24 @@
     font-size: 13px;
 }
 
+/* Command line = entry + copy button (src/empty-state.js buildCommandRow). */
+.usbee-empty-state-command {
+    spacing: 6px;
+}
+
+.usbee-copy-button {
+    margin-top: 4px;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+/* Make the affordance read as clickable against the shell theme — an St
+ * button inside a non-reactive PopupMenuItem gets no hover styling of
+ * its own. */
+.usbee-copy-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Cap the device-list popover height so a busy USB tree never pushes
  * the Preferences row (and future menu rows) below the screen edge.
  * 50ex ≈ 14 default-size rows; the rest scrolls. */

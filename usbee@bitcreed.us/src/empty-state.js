@@ -7,10 +7,13 @@
 //   - buildDaemonNotInstalledItem() — service unit file missing on disk
 //                                     ('usbeehived --install-service')
 //   - buildDaemonOutOfDateItem()    — daemon reachable but Version too old
-//                                     ('cargo install usbeehive --features=dbus')
+//                                     ('cargo install usbeehive --features=dbus
+//                                       && systemctl --user restart usbeehived',
+//                                      see UPDATE_CMD in src/daemon-status.js)
 //
 // Each one is a PopupMenuItem containing a title label, a hint label, and a
-// read-only-but-selectable St.Entry with the relevant copy-pasteable command.
+// command row (buildCommandRow): a read-only-but-selectable St.Entry with the
+// relevant command plus a copy-to-clipboard button.
 //
 // No retry button (UI-SPEC #primary-cta): NameOwnerChanged auto-recovers.
 // No subprocess spawning (D-18, EGO PACK-05): user runs the command themselves.
@@ -18,17 +21,26 @@
 // stat() on a small known set of paths — explicitly permitted under D-15,
 // which prohibits sync D-Bus and network calls, not local file probes).
 
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {MIN_USBEEHIVE_VERSION} from './daemon-status.js';
+// UPDATE_CMD lives in the shared module so prefs.js — a separate process
+// that cannot import anything from this file — renders the exact same
+// string in its About group.
+import {MIN_USBEEHIVE_VERSION, UPDATE_CMD} from './daemon-status.js';
 
+// Shell-only commands: the preferences window never surfaces these two,
+// so they stay local.
 const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehived';
 const INSTALL_CMD   = 'usbeehived --install-service';
-const UPDATE_CMD    = 'cargo install usbeehive --features=dbus';
+
+// How long the copy button shows its confirmation checkmark before
+// reverting to the copy icon.
+const COPY_FEEDBACK_MS = 1500;
 
 // Cache for isUsbeehiveServiceInstalled(). The popover is opened on user
 // click — we don't need sub-second freshness, but we DO want a user who
@@ -86,7 +98,88 @@ export function invalidateInstalledCache() {
 }
 
 /**
+ * Build one command line: a read-only-but-selectable St.Entry carrying the
+ * command, plus a copy-to-clipboard button.
+ *
+ * A reactive child inside a `reactive: false` PopupMenuItem works — the
+ * focusable St.Entry these items already carried proves it.
+ *
+ * The entry stays single-line (St.Entry does not reflow); with the copy
+ * button present, a command too long for the popover width is no longer a
+ * dead end.
+ *
+ * @param {string} command  Literal shell command. Always a module constant,
+ *   never daemon- or user-supplied — nothing interpolates into the
+ *   clipboard write (T-ke2-02).
+ * @returns {St.BoxLayout}
+ */
+function buildCommandRow(command) {
+    const row = new St.BoxLayout({
+        x_expand: true,
+        style_class: 'usbee-empty-state-command',
+    });
+
+    const entry = new St.Entry({
+        can_focus: true,
+        reactive: true,
+        x_expand: true,
+        text: command,
+        style_class: 'usbee-empty-state-entry',
+    });
+    // [ASSUMED A1 — RESEARCH §Pitfall B]: if direct property assignment
+    // doesn't take effect at runtime, swap for:
+    //   entry.clutter_text.set_editable(false);
+    //   entry.clutter_text.set_selectable(true);
+    entry.clutter_text.editable = false;
+    entry.clutter_text.selectable = true;
+
+    const icon = new St.Icon({
+        icon_name: 'edit-copy-symbolic',
+        style_class: 'popup-menu-icon',
+    });
+    const button = new St.Button({
+        style_class: 'usbee-copy-button',
+        can_focus: true,
+        reactive: true,
+        y_align: Clutter.ActorAlign.CENTER,
+        accessible_name: _('Copy command'),
+        child: icon,
+    });
+
+    // T-ke2-04: the popover section is torn down on every rebuild, so a
+    // pending feedback timer would outlive its actor and raise
+    // GLib-CRITICAL on the lock/unlock cycle (the project's mandatory QA
+    // gate). Track every in-flight source and remove them on destroy.
+    const pending = new Set();
+
+    button.connect('clicked', () => {
+        // St.Clipboard is the Shell-process clipboard API. prefs.js cannot
+        // use it (and this file cannot use Gdk) — the two processes each
+        // talk to their own toolkit.
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, command);
+        icon.icon_name = 'object-select-symbolic';
+        const id = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, COPY_FEEDBACK_MS, () => {
+                pending.delete(id);
+                icon.icon_name = 'edit-copy-symbolic';
+                return GLib.SOURCE_REMOVE;
+            });
+        pending.add(id);
+    });
+
+    button.connect('destroy', () => {
+        for (const id of pending) GLib.Source.remove(id);
+        pending.clear();
+    });
+
+    row.add_child(entry);
+    row.add_child(button);
+    return row;
+}
+
+/**
  * Build the empty-state row. Returns a PopupMenu.PopupMenuItem.
+ * The command line is copy-pasteable and carries a copy button.
  */
 export function buildEmptyStateItem() {
     const item = new PopupMenu.PopupMenuItem('', {
@@ -115,23 +208,9 @@ export function buildEmptyStateItem() {
     });
     hint.clutter_text.line_wrap = true;
 
-    const entry = new St.Entry({
-        can_focus: true,
-        reactive: true,
-        text: SYSTEMCTL_CMD,
-        style_class: 'usbee-empty-state-entry',
-    });
-    // [ASSUMED A1 — RESEARCH §Pitfall B]: if direct property assignment
-    // doesn't take effect at runtime, swap for:
-    //   entry.clutter_text.set_editable(false);
-    //   entry.clutter_text.set_selectable(true);
-    // Verify in Looking Glass during Task 7 manual smoke test.
-    entry.clutter_text.editable = false;
-    entry.clutter_text.selectable = true;
-
     box.add_child(title);
     box.add_child(hint);
-    box.add_child(entry);
+    box.add_child(buildCommandRow(SYSTEMCTL_CMD));
     item.add_child(box);
 
     return item;
@@ -143,7 +222,8 @@ export function buildEmptyStateItem() {
  * Distinct from buildEmptyStateItem() — the systemd user unit file for
  * usbeehived is absent from every standard search path (see
  * isUsbeehiveServiceInstalled). The user needs to run the install command
- * before `systemctl --user enable --now usbeehived` will work.
+ * before `systemctl --user enable --now usbeehived` will work. The command
+ * line is copy-pasteable and carries a copy button.
  *
  * Wired from src/tile.js _rebuildPopover() via populateNotInstalledState
  * in src/popover.js (quick task 260526-i7q).
@@ -175,19 +255,9 @@ export function buildDaemonNotInstalledItem() {
     });
     hint.clutter_text.line_wrap = true;
 
-    const entry = new St.Entry({
-        can_focus: true,
-        reactive: true,
-        text: INSTALL_CMD,
-        style_class: 'usbee-empty-state-entry',
-    });
-    // Mirror the read-only-but-selectable pattern of buildEmptyStateItem.
-    entry.clutter_text.editable = false;
-    entry.clutter_text.selectable = true;
-
     box.add_child(title);
     box.add_child(hint);
-    box.add_child(entry);
+    box.add_child(buildCommandRow(INSTALL_CMD));
     item.add_child(box);
 
     return item;
@@ -208,7 +278,10 @@ export function buildDaemonNotInstalledItem() {
  *
  * Quick task 260821-ke2: the item now states BOTH the version USBee
  * requires and the version it actually detected, so a user whose daemon is
- * demonstrably running has a diagnosable fact instead of a dead end.
+ * demonstrably running has a diagnosable fact instead of a dead end. The
+ * command line is copy-pasteable and carries a copy button, and the command
+ * itself (UPDATE_CMD) now restarts the user unit after `cargo install` so
+ * the upgrade takes effect without a re-login.
  *
  * Wired from tile.js via populateOutOfDateState(section, detectedVersion)
  * when store.daemonState is DaemonState.OUT_OF_DATE (see ADR).
@@ -259,20 +332,10 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
     });
     hint.clutter_text.line_wrap = true;
 
-    const entry = new St.Entry({
-        can_focus: true,
-        reactive: true,
-        text: UPDATE_CMD,
-        style_class: 'usbee-empty-state-entry',
-    });
-    // Mirror the read-only-but-selectable pattern of buildEmptyStateItem.
-    entry.clutter_text.editable = false;
-    entry.clutter_text.selectable = true;
-
     box.add_child(title);
     box.add_child(versions);
     box.add_child(hint);
-    box.add_child(entry);
+    box.add_child(buildCommandRow(UPDATE_CMD));
     item.add_child(box);
 
     return item;

@@ -207,6 +207,34 @@ print('# empty-state.js names both versions');
         src.includes('.slice(0, 32)'));
 }
 
+print('# empty-state.js command rows are copyable');
+{
+    const src = readSource('usbee@bitcreed.us/src/empty-state.js');
+    check('empty-state.js defines the shared buildCommandRow helper',
+        src.includes('function buildCommandRow('));
+    check('all three empty states use buildCommandRow',
+        (src.match(/buildCommandRow\(/g) || []).length === 4); // 1 definition + 3 uses
+    check('empty-state.js copies via the Shell clipboard API',
+        src.includes('St.Clipboard.get_default().set_text('));
+    check('empty-state.js removes pending feedback timers on destroy (T-ke2-04)',
+        src.includes("connect('destroy'") && src.includes('GLib.Source.remove('));
+    check('empty-state.js takes UPDATE_CMD from the shared module',
+        !src.includes('const UPDATE_CMD') &&
+        /import\s*\{[^}]*UPDATE_CMD[^}]*\}\s*from\s*'\.\/daemon-status\.js'/.test(src));
+}
+
+print('# stylesheet.css styles the copy affordance');
+{
+    const src = readSource('usbee@bitcreed.us/stylesheet.css');
+    check('stylesheet.css source is readable', src.length > 0);
+    check('stylesheet.css styles .usbee-empty-state-command',
+        src.includes('.usbee-empty-state-command'));
+    check('stylesheet.css styles .usbee-copy-button',
+        src.includes('.usbee-copy-button'));
+    check('stylesheet.css gives the copy button a hover state',
+        src.includes('.usbee-copy-button:hover'));
+}
+
 // --- Summary ----------------------------------------------------------------
 print('');
 if (failures === 0)
