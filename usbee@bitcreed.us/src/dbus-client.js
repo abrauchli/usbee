@@ -17,6 +17,14 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
+// The version gate lives in src/daemon-status.js — a module with zero
+// imports, so this file keeps importing ONLY gi:// modules plus that one.
+// Pulling in device-store.js (which imports the gnome-shell extension
+// resource URI for gettext) would make tests/dbus-client.test.js
+// unloadable under bare-gjs CI.
+import {DaemonState, MIN_USBEEHIVE_VERSION, isVersionAtLeast}
+    from './daemon-status.js';
+
 // VERIFIED against ../usbeehive/src/dbus.rs (the
 // `#[interface(name = "org.usbeehive.Devices5")]` block shipped in
 // usbeehive 0.10.0). The generation digit lives ONLY on the interface
@@ -24,37 +32,6 @@ import GLib from 'gi://GLib';
 const BUS_NAME       = 'org.usbeehive.Devices';     // version-agnostic
 const OBJECT_PATH    = '/org/usbeehive/Devices';    // version-agnostic
 const INTERFACE_NAME = 'org.usbeehive.Devices5';
-
-// Minimum supported usbeehive daemon version. usbeehive 0.10.0 hard-cuts
-// the prior interface generation to Devices5 (no alias) per
-// ../usbeehive/CHANGELOG.md §[0.10.0] (2026-06-10): the per-entry power
-// tuple grew a `contract_mw` field ((uus) → (uuus)) so the sink's
-// *requested* operating power and what the contract *allows* travel
-// separately, and the bottleneck enum gained the benign `SinkLimit`
-// variant. Older daemons (Devices4, < 0.10.0) route into the existing
-// populateOutOfDateState empty state via isVersionAtLeast below.
-const MIN_USBEEHIVE_VERSION = '0.10.0';
-
-// Fail-closed lexical-tuple semver compare. Returns true iff `actual >= minimum`.
-// Any parse failure returns false — the gate routes to 'daemon-too-old'
-// rather than throwing or proceeding optimistically (04-01-ADR step 4).
-function isVersionAtLeast(actual, minimum) {
-    const parse = v => {
-        if (typeof v !== 'string') return null;
-        const parts = v.split('.').map(s => Number.parseInt(s, 10));
-        if (parts.length !== 3 || parts.some(n => !Number.isInteger(n) || n < 0))
-            return null;
-        return parts;
-    };
-    const a = parse(actual);
-    const m = parse(minimum);
-    if (!a || !m) return false;
-    for (let i = 0; i < 3; i++) {
-        if (a[i] > m[i]) return true;
-        if (a[i] < m[i]) return false;
-    }
-    return true;
-}
 
 // IFACE_XML — keep in sync with usbee@bitcreed.us/dbus-iface.xml.
 // The .xml file on disk is the authoritative diff target; this template
@@ -187,17 +164,13 @@ export const DBusClient = GObject.registerClass({
                 this._proxy = proxy;
 
                 // COMPAT-01: refuse to consume a daemon older than the
-                // pinned minimum. `Version` is a cached property on the
-                // proxy (eagerly populated by makeProxyWrapper). Fail-
-                // closed: any parse error → 'daemon-too-old'. See 04-01-
-                // ADR-daemon-version-gate.md for the full wiring rules.
-                const daemonVersion = this._proxy.Version;
-                if (!isVersionAtLeast(daemonVersion, MIN_USBEEHIVE_VERSION)) {
-                    this._store.setDaemonRunning(false);
-                    this._store.setDevices([]);
-                    this.emit('daemon-too-old');
-                    return;
-                }
+                // pinned minimum. Applied here, at proxy-construction time,
+                // and deliberately NOT in _onProxyOwnerAcquired — the
+                // proxy's cached `Version` may not have refreshed when
+                // notify::g-name-owner fires, and a fail-closed read there
+                // would strand a healthy daemon in the out-of-date state
+                // with nothing left to re-drive it.
+                if (!this._applyVersionGate()) return;
 
                 // D-07: notify::g-name-owner handles future owner transitions
                 // in BOTH directions. A daemon restart drives owner null ->
@@ -300,6 +273,31 @@ export const DBusClient = GObject.registerClass({
     }
 
     /**
+     * COMPAT-01 version gate. Reads the proxy's cached `Version` property
+     * (eagerly populated by makeProxyWrapper) and decides whether this
+     * daemon may be consumed.
+     *
+     * Fail-closed: a missing / non-string / unparseable version routes to
+     * the out-of-date state rather than proceeding optimistically (see
+     * 04-01-ADR-daemon-version-gate.md). The detected version travels into
+     * the store, which is the single source of truth every surface reads —
+     * the 'daemon-too-old' signal stays parameterless and is now only a
+     * repaint trigger.
+     *
+     * @returns {boolean} true when the daemon passed the gate.
+     */
+    _applyVersionGate() {
+        const daemonVersion = this._proxy?.Version;
+        if (isVersionAtLeast(daemonVersion, MIN_USBEEHIVE_VERSION))
+            return true;
+        this._store.setDaemonOutOfDate(
+            typeof daemonVersion === 'string' ? daemonVersion : '');
+        this._store.setDevices([]);
+        this.emit('daemon-too-old');
+        return false;
+    }
+
+    /**
      * notify::g-name-owner handler for the constructed proxy. The owner
      * changes in BOTH directions over the extension lifetime: a daemon exit
      * drives it to null, a daemon (re)start drives it to a new owner string.
@@ -383,7 +381,13 @@ export const DBusClient = GObject.registerClass({
         // Idempotency guard — both bus_watch_name and notify::g-name-owner
         // fire on daemon disconnect. Without this guard, setDevices([])
         // and 'lost' would emit twice per vanish event.
-        if (!this._store.daemonRunning) return;
+        //
+        // Keyed on DaemonState.STOPPED, NOT on !daemonRunning: a daemon
+        // rejected by the version gate already has daemonRunning === false,
+        // so the old guard returned early here and left the store parked in
+        // OUT_OF_DATE forever after that daemon exited — the pill kept
+        // reading "Daemon out of date" with nothing on the bus.
+        if (this._store.daemonState === DaemonState.STOPPED) return;
         this._store.setDaemonRunning(false);
         this._store.setDevices([]);
         this._notifier?.onDaemonVanished(); // drop live notifications — they're stale

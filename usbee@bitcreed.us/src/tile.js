@@ -19,6 +19,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import {populateDeviceRows, populateEmptyState, populateNotInstalledState, populateOutOfDateState} from './popover.js';
 import {isUsbeehiveServiceInstalled} from './empty-state.js';
+import {DaemonState} from './daemon-status.js';
 
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
@@ -35,14 +36,6 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._dbusClient = dbusClient;
         this._prefsItem = null;
         this._prefsSeparator = null;
-        // COMPAT-02 latched flag: once DBusClient declares the daemon too
-        // old, _rebuildPopover routes to populateOutOfDateState until the
-        // next 'ready' (or the next daemon-vanish/appear cycle through the
-        // store's 'changed' signal). Without this latch, _rebuildPopover
-        // could fall back to populateEmptyState ("daemon not running") on
-        // the next popover open since DBusClient sets daemonRunning=false
-        // before emitting 'daemon-too-old'.
-        this._daemonTooOld = false;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('drive-harddisk-usb-symbolic', _('USB devices'), '');
@@ -95,25 +88,21 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         });
         registry.addSignal(store, changedId);
 
-        // COMPAT-02: route to the "daemon out of date" empty state when
-        // DBusClient declares the daemon's Version below
-        // MIN_USBEEHIVE_VERSION. The latch is cleared on the next 'ready'
-        // (post-restart with a new-enough daemon). STATE-05: tracked via
-        // SignalRegistry so disable() correctly disconnects.
+        // COMPAT-02: 'daemon-too-old' and 'ready' are pure REPAINT triggers.
+        // The daemon state itself lives in the store (store.daemonState),
+        // written by DBusClient before either signal is emitted — so these
+        // handlers only need to re-run the routing when the user happens to
+        // be staring at the popover as the daemon changes underneath them.
+        // A closed popover rebuilds on its next open anyway (D-11).
+        // STATE-05: tracked via SignalRegistry so disable() disconnects.
         if (dbusClient) {
             const tooOldId = dbusClient.connect('daemon-too-old', () => {
-                this._daemonTooOld = true;
                 if (this.menu.isOpen)
-                    populateOutOfDateState(this._rowsSection);
+                    this._rebuildPopover();
             });
             registry.addSignal(dbusClient, tooOldId);
 
             const readyId = dbusClient.connect('ready', () => {
-                this._daemonTooOld = false;
-                // Symmetric with the 'daemon-too-old' branch above: when the
-                // user is staring at the out-of-date empty state while the
-                // daemon gets upgraded under them, the popover must rebuild
-                // so they see device rows instead of the stale message.
                 if (this.menu.isOpen)
                     this._rebuildPopover();
             });
@@ -170,24 +159,32 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _rebuildPopover() {
-        // Routing precedence (quick task 260526-i7q — three-way daemon state):
-        //   1. _daemonTooOld    — daemon IS reachable, version known to be too old.
-        //                         Highest precedence; distinct copy from "not running".
-        //   2. !daemonRunning   — daemon is not on the bus. Split into:
-        //                         a. not installed → install hint (no unit file on disk)
-        //                         b. installed but stopped → systemctl enable --now hint
-        //   3. daemonRunning    — render device rows.
-        // The _daemonTooOld latch clears on the next 'ready' signal from DBusClient.
+        // Routing is driven entirely by the store-owned tri-state
+        // (src/daemon-status.js DaemonState), which is also what the tile
+        // pill renders — so the two surfaces cannot disagree. Precedence is
+        // unchanged from quick task 260526-i7q:
+        //   OUT_OF_DATE — daemon IS reachable, version rejected by the gate.
+        //                 Distinct copy from "not running"; names the required
+        //                 and the detected version.
+        //   RUNNING     — render device rows.
+        //   default     — STOPPED (and any unknown state) → not on the bus,
+        //                 split into:
+        //                   a. not installed → install hint (no unit file on disk)
+        //                   b. installed but stopped → systemctl enable --now hint
         let n = -1;
-        if (this._daemonTooOld) {
-            populateOutOfDateState(this._rowsSection);
-        } else if (!this._store.daemonRunning) {
+        switch (this._store.daemonState) {
+        case DaemonState.OUT_OF_DATE:
+            populateOutOfDateState(this._rowsSection, this._store.daemonVersion);
+            break;
+        case DaemonState.RUNNING:
+            n = populateDeviceRows(this._rowsSection, this._store, this._extension);
+            break;
+        default:
             if (!isUsbeehiveServiceInstalled())
                 populateNotInstalledState(this._rowsSection);
             else
                 populateEmptyState(this._rowsSection);
-        } else {
-            n = populateDeviceRows(this._rowsSection, this._store, this._extension);
+            break;
         }
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');

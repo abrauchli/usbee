@@ -24,6 +24,8 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {MIN_USBEEHIVE_VERSION} from './daemon-status.js';
+
 const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehived';
 const INSTALL_CMD   = 'usbeehived --install-service';
 const UPDATE_CMD    = 'cargo install usbeehive --features=dbus';
@@ -201,13 +203,21 @@ export function buildDaemonNotInstalledItem() {
  * copy reminds them to restart the unit after the cargo install completes.
  *
  * Quick task 260526-i7q: the copy-pasteable entry is now the actual update
- * command (`cargo install usbeehive --features=dbus`) rather than the
- * post-upgrade restart command, which was the wrong actionable bit.
+ * command rather than the post-upgrade restart command, which was the wrong
+ * actionable bit.
  *
- * Wired by Plan 04-02 Task 11 into a new populateOutOfDateState(section)
- * triggered by the DBusClient 'daemon-too-old' signal (see ADR).
+ * Quick task 260821-ke2: the item now states BOTH the version USBee
+ * requires and the version it actually detected, so a user whose daemon is
+ * demonstrably running has a diagnosable fact instead of a dead end.
+ *
+ * Wired from tile.js via populateOutOfDateState(section, detectedVersion)
+ * when store.daemonState is DaemonState.OUT_OF_DATE (see ADR).
+ *
+ * @param {string} detectedVersion  Version the daemon reported. Empty when
+ *   the Version property was missing or unreadable, in which case the label
+ *   says "unknown" — which is itself the useful diagnosis.
  */
-export function buildDaemonOutOfDateItem() {
+export function buildDaemonOutOfDateItem(detectedVersion = '') {
     const item = new PopupMenu.PopupMenuItem('', {
         reactive: false,
         can_focus: false,
@@ -228,6 +238,21 @@ export function buildDaemonOutOfDateItem() {
     });
     title.clutter_text.line_wrap = true;
 
+    // T-ke2-01: `detectedVersion` is bus data — any session process can own
+    // org.usbeehive.Devices and report an arbitrary Version string. Clamp it
+    // before rendering. St.Label does not enable Pango markup, so the clamp
+    // is the whole mitigation here (prefs.js additionally markup-escapes,
+    // because Adwaita subtitles DO parse markup).
+    const detected = typeof detectedVersion === 'string' && detectedVersion
+        ? detectedVersion.slice(0, 32)
+        : _('unknown');
+    const versions = new St.Label({
+        text: _('Requires usbeehive %s or newer — detected %s')
+            .format(MIN_USBEEHIVE_VERSION, detected),
+        x_expand: true,
+    });
+    versions.clutter_text.line_wrap = true;
+
     const hint = new St.Label({
         text: _('Update usbeehive, then restart the daemon. This list will populate automatically:'),
         x_expand: true,
@@ -245,6 +270,7 @@ export function buildDaemonOutOfDateItem() {
     entry.clutter_text.selectable = true;
 
     box.add_child(title);
+    box.add_child(versions);
     box.add_child(hint);
     box.add_child(entry);
     item.add_child(box);

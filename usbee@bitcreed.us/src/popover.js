@@ -177,15 +177,17 @@ export function populateNotInstalledState(section) {
 
 /**
  * Render the "daemon out of date" empty state (COMPAT-02).
- * Wired from tile.js when DBusClient emits 'daemon-too-old'.
+ * Wired from tile.js when store.daemonState is DaemonState.OUT_OF_DATE.
  * Mirrors the populateEmptyState shape but uses the dedicated copy
  * landed in src/empty-state.js by Plan 04-01.
  *
  * @param {PopupMenuSection} section
+ * @param {string} detectedVersion  Version the daemon reported; '' when it
+ *   could not be read (the item then renders "detected unknown").
  */
-export function populateOutOfDateState(section) {
+export function populateOutOfDateState(section, detectedVersion = '') {
     section.removeAll();
-    section.addMenuItem(buildDaemonOutOfDateItem());
+    section.addMenuItem(buildDaemonOutOfDateItem(detectedVersion));
 }
 
 /**

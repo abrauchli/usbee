@@ -22,6 +22,8 @@
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {DaemonState} from './daemon-status.js';
+
 // DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
 //   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)
 // 21 fields in declaration order — see ../usbeehive/src/dbus.rs module
@@ -269,21 +271,44 @@ export const DeviceStore = GObject.registerClass({
     constructor() {
         super();
         this._devices = [];
-        this._daemonRunning = false;
+        // Single source of truth for daemon lifecycle. Both the tile pill
+        // (tileText below) and the popover routing (tile.js _rebuildPopover)
+        // read this one field, so they cannot disagree — the bug quick task
+        // 260821-ke2 fixed, where the pill said "Daemon not running" while
+        // the expanded popover said "daemon out of date".
+        this._daemonState = DaemonState.STOPPED;
+        // Version string the daemon reported when it failed the gate.
+        // Empty when unknown / not applicable.
+        this._daemonVersion = '';
     }
 
     get devices()        { return this._devices; }
-    get daemonRunning()  { return this._daemonRunning; }
+    get daemonState()    { return this._daemonState; }
+    get daemonVersion()  { return this._daemonVersion; }
 
     /**
-     * Two-line D-09 tile text {title, subtitle}. Returns the daemon-not-running
-     * sentinel when the daemon is off the bus (UI-SPEC #copywriting Tile/empty
+     * Derived boolean kept for the many call sites that only care whether
+     * devices can be listed (tile `checked`, DBusClient guards, tests).
+     * OUT_OF_DATE reads as not-running here — no device data is available.
+     */
+    get daemonRunning()  { return this._daemonState === DaemonState.RUNNING; }
+
+    /**
+     * Two-line D-09 tile text {title, subtitle}. Returns a state-specific
+     * sentinel when the daemon is unusable (UI-SPEC #copywriting Tile/empty
      * state); otherwise delegates to deriveTileText() for the 4-tier algorithm.
      */
     get tileText() {
-        if (!this._daemonRunning)
+        switch (this._daemonState) {
+        case DaemonState.RUNNING:
+            return deriveTileText(this._devices);
+        case DaemonState.OUT_OF_DATE:
+            return {title: _('USB'), subtitle: _('Daemon out of date')};
+        default:
+            // STOPPED — and any state this build does not know about, which
+            // fails closed to the safest copy.
             return {title: _('USB'), subtitle: _('Daemon not running')};
-        return deriveTileText(this._devices);
+        }
     }
 
     /**
@@ -304,9 +329,35 @@ export const DeviceStore = GObject.registerClass({
         this.emit('changed');
     }
 
-    setDaemonRunning(running) {
-        if (this._daemonRunning === running) return;
-        this._daemonRunning = running;
+    /**
+     * Single write path for the daemon tri-state. No-ops (and stays silent)
+     * when neither the state nor the reported version changed, preserving
+     * the previous setDaemonRunning idempotency contract.
+     *
+     * @param {string} state    A DaemonState value.
+     * @param {string} version  Reported daemon version ('' when unknown).
+     */
+    _setDaemonState(state, version) {
+        if (this._daemonState === state && this._daemonVersion === version)
+            return;
+        this._daemonState = state;
+        this._daemonVersion = version;
         this.emit('changed');
+    }
+
+    setDaemonRunning(running) {
+        this._setDaemonState(
+            running ? DaemonState.RUNNING : DaemonState.STOPPED, '');
+    }
+
+    /**
+     * The daemon is reachable on the bus but its Version failed the gate
+     * (COMPAT-02). Records the version so the popover and the prefs About
+     * group can state what was detected alongside what is required.
+     *
+     * @param {string} version  Version the daemon reported ('' if unreadable).
+     */
+    setDaemonOutOfDate(version) {
+        this._setDaemonState(DaemonState.OUT_OF_DATE, version || '');
     }
 });

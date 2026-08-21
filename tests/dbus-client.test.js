@@ -23,6 +23,7 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {DBusClient} from '../usbee@bitcreed.us/src/dbus-client.js';
+import {DaemonState} from '../usbee@bitcreed.us/src/daemon-status.js';
 
 let failures = 0;
 function check(name, cond) {
@@ -38,12 +39,30 @@ function check(name, cond) {
 // Minimal stand-ins matching only the surface dbus-client.js touches on the
 // paths under test. Each records enough to assert ordering/idempotency.
 
+// Mirrors the real DeviceStore surface after quick task 260821-ke2: the
+// tri-state daemonState is the source of truth and daemonRunning is derived
+// from it. The double keeps both fields in sync the same way, so the
+// _onVanished idempotency guard (which now reads daemonState) is exercised
+// against realistic state.
 function makeStore() {
     return {
         daemonRunning: false,
+        daemonState: DaemonState.STOPPED,
+        daemonVersion: '',
         devices: [],
         calls: [],
-        setDaemonRunning(v) { this.daemonRunning = v; this.calls.push(['setDaemonRunning', v]); },
+        setDaemonRunning(v) {
+            this.daemonRunning = v;
+            this.daemonState = v ? DaemonState.RUNNING : DaemonState.STOPPED;
+            this.daemonVersion = '';
+            this.calls.push(['setDaemonRunning', v]);
+        },
+        setDaemonOutOfDate(version) {
+            this.daemonRunning = false;
+            this.daemonState = DaemonState.OUT_OF_DATE;
+            this.daemonVersion = version || '';
+            this.calls.push(['setDaemonOutOfDate', this.daemonVersion]);
+        },
         setDevices(d) { this.devices = d; this.calls.push(['setDevices', d.length]); },
     };
 }
@@ -81,12 +100,16 @@ const registry = {
 // ListDevicesRemote (callback-style, one out-arg `entries`) are exercised.
 // connectSignal records handlers by name for tests that drive signal subscriptions.
 // Returns a monotonically increasing integer id, mirroring the real proxy contract.
-function makeProxy(owner) {
+// `version` (optional) is surfaced as the cached `Version` property the
+// version gate reads. Omit it to simulate a daemon whose Version could not
+// be read at proxy-construction time (the fail-closed path).
+function makeProxy(owner, version) {
     let nextSignalId = 1;
     const signalHandlers = {};
     const subscribedNames = [];
     return {
         gNameOwner: owner,
+        Version: version,
         ListDevicesRemote(cb) { cb([[]], null); }, // result = [entries], entries = []
         // Records signal handlers by name so tests can invoke them directly.
         connectSignal(name, handler) {
@@ -132,7 +155,8 @@ print('# _onProxyOwnerAcquired — marks running, idempotent');
 print('# _onVanished — clears, idempotent');
 {
     const store = makeStore();
-    store.daemonRunning = true; // precondition: daemon was up
+    store.setDaemonRunning(true); // precondition: daemon was up
+    store.calls.length = 0;
     const notifier = makeNotifier();
     const client = newClient(store, notifier);
     let lost = 0;
@@ -265,6 +289,87 @@ print('# DeviceChanged — re-snapshots, never notifies');
         src.includes('_scheduleRefresh()'));
     check('dbus-client.js DeviceChanged signal in IFACE_XML literal',
         src.includes('<signal name="DeviceChanged">'));
+}
+
+print('# _applyVersionGate — one write path for the out-of-date state');
+{
+    // Too old: store parks in OUT_OF_DATE carrying the reported version, the
+    // device list is cleared, and 'daemon-too-old' fires exactly once. The
+    // signal stays parameterless — the version travels through the store,
+    // which is what the pill and the popover both read (260821-ke2).
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.2', '0.9.9');
+    let tooOld = 0;
+    client.connect('daemon-too-old', () => tooOld++);
+
+    const passed = client._applyVersionGate();
+    check('too-old version fails the gate', passed === false);
+    check('store parks in OUT_OF_DATE', store.daemonState === DaemonState.OUT_OF_DATE);
+    check('store records the reported version', store.daemonVersion === '0.9.9');
+    check('derived daemonRunning stays false', store.daemonRunning === false);
+    check('clears the device list', store.calls.some(c => c[0] === 'setDevices' && c[1] === 0));
+    check("emits 'daemon-too-old' once", tooOld === 1);
+}
+
+{
+    // Unreadable Version (the F1 false-positive shape): fail closed, and
+    // record an EMPTY version so the UI can honestly say "detected unknown"
+    // instead of printing "undefined" at the user.
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.2'); // no Version property at all
+    let tooOld = 0;
+    client.connect('daemon-too-old', () => tooOld++);
+
+    check('undefined version fails the gate', client._applyVersionGate() === false);
+    check('undefined version parks in OUT_OF_DATE',
+        store.daemonState === DaemonState.OUT_OF_DATE);
+    check('undefined version is recorded as empty (not "undefined")',
+        store.daemonVersion === '');
+    check("undefined version emits 'daemon-too-old'", tooOld === 1);
+}
+
+{
+    // New enough: the gate is a pure predicate — no store mutation, no signal.
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.2', '0.11.0');
+    let tooOld = 0;
+    client.connect('daemon-too-old', () => tooOld++);
+
+    check('new-enough version passes the gate', client._applyVersionGate() === true);
+    check('passing gate does not mutate the store', store.calls.length === 0);
+    check('passing gate stays in STOPPED (caller marks running)',
+        store.daemonState === DaemonState.STOPPED);
+    check("passing gate emits no 'daemon-too-old'", tooOld === 0);
+}
+
+print('# out-of-date daemon that exits — returns to STOPPED (the ke2 regression)');
+{
+    // Before 260821-ke2 the _onVanished guard read !daemonRunning, which is
+    // ALREADY false in the out-of-date state — so the store stayed parked in
+    // OUT_OF_DATE forever and the pill kept claiming the daemon was out of
+    // date with nothing on the bus.
+    const store = makeStore();
+    const notifier = makeNotifier();
+    const client = newClient(store, notifier);
+    client._proxy = makeProxy(':1.2', '0.9.9');
+    client._applyVersionGate();
+    store.calls.length = 0;
+    let lost = 0;
+    client.connect('lost', () => lost++);
+
+    client._onVanished();
+    check('OUT_OF_DATE → STOPPED on vanish', store.daemonState === DaemonState.STOPPED);
+    check('clears the device list on vanish',
+        store.calls.some(c => c[0] === 'setDevices' && c[1] === 0));
+    check('notifies (onDaemonVanished)', notifier.vanished === 1);
+    check("emits 'lost'", lost === 1);
+
+    client._onVanished(); // bus-watch vanish + notify::g-name-owner both fire
+    check('idempotent from STOPPED: lost not re-emitted', lost === 1);
+    check('idempotent from STOPPED: notifier not re-fired', notifier.vanished === 1);
 }
 
 // --- Summary ----------------------------------------------------------------
