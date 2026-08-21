@@ -30,7 +30,7 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
 Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-06-16 -- Quick task 260616-c18: subscribe to daemon DeviceChanged signal so the tile re-snapshots on benign present-port transitions (fixes stale "Charging 15W" after AC unplug)
+Last activity: 2026-08-21 -- Quick task 260821-ke2: one store-owned daemon tri-state (pill and popover can no longer disagree); required + detected usbeehive version shown wherever the gate fails; copy buttons on every displayed command; `.pot` regenerated (was stale since 2.2.0)
 
 ## Performance Metrics
 
@@ -151,6 +151,7 @@ Steps:
 | 260526-i7q | Three-way daemon-state hints (not-installed / not-running / out-of-date) with `usbeehived --install-service` and `cargo install usbeehive --features=dbus` commands; shorter notify-changes ComboRow item labels | 2026-05-26 | 4b8c7bb, dec4dbb | [260526-i7q-daemon-status-hints-shorter-notify-chang](./quick/260526-i7q-daemon-status-hints-shorter-notify-chang/) |
 | 260608-hug | Fix clipped empty-state title ("u...") — move titles into the vertical body box (hide built-in horizontal PopupMenuItem label) across all three daemon-state builders + `.usbee-empty-state-title` CSS rule | 2026-06-08 | 3229281, c6a2d43 | [260608-hug-fix-clipped-empty-state-title-u-in-quick](./quick/260608-hug-fix-clipped-empty-state-title-u-in-quick/) |
 | 260616-c18 | Subscribe to the daemon's additive `DeviceChanged` signal and `_scheduleRefresh()` the tile (no notification) — consumer half of the stale "Charging 15W" after-unplug fix; byte-equal IFACE_XML/dbus-iface.xml preserved | 2026-06-16 | 5d6f6a4, 0395206, 10ce59d | [260616-c18-subscribe-to-devicechanged-signal-and-re](./quick/260616-c18-subscribe-to-devicechanged-signal-and-re/) |
+| 260821-ke2 | Store-owned daemon tri-state so the pill reads "Daemon out of date" instead of contradicting the popover; required + detected usbeehive version surfaced in popover and prefs; copy buttons on every displayed command; new zero-import `src/daemon-status.js` shared across both processes + CI | 2026-08-21 | 3346345, 32760d7, 02a14c4 | [260821-ke2-show-daemon-out-of-date-in-the-tile-pill](./quick/260821-ke2-show-daemon-out-of-date-in-the-tile-pill/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
