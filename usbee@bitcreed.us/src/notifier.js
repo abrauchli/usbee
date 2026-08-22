@@ -72,13 +72,9 @@ export class Notifier {
         // Destroying inside the iteration is fine — the destroy handler
         // mutates the map but we use .values() snapshot semantics via
         // Array.from to be safe against future SpiderMonkey changes.
-        for (const n of Array.from(this._notifications.values())) {
-            try {
-                n.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
-            } catch (_e) {
-                // Already destroyed — no recovery needed.
-            }
-        }
+        for (const n of Array.from(this._notifications.values()))
+            n.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
+
         this._notifications.clear();
     }
 
@@ -96,11 +92,8 @@ export class Notifier {
     onCapabilityRestored(portNumber) {
         const existing = this._notifications.get(portNumber);
         if (!existing) return;
-        try {
-            existing.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
-        } catch (_e) {
-            // Already destroyed — the destroy handler will null the map entry.
-        }
+        // The notification's own 'destroy' handler nulls the map entry.
+        existing.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
     }
 
     /**
@@ -291,11 +284,7 @@ export class Notifier {
         // source's 'destroy' handler will null this._source.
         this.onDaemonVanished();
         if (this._source) {
-            try {
-                this._source.destroy();
-            } catch (_e) {
-                // Already destroyed — no recovery needed.
-            }
+            this._source.destroy();
             this._source = null;
         }
     }

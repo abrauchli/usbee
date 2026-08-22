@@ -29,7 +29,6 @@ export class SignalRegistry {
     addSignal(target, id) {
         if (this._disposed) throw new Error('SignalRegistry.addSignal after dispose');
         this._entries.push({
-            kind: 'signal',
             dispose: () => target.disconnect(id),
         });
         return id;
@@ -43,7 +42,6 @@ export class SignalRegistry {
     addProxySignal(proxy, id) {
         if (this._disposed) throw new Error('SignalRegistry.addProxySignal after dispose');
         this._entries.push({
-            kind: 'proxy-signal',
             dispose: () => proxy.disconnectSignal(id),
         });
         return id;
@@ -56,7 +54,6 @@ export class SignalRegistry {
     addBusWatch(watchId) {
         if (this._disposed) throw new Error('SignalRegistry.addBusWatch after dispose');
         this._entries.push({
-            kind: 'bus-watch',
             dispose: () => Gio.bus_unwatch_name(watchId),
         });
         return watchId;
@@ -76,7 +73,6 @@ export class SignalRegistry {
     addTimeout(sourceId) {
         if (this._disposed) throw new Error('SignalRegistry.addTimeout after dispose');
         const entry = {
-            kind: 'timeout',
             dispose: () => GLib.Source.remove(sourceId),
         };
         this._entries.push(entry);
@@ -89,21 +85,13 @@ export class SignalRegistry {
     /**
      * Release every tracked resource in reverse order of registration.
      * Idempotent — safe to call from disable() multiple times.
-     *
-     * Best-effort: if one dispose-fn throws, the rest still run; the
-     * error is logged via the canonical GJS error-only logger.
      */
     dispose() {
         if (this._disposed) return;
         this._disposed = true;
-        for (let i = this._entries.length - 1; i >= 0; i--) {
-            const entry = this._entries[i];
-            try {
-                entry.dispose();
-            } catch (e) {
-                logError(e, `SignalRegistry: ${entry.kind} dispose failed`);
-            }
-        }
+        for (let i = this._entries.length - 1; i >= 0; i--)
+            this._entries[i].dispose();
+
         this._entries = [];
     }
 }

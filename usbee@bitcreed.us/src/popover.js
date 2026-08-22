@@ -84,11 +84,7 @@ export function populateDeviceRows(section, store, extension) {
     // finalize error.
     for (const item of section._getMenuItems()) {
         if (item._usbeeAccordionSigId && item.menu) {
-            try {
-                item.menu.disconnect(item._usbeeAccordionSigId);
-            } catch (_e) {
-                // Menu already destroyed — disconnect is a no-op anyway.
-            }
+            item.menu.disconnect(item._usbeeAccordionSigId);
             item._usbeeAccordionSigId = 0;
         }
     }
