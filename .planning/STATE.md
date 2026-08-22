@@ -152,6 +152,7 @@ Steps:
 | 260608-hug | Fix clipped empty-state title ("u...") — move titles into the vertical body box (hide built-in horizontal PopupMenuItem label) across all three daemon-state builders + `.usbee-empty-state-title` CSS rule | 2026-06-08 | 3229281, c6a2d43 | [260608-hug-fix-clipped-empty-state-title-u-in-quick](./quick/260608-hug-fix-clipped-empty-state-title-u-in-quick/) |
 | 260616-c18 | Subscribe to the daemon's additive `DeviceChanged` signal and `_scheduleRefresh()` the tile (no notification) — consumer half of the stale "Charging 15W" after-unplug fix; byte-equal IFACE_XML/dbus-iface.xml preserved | 2026-06-16 | 5d6f6a4, 0395206, 10ce59d | [260616-c18-subscribe-to-devicechanged-signal-and-re](./quick/260616-c18-subscribe-to-devicechanged-signal-and-re/) |
 | 260821-ke2 | Store-owned daemon tri-state so the pill reads "Daemon out of date" instead of contradicting the popover; required + detected usbeehive version surfaced in popover and prefs; copy buttons on every displayed command; new zero-import `src/daemon-status.js` shared across both processes + CI | 2026-08-21 | 3346345, 32760d7, 02a14c4 | [260821-ke2-show-daemon-out-of-date-in-the-tile-pill](./quick/260821-ke2-show-daemon-out-of-date-in-the-tile-pill/) |
+| fast | EGO AI-reference pass: drop non-throwing try/catch around destroy()/disconnect()/dispose() in notifier.js, popover.js, signal-registry.js (+ orphaned `kind` field) | 2026-08-21 | c3db795 | — |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
