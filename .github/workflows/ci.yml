@@ -18,7 +18,14 @@ jobs:
         run: |
           python3 -m venv venv
           . venv/bin/activate
-          pip install -U shexli
+          # Pin tree-sitter <0.26: 0.26.0 segfaults (exit 139, no output) when
+          # shexli parses prefs.js. Reproduced locally — same shexli 0.2.1 and
+          # tree-sitter-javascript 0.25.0 on both sides, tree-sitter core the
+          # only variable; the v2.5.0 tree that passed CI in June also crashes
+          # under 0.26.0. Not a stack overflow (survives ulimit -s 65536), and
+          # tree-sitter-javascript has no release past 0.25.0 to upgrade into.
+          # Drop the pin once shexli ships a 0.26-compatible release.
+          pip install -U shexli 'tree-sitter<0.26'
 
       - name: Run shexli
         run: |
