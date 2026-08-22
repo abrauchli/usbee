@@ -6,12 +6,12 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
-## [Unreleased]
+## [2.6.0] — 2026-08-21
 
-No version fields changed: `MIN_USBEEHIVE_VERSION` stays `0.10.0` and
-`usbee@bitcreed.us/metadata.json` (`version`, `version-name`) is
-untouched. This release is entirely about telling the truth when the
-daemon version gate rejects a daemon.
+`MIN_USBEEHIVE_VERSION` stays `0.10.0` — no daemon-side requirement
+changed, and USBee still connects to every daemon it did before. This
+release is about telling the truth when the daemon version gate rejects
+a daemon, plus an EGO review-guideline cleanup.
 
 ### Fixed
 
@@ -80,6 +80,15 @@ daemon version gate rejects a daemon.
   translator comments that previously existed only inside the template
   are now `Translators:` comments in the source, so they survive future
   regenerations.
+- **Dropped five defensive `try`/`catch` blocks that could never fire**,
+  per the EGO ["AI reference"
+  guidelines](https://blogs.gnome.org/jrahmatzadeh/2026/07/27/ego-ai-reference/)
+  post: `destroy()`, `disconnect()` and `dispose()` do not throw, so
+  wrapping them only hides real errors from reviewers and from the
+  journal. Cleaned in `src/notifier.js`, `src/popover.js` and
+  `src/signal-registry.js`. The now-unused `kind` field was removed from
+  signal-registry entries at the same time. Internal only — no
+  user-visible behaviour change.
 
 ## [2.5.0] — 2026-06-16
 
@@ -385,6 +394,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.6.0]: https://github.com/abrauchli/usbee/releases/tag/v2.6.0
 [2.5.0]: https://github.com/abrauchli/usbee/releases/tag/v2.5.0
 [2.4.0]: https://github.com/abrauchli/usbee/releases/tag/v2.4.0
 [2.3.1]: https://github.com/abrauchli/usbee/releases/tag/v2.3.1
