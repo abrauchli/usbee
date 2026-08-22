@@ -179,6 +179,60 @@ Version fields in `usbee@bitcreed.us/metadata.json`:
   EGO submission. Unrelated to semver.
 - `version-name` — human-facing semver string. Bumped per release.
 
+### Packing and local install (development)
+
+The pack invocation is *not* a bare `gnome-extensions pack` — the
+sources live in subdirectories that pack does not pick up on its own.
+`.github/workflows/release.yml` is the source of truth; keep this
+command and that workflow step identical:
+
+```sh
+gnome-extensions pack usbee@bitcreed.us \
+  --podir=../po \
+  --extra-source=src \
+  --extra-source=icons \
+  --force
+```
+
+- `--extra-source=src` is mandatory. By default pack bundles only
+  `extension.js`, `prefs.js`, `metadata.json`, `stylesheet.css`,
+  `schemas/` and `locale/` — every module under `src/` is dropped
+  without it.
+- `dbus-iface.xml` is intentionally *not* packed. The interface XML the
+  extension actually uses is the inlined `IFACE_XML` literal in
+  `src/dbus-client.js`; the file at the extension root is the reference
+  copy kept byte-equal to it (less the doctype).
+- **A wrong `--extra-source` path is silently ignored.** Pack exits 0
+  and prints nothing, so a broken zip looks exactly like a successful
+  one. Always confirm the contents before installing:
+
+  ```sh
+  unzip -l usbee@bitcreed.us.shell-extension.zip
+  ```
+
+  A correct zip has 21 entries / ~140 KB uncompressed. A zip that lost
+  `src/` has 10 entries / ~29 KB — that is the failure signature.
+
+Install the built zip for the current user:
+
+```sh
+gnome-extensions install --force usbee@bitcreed.us.shell-extension.zip
+```
+
+`install` compiles `schemas/gschemas.compiled` itself; no separate
+`glib-compile-schemas` run is needed. Verify what actually landed on
+disk rather than trusting the CLI:
+
+```sh
+grep '"version' ~/.local/share/gnome-shell/extensions/usbee@bitcreed.us/metadata.json
+```
+
+`gnome-extensions info usbee@bitcreed.us` keeps reporting the
+*previously loaded* version until the Shell restarts — it reads live
+in-process metadata, not the disk. A stale version there right after an
+install is expected, not a failed install. Restart the Shell to pick up
+the new code (Xorg: `Alt+F2` → `r`; Wayland: full re-login).
+
 ### Steps for a new release
 
 1. **Bump version strings** in `usbee@bitcreed.us/metadata.json`:
