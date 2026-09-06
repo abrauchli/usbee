@@ -86,6 +86,19 @@ GATED behind `show-technical-details = true`:
 
 **Forward-compat for unknown keys:** Any property key NOT in either list (e.g. future daemon additions) must default to **always visible** — the daemon adds keys for a reason; gating an unknown key would silently hide useful info. The gate must be an explicit-deny list, not an allow-list.
 
+> ⚠️ **SUPERSEDED 2026-09-05 by quick task 260905-b0s §D-2** (reversal
+> authorised by the user). Unknown property keys now render **only** when
+> `show-technical-details` is on, and a new `HIDDEN_KEYS` tier drops
+> wire-only keys entirely. Reason the premise no longer holds: usbeehive's
+> BOS + connector waves add **24 keys in one go**, several of them opaque
+> to any user (`usb_bos_container_id` — a bare UUID, `port.peer_id`,
+> `usb_capable_rx_lanes`). Under the deny-list an *unmodified* USBee 2.6.0
+> renders ~12 raw `machine_key: value` rows per device the day the daemon
+> updates — no extension release is needed to cause it. The forward-compat
+> guarantee is narrowed, not dropped: unknown keys still never throw,
+> never log, and stay reachable one toggle away (plus `SnapshotJson`).
+> See `.planning/quick/260905-b0s-bos-trim-consumer-ui/260905-b0s-CONTEXT.md`.
+
 **Render integration:** The filter applies inside `populateDeviceRows` / `buildDeviceRow` in `src/popover.js`. Live setting read on every popover open (consistent with `hide-empty-ports` live-read at `popover.js:69-70`).
 
 ### Claude's Discretion (within locked decisions)

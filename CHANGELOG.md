@@ -6,6 +6,137 @@ versions follow semantic versioning for the human-facing
 `version-name`, while the EGO `version` integer is monotonic and
 unrelated.
 
+## [Unreleased]
+
+Consumes the two purely-additive waves usbeehive shipped on the
+**unchanged** `org.usbeehive.Devices5` interface: 13 BOS keys describing
+what a device is *capable* of plus the `DataRateDegraded` /
+`DataRateRestored` signals, and 11 keys describing the physical
+connector, power source, kernel quirks and hardware-database name.
+
+`MIN_USBEEHIVE_VERSION` stays `0.10.0`. Every new key is optional and
+absence means *unknown*, never zero — USBee runs unmodified against a
+daemon that emits none of them.
+
+### Changed
+
+- **Unknown property keys now render only under "Show technical
+  details".** This reverses a decision locked in quick task 260526-c6p
+  ("the gate must be an explicit-deny list, not an allow-list"), and the
+  reversal is deliberate and user-authorised — see
+  `.planning/quick/260905-b0s-bos-trim-consumer-ui/260905-b0s-CONTEXT.md`
+  §D-2. The locked call was right while the daemon added a key or two per
+  release. These two waves add **24 keys at once**, several opaque to any
+  user (`usb_bos_container_id` is a bare UUID), so under the old policy an
+  *unmodified* USBee 2.6.0 would print ~12 raw `machine_key: value` rows
+  per device the day the daemon updated — no extension release needed to
+  cause it. The forward-compat guarantee is narrowed, not dropped:
+  unknown keys still never throw, never log, and are one toggle away. A
+  new `HIDDEN_KEYS` tier drops six wire-only keys entirely (they remain
+  reachable in the daemon's `SnapshotJson`). The whole tiering now lives
+  in one zero-import module, `src/property-policy.js`.
+- The tile's rate formatter no longer emits a trailing `.0` — a 5 Gbps
+  link reads "5 Gb/s", not "5.0 Gb/s". The same `formatRate()` now backs
+  the tile and the per-device rows, so they cannot disagree.
+- The preferences "Show technical details" subtitle no longer enumerates
+  the gated keys (that list grows every daemon release); the
+  Notifications group description now covers ports *and* devices.
+- The daemon-not-installed state shows the full install chain
+  (`cargo install … && usbeehived --install-service && systemctl --user
+  enable --now usbeehived`) instead of step two of three.
+
+### Added
+
+- **Per-device link speed, at last.** `link_speed_mbps` / `usb_version`
+  were structured fields the popover never rendered. Every device row now
+  carries a dim trailing rate caption, and the detail panel opens with a
+  `Link` row — for an extension whose core value is "is this the fast
+  port?", that was the biggest gap.
+- **The BOS verdict, attached to that Link row.** `AtCapability` reads
+  "— full capability"; `BelowCapability` reads "— could run at 5 Gb/s on
+  a faster port", phrased as a possibility because the device's own
+  vendor declares it fully functional where it is; `Degraded` is the only
+  warning, and adds a `Fix` row. USBee never derives a warning from
+  `usb_capable_speed_mbps > link_speed_mbps` — per the daemon's spec §6
+  that comparison fires on 2 of 2 BOS-bearing devices on the reference
+  machine, both working as intended. `usb_bos_suppressed` never produces
+  a verdict: it means capability is *unknown*, not "USB 2 only".
+- **`port.peer_state` explains the verdict.** With a BOS verdict present
+  and the SuperSpeed lanes the plausible culprit, the panel says why:
+  "The SuperSpeed lines of this connector never linked — a USB 2-only
+  cable or port" (`not attached`), "…is unstable — try another cable"
+  (`powered` / `reconnecting`), or "This connector's high-speed lanes are
+  up, but this device is not on them" (`configured` / `suspended`).
+  Without a verdict, or without a companion port, it says nothing — a
+  `not attached` companion on a device that makes no capability claim is
+  not evidence of anything.
+- **Hubs with an issue are shown even when "Show USB Hubs" is off.**
+  `port.peer_*` exists only on root-hub ports, so the explanation lives on
+  the hub row; hiding it would leave a default-config user with a warning
+  and no reachable cause. Only Degraded / over-budget hubs surface.
+- **Hub occupancy and bus power**: "Ports — 2 of 4 in use" and "Bus power
+  — 188 of 500 mA committed" (amber when committed exceeds the budget).
+  Worded as *committed*, never *drawn*: the figure is the sum of the
+  children's declared maxima.
+- **A tile warning tier.** A cable-limited 30 W charge used to render
+  identically to a healthy one. The tile now reads "Charging / 30 W —
+  limited", or "Slow USB link / <device>" for a Degraded data rate, and
+  the popover header's subtitle slot carries "1 issue" / "N issues".
+- **`DataRateDegraded` and `DataRateRestored`**, added to both the
+  `IFACE_XML` literal and `dbus-iface.xml`. Degraded raises a persistent
+  notification coalesced by the daemon's **string** device id (which
+  cannot collide with the existing int Type-C port keys), honouring the
+  2.5 s daemon-appear suppression window and mutable per device via a new
+  `data-rate-mutes` GSettings key. Restored is dismiss-only. Muted
+  devices are listed and can be unmuted in the preferences window.
+  `BelowCapability` never notifies.
+- **Built-in devices no longer toast.** `port.connect_type == hardwired`
+  suppresses connect/disconnect notifications: a soldered-down device
+  re-enumerates on suspend/resume and under `RESET_RESUME` quirks,
+  producing "Disconnected: … / Connected: …" pairs nobody can act on.
+- **`product_db` names the silicon.** It fills in the row headline only
+  for a device that publishes no product string at all
+  (`8087:0029` → "Intel AX200 Bluetooth"), and otherwise appears as a
+  technical `Identified as` row — which is what reveals that a
+  "4-Port USB 2.0 Hub" is really an `RTS5411 Hub`, i.e. USB 3 silicon on
+  a dead SuperSpeed lane. It never overrides a real product name.
+- Technical rows for the rest of both waves: `Generation`,
+  `Needs at least`, `Capability`, `Alt mode` (+ failure), `Port`,
+  `Connector` (hot-pluggable / built-in), `Powered by` (USB bus / own
+  supply) and `Kernel workaround`. Kernel vocabulary (`kernel.quirks`,
+  `port.peer_state`) is never translated — only its label is. A
+  "Technical details" divider separates the two tiers.
+- **The DisplayPort alt-mode failure that is actually actionable.**
+  `usb_altmode_state == Unsuccessful` with a `no_usb_pd` reason gets an
+  always-visible amber row. Every other Billboard state stays a quiet
+  technical fact — a monitor reporting `NotAttempted` on a USB-A-to-C
+  cable is not a fault.
+- **A `TOO_NEW` daemon state.** usbeehive has cut its interface
+  generation four times in four months, keeping the bus name each time —
+  so a future daemon owns the name USBee watches while exposing nothing
+  its `Devices5` proxy can call, the `Version` read fails, and USBee used
+  to tell the user their *daemon* was out of date and offer a
+  `cargo install` that would change nothing. The gate still fails closed
+  synchronously, then asynchronously introspects the object; if it finds
+  `org.usbeehive.Devices<N>` with N > 5, the pill reads "Extension out of
+  date" and the popover says so, with no shell command.
+- The extension description now discloses clipboard use, per the EGO
+  review guidelines, ahead of the next upload.
+
+### Testing
+
+- `tests/forward-compat.test.js` was **dead**: it imported `node:test`,
+  which this gjs rejects outright ("Unsupported URI scheme for importing:
+  node"), and its module paths were relative to `tests/` rather than to
+  the extension directory. It is now a plain-GJS suite of 141 assertions
+  covering verdict composition (including every "say nothing" case),
+  unknown-key containment, missing-key / old-daemon fallback, the mute
+  list and the notification discipline — and it runs in CI alongside the
+  other two suites. That logic was deliberately placed in zero-import
+  modules (`src/link-verdict.js`, `src/property-policy.js`,
+  `src/notify-policy.js`) so bare gjs can test it; the
+  gnome-shell-only modules keep source-level structural guards.
+
 ## [2.6.0] — 2026-08-21
 
 `MIN_USBEEHIVE_VERSION` stays `0.10.0` — no daemon-side requirement
