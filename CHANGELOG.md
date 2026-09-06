@@ -8,6 +8,8 @@ unrelated.
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-09-05
+
 Consumes the two purely-additive waves usbeehive shipped on the
 **unchanged** `org.usbeehive.Devices5` interface: 13 BOS keys describing
 what a device is *capable* of plus the `DataRateDegraded` /
@@ -525,6 +527,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.7.0]: https://github.com/abrauchli/usbee/releases/tag/v2.7.0
 [2.6.0]: https://github.com/abrauchli/usbee/releases/tag/v2.6.0
 [2.5.0]: https://github.com/abrauchli/usbee/releases/tag/v2.5.0
 [2.4.0]: https://github.com/abrauchli/usbee/releases/tag/v2.4.0
