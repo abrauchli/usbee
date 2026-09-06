@@ -10,6 +10,10 @@
 //   onDaemonVanished()      — destroy every live notification + clear map
 //   onCapabilityDegraded(portNumber, summary, detail)
 //   onCapabilityRestored(portNumber)
+//   onDataRateDegraded(id, summary, detail, headline)  — persistent, keyed
+//                             on the daemon's STRING device id (quick task
+//                             260905-b0s §D-5)
+//   onDataRateRestored(id)  — dismiss-only
 //   onDeviceAdded(id, headline, kind?)    — transient "Connected: …" toast
 //   onDeviceRemoved(id, headline, kind?)  — transient "Disconnected: …" toast
 //   dispose()               — destroy source + all notifications
@@ -38,6 +42,11 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+// The mute-list and scope decisions live in a zero-import module so bare-gjs
+// CI can unit-test them; this file cannot be loaded outside gnome-shell.
+import {dataRateMuteEntries, isDataRateMuted, shouldToastDeviceChange,
+    withDataRateMute} from './notify-policy.js';
+
 // 2.5 s in microseconds (GLib.get_monotonic_time units). Drops the burst
 // of CapabilityDegraded events that the daemon may replay immediately
 // after NameOwnerChanged null->owner. RESEARCH §Code Example #3.
@@ -56,7 +65,11 @@ export class Notifier {
         // to call extension.openPreferences() (RESEARCH §Pitfall K).
         this._extension = extension;
 
-        // portNumber (int) -> MessageTray.Notification
+        // Coalescing map for PERSISTENT notifications. Two key types share
+        // it and cannot collide: an int portNumber for CapabilityDegraded
+        // (charging, keyed on a Type-C port) and a string device id for
+        // DataRateDegraded (data, keyed on `usb:<bus_port>`). Map keys are
+        // compared with SameValueZero, so 5 and '5' are distinct entries.
         this._notifications = new Map();
         // Lazily constructed in _ensureSource(), nulled by its 'destroy'.
         this._source = null;
@@ -93,6 +106,53 @@ export class Notifier {
         const existing = this._notifications.get(portNumber);
         if (!existing) return;
         // The notification's own 'destroy' handler nulls the map entry.
+        existing.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
+    }
+
+    /**
+     * DataRateDegraded — a device linked below the rate its own descriptor
+     * says it needs (usbeehive's `usb_link_verdict == "Degraded"`).
+     *
+     * Persistent and coalesced by device id, the same shape as
+     * CapabilityDegraded, because it is equally actionable: move it to a
+     * faster port, or use a cable that supports the speed. The daemon's
+     * conservatism (it flags only `negotiated < functional_floor`) is what
+     * makes this safe to raise as a notification at all — the merely
+     * informational `BelowCapability` verdict never reaches here and must
+     * never raise anything.
+     *
+     * The 2.5 s daemon-appear suppression applies, so a permanently
+     * misplugged device does not toast on every login; it stays visible on
+     * the tile and in the popover instead.
+     *
+     * @param {string} id        Daemon device id, e.g. 'usb:5-2.1.1'.
+     * @param {string} summary   Daemon prose, one line.
+     * @param {string} detail    Daemon prose, may be ''.
+     * @param {string} headline  Device name resolved by the caller from the
+     *                           store; falls back to the id.
+     */
+    onDataRateDegraded(id, summary, detail, headline) {
+        if (GLib.get_monotonic_time() < this._suppressUntil) return;
+
+        // LIVE read — never cache (RESEARCH §Pitfall G / §Pattern 2).
+        const entries = dataRateMuteEntries(
+            this._settings.get_value('data-rate-mutes').deep_unpack());
+        if (isDataRateMuted(entries, id)) return;
+
+        this._emitDataRateDegraded(id, summary, detail, headline);
+    }
+
+    /**
+     * DataRateRestored — dismiss-only, exactly like CapabilityRestored.
+     * There is nothing for the user to do; the notification going away IS
+     * the feedback, and a "your USB link is fine again" toast would be
+     * noise.
+     *
+     * @param {string} id  Daemon device id.
+     */
+    onDataRateRestored(id) {
+        const existing = this._notifications.get(id);
+        if (!existing) return;
         existing.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
     }
 
@@ -139,20 +199,11 @@ export class Notifier {
         if (GLib.get_monotonic_time() < this._suppressUntil) return;
 
         // LIVE read — never cache (RESEARCH §Pitfall G / §Pattern 2).
+        // The scope filter, the hardwired suppression and the
+        // unknown-kind default-allow all live in notify-policy.js so CI can
+        // test them without gnome-shell.
         const scope = this._settings.get_string('device-change-notify-scope');
-        if (scope === 'off') return;
-        if (scope === 'power' && kind !== undefined) {
-            // 'power' filter: TypeCPort category, OR Phone / Storage class.
-            // Unknown scope values (other than 'off' / 'power') default-allow
-            // — matches the GSettings <choices> guard plus the forward-compat
-            // intent in CONTEXT 260526-c6p.
-            const isPower = kind.category === 'TypeCPort'
-                         || kind.deviceClass === 'Phone'
-                         || kind.deviceClass === 'Storage';
-            if (!isPower) return;
-        }
-        // kind === undefined under any scope: default-allow (avoids silently
-        // dropping toasts when DeviceStore has no entry yet).
+        if (!shouldToastDeviceChange(scope, kind)) return;
 
         const source = this._ensureSource();
 
@@ -242,6 +293,83 @@ export class Notifier {
 
         this._notifications.set(portNumber, notification);
         source.addNotification(notification);
+    }
+
+    _emitDataRateDegraded(id, summary, detail, headline) {
+        const source = this._ensureSource();
+
+        // The daemon's summary is one line of English prose describing the
+        // shortfall; the headline names the device. `_(…).format(…)` is
+        // mandatory — xgettext silently skips template literals
+        // (RESEARCH §Pitfall I).
+        // Translators: notification title; %1$s is a device name, %2$s the
+        // daemon's one-line description of the data-rate shortfall.
+        const title = _('%s — %s').format(headline || id, summary);
+        // Daemon string verbatim — never wrap in _(), never markup. It
+        // already carries the advice ("move it to a faster port or use a
+        // cable that supports it").
+        const body = detail;
+
+        const existing = this._notifications.get(id);
+        if (existing) {
+            // Same in-place update as _emitDegraded: GNOME 46 removed
+            // Notification.update(), so set the GObject properties and let
+            // notify::title / notify::body re-render the tray item.
+            existing.title = title;
+            existing.body = body;
+            return;
+        }
+
+        const notification = new MessageTray.Notification({
+            source,
+            title,
+            body,
+            iconName: 'drive-harddisk-usb-symbolic',
+            // NORMAL, like a degraded charge: informational, not
+            // safety-critical. HIGH would override Do Not Disturb.
+            urgency: MessageTray.Urgency.NORMAL,
+        });
+
+        notification.addAction(_("Don't notify for this device again"), () => {
+            this._muteById(id, headline);
+        });
+        notification.addAction(_('Open Preferences'), () => {
+            this._extension.openPreferences();
+        });
+
+        // Identity check — a stale destroy callback must not clobber a
+        // newer entry that already replaced this one (RESEARCH §Pitfall C).
+        notification.connect('destroy', (_n, _reason) => {
+            if (this._notifications.get(id) === notification)
+                this._notifications.delete(id);
+        });
+
+        this._notifications.set(id, notification);
+        source.addNotification(notification);
+    }
+
+    /**
+     * Mute one device's data-rate warnings. Keyed on the daemon id, which is
+     * topological — so this means "this device on this port", and moving it
+     * to a faster port both changes the id and clears the condition.
+     * The headline travels with it so the preferences row can name the
+     * device rather than showing `usb:5-2.1.1`.
+     *
+     * @param {string} id
+     * @param {string} headline
+     */
+    _muteById(id, headline) {
+        const entries = dataRateMuteEntries(
+            this._settings.get_value('data-rate-mutes').deep_unpack());
+        // Defensive — the user could double-click the action button.
+        if (!isDataRateMuted(entries, id)) {
+            this._settings.set_value('data-rate-mutes',
+                new GLib.Variant('a(ss)', withDataRateMute(entries, id, headline)));
+        }
+        // The user's intent is "make this go away now". The map entry is
+        // cleared by the destroy handler.
+        const n = this._notifications.get(id);
+        if (n) n.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
     }
 
     _addActions(notification, portNumber) {

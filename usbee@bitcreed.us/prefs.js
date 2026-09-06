@@ -58,7 +58,7 @@ export default class USBeePreferences extends ExtensionPreferences {
     _buildNotificationsGroup(page, settings, window) {
         const notifGroup = new Adw.PreferencesGroup({
             title: _('Notifications'),
-            description: _('Manage which USB-C ports may raise degradation warnings'),
+            description: _('Manage which ports and devices may raise warnings'),
         });
         page.add(notifGroup);
 
@@ -70,16 +70,58 @@ export default class USBeePreferences extends ExtensionPreferences {
             mutedRows.length = 0;
 
             const mutes = settings.get_strv('port-mutes');
-            if (mutes.length === 0) {
+            // Quick task 260905-b0s: data-rate mutes are (id, headline)
+            // pairs on a separate key, keyed on the daemon's device id
+            // rather than a Type-C port number. Read defensively — a list
+            // poisoned out-of-band with `gsettings` must not blank the
+            // preferences window.
+            let deviceMutes = [];
+            const rawDeviceMutes = settings.get_value('data-rate-mutes').deep_unpack();
+            if (Array.isArray(rawDeviceMutes)) {
+                deviceMutes = rawDeviceMutes.filter(
+                    e => Array.isArray(e) && typeof e[0] === 'string' && e[0] !== '');
+            }
+
+            if (mutes.length === 0 && deviceMutes.length === 0) {
                 const empty = new Adw.ActionRow({
-                    title: _('No muted ports'),
-                    subtitle: _('Mute a port from a notification to see it here'),
+                    title: _('Nothing muted'),
+                    subtitle: _('Mute a port or device from a notification to see it here'),
                     sensitive: false,  // disabled — UI-SPEC §Component-Inventory pin
                 });
                 notifGroup.add(empty);
                 mutedRows.push(empty);
                 return;
             }
+
+            for (const [id, headline] of deviceMutes) {
+                const row = new Adw.ActionRow({
+                    // Adwaita subtitles parse Pango markup, and both halves
+                    // are bus data (the daemon names the device). Clamp and
+                    // escape, exactly as the About group does for Version.
+                    title: GLib.markup_escape_text(
+                        String(headline || id).slice(0, 64), -1),
+                    subtitle: _('Data-rate warnings muted'),
+                });
+                const button = new Gtk.Button({
+                    icon_name: 'user-trash-symbolic',
+                    tooltip_text: _('Unmute this device'),
+                    valign: Gtk.Align.CENTER,
+                    css_classes: ['flat', 'destructive-action'],
+                });
+                button.connect('clicked', () => {
+                    const current = settings.get_value('data-rate-mutes').deep_unpack();
+                    const kept = (Array.isArray(current) ? current : [])
+                        .filter(e => Array.isArray(e) && e[0] !== id);
+                    settings.set_value('data-rate-mutes',
+                        new GLib.Variant('a(ss)', kept));
+                    // 'changed::data-rate-mutes' fires and rebuildMutedRows re-runs
+                });
+                row.add_suffix(button);
+                row.set_activatable_widget(button);
+                notifGroup.add(row);
+                mutedRows.push(row);
+            }
+
             for (const id of mutes) {
                 const portNumber = parseInt(id, 10);
                 // §T-02-08 — tolerate poisoned (non-stringified-int) entries;
@@ -110,12 +152,15 @@ export default class USBeePreferences extends ExtensionPreferences {
 
         rebuildMutedRows();
         const mutesChangedId = settings.connect('changed::port-mutes', rebuildMutedRows);
+        const deviceMutesChangedId = settings.connect(
+            'changed::data-rate-mutes', rebuildMutedRows);
 
         // Disconnect when the window closes (prefs-process lifecycle).
         // The prefs process owns its own teardown via 'close-request' —
         // it does NOT use the Shell-process signal-registry pattern.
         window.connect('close-request', () => {
             settings.disconnect(mutesChangedId);
+            settings.disconnect(deviceMutesChangedId);
             return false; // don't prevent close
         });
     }
@@ -142,12 +187,15 @@ export default class USBeePreferences extends ExtensionPreferences {
         settings.bind('show-hubs', hubRow, 'active',
                       Gio.SettingsBindFlags.DEFAULT);
 
-        // Quick task 260526-c6p — gate the explicit-deny GATED_KEYS list
-        // in src/popover.js behind a user-facing toggle. Default false keeps
-        // the popover glanceable for non-technical users (CONTEXT D-2).
+        // Quick task 260526-c6p — gate the advanced property rows in
+        // src/popover.js behind a user-facing toggle. Default false keeps
+        // the popover glanceable for non-technical users.
+        // Quick task 260905-b0s — the subtitle no longer enumerates the
+        // gated keys: the list moved to src/property-policy.js and grows
+        // with every daemon release, so an enumeration goes stale.
         const techRow = new Adw.SwitchRow({
             title: _('Show technical details'),
-            subtitle: _('Include advanced rows (serial, data role, cable details, drivers) in the device popover'),
+            subtitle: _('Include advanced rows and unrecognised daemon fields in the device popover'),
         });
         generalGroup.add(techRow);
         settings.bind('show-technical-details', techRow, 'active',

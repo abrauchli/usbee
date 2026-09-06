@@ -22,7 +22,7 @@ import GLib from 'gi://GLib';
 // Pulling in device-store.js (which imports the gnome-shell extension
 // resource URI for gettext) would make tests/dbus-client.test.js
 // unloadable under bare-gjs CI.
-import {DaemonState, MIN_USBEEHIVE_VERSION, isVersionAtLeast}
+import {DaemonState, IFACE_GENERATION, MIN_USBEEHIVE_VERSION, isVersionAtLeast}
     from './daemon-status.js';
 
 // VERIFIED against ../usbeehive/src/dbus.rs (the
@@ -85,11 +85,43 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
     <signal name="CapabilityRestored">
       <arg type="i" name="port_number"/>
     </signal>
+    <signal name="DataRateDegraded">
+      <arg type="s" name="id"/>
+      <arg type="s" name="summary"/>
+      <arg type="s" name="detail"/>
+    </signal>
+    <signal name="DataRateRestored">
+      <arg type="s" name="id"/>
+    </signal>
   </interface>
 </node>
 `;
 
 const UsbeehiveProxy = Gio.DBusProxy.makeProxyWrapper(IFACE_XML);
+
+/**
+ * Classification the Notifier's scope filter and hardwired suppression
+ * need, resolved from a store snapshot entry.
+ *
+ * `port.connect_type == 'hardwired'` marks a device soldered to the board.
+ * Those re-enumerate on suspend/resume and under RESET_RESUME quirks,
+ * producing "Disconnected: … / Connected: …" pairs the user cannot act on
+ * (quick task 260905-b0s §D-5). Undefined when the store has no entry —
+ * which the Notifier treats as default-allow, because DeviceAdded routinely
+ * races ahead of ListDevices.
+ *
+ * @param {?object} dev  Unpacked DeviceEntry, or undefined on snapshot miss.
+ * @returns {?{category: string, deviceClass: string, connectType: string}}
+ */
+function kindOf(dev) {
+    if (!dev) return undefined;
+    const pair = (dev.properties || []).find(([k]) => k === 'port.connect_type');
+    return {
+        category:    dev.category,
+        deviceClass: dev.device_class,
+        connectType: pair ? pair[1] : '',
+    };
+}
 
 export const DBusClient = GObject.registerClass({
     Signals: {
@@ -210,10 +242,7 @@ export const DBusClient = GObject.registerClass({
                         // filter, so try the store but fall back to undefined
                         // (which the Notifier treats as default-allow).
                         const dev = this._store?.devices?.find(d => d.id === id);
-                        const kind = dev
-                            ? {category: dev.category, deviceClass: dev.device_class}
-                            : undefined;
-                        this._notifier?.onDeviceAdded(id, headline, kind);
+                        this._notifier?.onDeviceAdded(id, headline, kindOf(dev));
                         this._scheduleRefresh();
                     });
                 this._registry.addProxySignal(this._proxy, addedId);
@@ -227,10 +256,7 @@ export const DBusClient = GObject.registerClass({
                         // when the store never saw this device).
                         const dev = this._store?.devices?.find(d => d.id === id);
                         const headline = dev?.headline || id;
-                        const kind = dev
-                            ? {category: dev.category, deviceClass: dev.device_class}
-                            : undefined;
-                        this._notifier?.onDeviceRemoved(id, headline, kind);
+                        this._notifier?.onDeviceRemoved(id, headline, kindOf(dev));
                         this._scheduleRefresh();
                     });
                 this._registry.addProxySignal(this._proxy, removedId);
@@ -264,6 +290,31 @@ export const DBusClient = GObject.registerClass({
                     });
                 this._registry.addProxySignal(this._proxy, restoredId);
 
+                // Quick task 260905-b0s §D-5 — the data-rate pair. Keyed on
+                // the STRING device id, not a Type-C port number: a data-rate
+                // shortfall almost always lands on a plain USB device several
+                // hops behind a hub, which has no port number at all. Both
+                // are additive on Devices5; against an older daemon that
+                // never emits them these subscriptions are simply inert.
+                //
+                // The headline is resolved here, against the store, so the
+                // Notifier can title the notification with a device name
+                // instead of `usb:5-2.1.1`. On a snapshot miss the id is the
+                // honest fallback.
+                const rateDegradedId = this._proxy.connectSignal('DataRateDegraded',
+                    (_proxy, _sender, [id, summary, detail]) => {
+                        const dev = this._store?.devices?.find(d => d.id === id);
+                        this._notifier?.onDataRateDegraded(
+                            id, summary, detail, dev?.headline || id);
+                    });
+                this._registry.addProxySignal(this._proxy, rateDegradedId);
+
+                const rateRestoredId = this._proxy.connectSignal('DataRateRestored',
+                    (_proxy, _sender, [id]) => {
+                        this._notifier?.onDataRateRestored(id);
+                    });
+                this._registry.addProxySignal(this._proxy, rateRestoredId);
+
                 this._store.setDaemonRunning(true);
                 this._notifier?.onDaemonAppeared(); // RESEARCH §Code Example #3 — 2.5 s suppression
                 this._snapshotImmediate();
@@ -294,7 +345,62 @@ export const DBusClient = GObject.registerClass({
             typeof daemonVersion === 'string' ? daemonVersion : '');
         this._store.setDevices([]);
         this.emit('daemon-too-old');
+        // A non-string Version has two very different causes: an ancient
+        // daemon, or one that has moved past org.usbeehive.Devices5 (the
+        // interface has been cut four times in four months) so our proxy is
+        // talking to an interface that no longer exists. The gate stays
+        // fail-closed and synchronous either way; the probe below can only
+        // refine the state afterwards, never loosen it.
+        if (typeof daemonVersion !== 'string' || daemonVersion === '')
+            this._probeInterfaceGeneration();
         return false;
+    }
+
+    /**
+     * Ask the object what interfaces it actually implements, and if it
+     * publishes an org.usbeehive.Devices<N> newer than this build speaks,
+     * flip the store to TOO_NEW (quick task 260905-b0s §D-7).
+     *
+     * Without this the user is told "usbeehive daemon out of date — requires
+     * 0.10.0 or newer — detected unknown" alongside a `cargo install` command
+     * that changes nothing, i.e. asked to update the wrong component.
+     *
+     * Asynchronous and only on the failure path, so D-15 (no sync D-Bus on
+     * the Shell's main loop) holds. Regex over the introspection XML is
+     * sufficient — we need one interface name, not a parse tree. Any failure
+     * leaves the honest "detected unknown" state in place: it now means
+     * "something else owns this bus name", which is itself the diagnosis.
+     */
+    _probeInterfaceGeneration() {
+        // makeProxyWrapper proxies expose the underlying connection; the
+        // unit-test doubles do not, which is also the guard that keeps this
+        // path off the bus in bare-gjs CI.
+        const conn = this._proxy?.get_connection?.();
+        if (!conn) return;
+        conn.call(
+            BUS_NAME, OBJECT_PATH,
+            'org.freedesktop.DBus.Introspectable', 'Introspect',
+            null, new GLib.VariantType('(s)'),
+            Gio.DBusCallFlags.NONE, 2000, null,
+            (source, res) => {
+                let xml = '';
+                try {
+                    [xml] = source.call_finish(res).deep_unpack();
+                } catch (_e) {
+                    // Recovery strategy: keep the OUT_OF_DATE state already
+                    // written above. Nothing to log — an unreachable
+                    // Introspect on a name we just failed to read is not news.
+                    return;
+                }
+                const generations = [...xml.matchAll(/org\.usbeehive\.Devices(\d+)/g)]
+                    .map(m => Number.parseInt(m[1], 10))
+                    .filter(Number.isInteger);
+                if (generations.length === 0) return;
+                if (Math.max(...generations) <= IFACE_GENERATION) return;
+                this._store.setDaemonTooNew();
+                this._store.setDevices([]);
+                this.emit('daemon-too-old');   // repaint trigger only
+            });
     }
 
     /**
