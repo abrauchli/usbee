@@ -15,6 +15,23 @@
       </description>
     </key>
 
+    <key name="data-rate-mutes" type="a(ss)">
+      <default>[]</default>
+      <summary>Muted devices for data-rate warnings</summary>
+      <description>
+        (device id, headline) pairs that should not raise
+        DataRateDegraded notifications. The id is the daemon's
+        "usb:&lt;bus_port&gt;" string — it is topological, so an entry
+        means "this device on this port"; moving the device to a faster
+        port changes the id and clears the condition anyway. The
+        headline is stored so the preferences row can name the device
+        instead of showing a bus path. Written by the "Don't notify for
+        this device again" notification action and by the per-row trash
+        button in the preferences window. Read live on every
+        DataRateDegraded event by src/notifier.js.
+      </description>
+    </key>
+
     <key name="hide-empty-ports" type="b">
       <default>false</default>
       <summary>Hide empty USB-C ports from the popover</summary>
@@ -41,12 +58,16 @@
       <default>false</default>
       <summary>Show technical detail rows in the device popover</summary>
       <description>
-        When false (the default), the device detail panel hides an
-        explicit deny-list of advanced property rows: serial, data_role,
-        power_mode, pd_revision, plug_orientation, cable_max_current,
-        cable_type, drivers. All other property rows (including unknown
-        keys emitted by future daemon versions) remain visible — the
-        gate is explicit-deny, not allow-list. Toggled from the "Show
+        When false (the default), the device detail panel shows only the
+        glanceable property rows. Two groups are hidden: the curated
+        advanced keys (serial, data role, cable details, drivers, port
+        and connector identifiers, kernel workarounds, capability
+        internals) and any key this build of USBee does not recognise —
+        for example a newer usbeehive's additions. Unrecognised keys are
+        never dropped and never raise an error; they are simply one
+        toggle away. See src/property-policy.js for the full tiering,
+        and quick task 260905-b0s for why this reversed the earlier
+        "unknown keys are always visible" policy. Toggled from the "Show
         technical details" switch in the preferences window. Read once
         per popover rebuild by src/popover.js populateDeviceRows.
       </description>

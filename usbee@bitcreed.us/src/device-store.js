@@ -23,6 +23,7 @@ import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {DaemonState} from './daemon-status.js';
+import {formatRate, hasLinkIssue} from './link-verdict.js';
 
 // DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
 //   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)
@@ -130,6 +131,7 @@ export function formatAmps(ma) {
  * polish shape where the top line carries the *kind* of fact ("Charging",
  * "USB 2.0", …) and the bottom line carries the *value* ("65 W", "480 Mb/s", …).
  *
+ *   Tier 0 — Something is wrong (quick task 260905-b0s §D-5)
  *   Tier 1 — Active USB-C charging/sourcing port → direction word + wattage
  *   Tier 2 — Fastest attached link with parseable USB version + speed
  *   Tier 3 — Anything attached (count)
@@ -139,6 +141,39 @@ export function formatAmps(ma) {
  * @returns {{title: string, subtitle: string}}
  */
 export function deriveTileText(devices) {
+    // --- Tier 0: an issue outranks every healthy fact ---
+    // Before this tier existed, a port charging at 30 W through a limiting
+    // cable rendered exactly like a healthy 30 W charge: the warning lived
+    // only in a dismissable toast and in an amber border nobody sees until
+    // they open the popover. The tile is the only always-visible surface.
+    //
+    // Charging outranks data rate because it is the more common laptop pain
+    // and was already Tier 1. Only a Degraded data rate qualifies — never
+    // BelowCapability, which is informational (BOS spec §6).
+    const chargingIssue = devices.find(d => d.charging_diag?.present === true
+        && d.charging_diag?.is_warning === true);
+    if (chargingIssue) {
+        const watts = Math.max(
+            chargingIssue.power?.power_in_mw  || 0,
+            chargingIssue.power?.power_out_mw || 0) / 1000;
+        return watts > 0
+            ? {
+                title: _('Charging'),
+                // Translators: Tile subtitle when a port is charging but
+                // something (cable, charger, port) is capping it. %s is a
+                // formatted wattage like "30 W".
+                subtitle: _('%s — limited').format(formatWatts(watts)),
+            }
+            : {title: _('USB'), subtitle: _('Charging issue')};
+    }
+    const linkIssue = devices.find(hasLinkIssue);
+    if (linkIssue) {
+        return {
+            title: _('Slow USB link'),
+            subtitle: linkIssue.headline || linkIssue.id || '',
+        };
+    }
+
     // --- Tier 1: Active USB-C charging-or-sourcing port ---
     // DISP-03 / UX-3: Sourcing widens the Tier-1 filter but does NOT
     // trigger issue-first sort (hasIssue stays keyed off charging_diag).
@@ -214,14 +249,10 @@ export function deriveTileText(devices) {
         withSpeed.sort((a, b) => b.link_speed_mbps - a.link_speed_mbps
                               || a.id.localeCompare(b.id));
         const top = withSpeed[0];
-        const mbps  = top.link_speed_mbps;
-        // Daemon emits raw Mbit/s; render the human form here (USBee owns
-        // the UI side of the unit conversion).
-        let humanRate;
-        if (mbps >= 10000) humanRate = `${Math.round(mbps / 1000)} Gb/s`;
-        else if (mbps >= 1000) humanRate = `${(mbps / 1000).toFixed(1)} Gb/s`;
-        else humanRate = `${mbps} Mb/s`;
-        return {title: `USB ${top.usb_version}`, subtitle: humanRate};
+        // Daemon emits raw Mbit/s; formatRate owns the UI side of the unit
+        // conversion and is shared with the per-device rows in the popover
+        // (quick task 260905-b0s) so the tile and the rows cannot disagree.
+        return {title: `USB ${top.usb_version}`, subtitle: formatRate(top.link_speed_mbps)};
     }
 
     // --- Tier 3: Any attached device (no parseable speed) ---
@@ -254,18 +285,25 @@ export function deriveSubtitle(devices) {
 /**
  * UI-03 predicate: true iff this device should sort to the top of the popover.
  *
- * As of Plan 04-02 (CLEAN-02 / UX-3), this collapses to a one-liner on
- * the structured `charging_diag` field. Sourcing entries fall through
- * naturally because `charging_diag.present === false` for a healthy
- * sourcing port (CONTEXT D-2.0-03). See `.planning/phases/04-…/04-01-
- * UX-DECISIONS.md` §UX-3 for the locked decision.
+ * Two independent sources, both daemon-asserted:
+ *
+ *   - the structured `charging_diag` field (Plan 04-02 / CLEAN-02 / UX-3;
+ *     see `.planning/phases/04-…/04-01-UX-DECISIONS.md` §UX-3). Sourcing
+ *     entries fall through naturally because `charging_diag.present` is
+ *     false for a healthy sourcing port (CONTEXT D-2.0-03);
+ *   - the data-rate verdict and hub power budget (quick task 260905-b0s),
+ *     via hasLinkIssue(). ONLY `usb_link_verdict == "Degraded"` qualifies —
+ *     `BelowCapability` is informational and must never sort up or draw a
+ *     badge (BOS spec §6).
  *
  * @param {object} device  Unpacked DeviceEntry from the store.
  * @returns {boolean}
  */
 export function hasIssue(device) {
-    return device.charging_diag?.present === true
-        && device.charging_diag?.is_warning === true;
+    if (device.charging_diag?.present === true
+        && device.charging_diag?.is_warning === true)
+        return true;
+    return hasLinkIssue(device);
 }
 
 export const DeviceStore = GObject.registerClass({
@@ -307,6 +345,11 @@ export const DeviceStore = GObject.registerClass({
             return deriveTileText(this._devices);
         case DaemonState.OUT_OF_DATE:
             return {title: _('USB'), subtitle: _('Daemon out of date')};
+        case DaemonState.TOO_NEW:
+            // The opposite failure: usbeehive moved to an interface
+            // generation this build does not speak. The component that
+            // needs updating is USBee (quick task 260905-b0s §D-7).
+            return {title: _('USB'), subtitle: _('Extension out of date')};
         default:
             // STOPPED — and any state this build does not know about, which
             // fails closed to the safest copy.
@@ -362,5 +405,16 @@ export const DeviceStore = GObject.registerClass({
      */
     setDaemonOutOfDate(version) {
         this._setDaemonState(DaemonState.OUT_OF_DATE, version || '');
+    }
+
+    /**
+     * The daemon is reachable but publishes a HIGHER interface generation
+     * than this build consumes — usbeehive moved on and USBee has not
+     * (quick task 260905-b0s §D-7). Distinct from OUT_OF_DATE because the
+     * component the user must update is the opposite one; telling them to
+     * `cargo install usbeehive` here would change nothing.
+     */
+    setDaemonTooNew() {
+        this._setDaemonState(DaemonState.TOO_NEW, '');
     }
 });

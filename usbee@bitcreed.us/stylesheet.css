@@ -120,3 +120,24 @@
 .usbee-pdo-active .usbee-detail-key {
     font-weight: bold;
 }
+
+/* Trailing link-rate caption on a collapsed device row (quick task
+ * 260905-b0s). Dim and width-capped so it can never crowd out the
+ * headline — the headline ellipsizes, the rate must not. */
+.usbee-row-rate {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.9em;
+    max-width: 6em;
+    padding-right: 6px;
+}
+
+/* "Technical details" divider inside the detail panel: one dim, spaced
+ * row separating the always-visible tier from the toggled one. */
+.usbee-detail-separator {
+    padding-top: 6px;
+}
+
+.usbee-detail-separator .usbee-detail-key {
+    font-weight: bold;
+    font-size: 0.9em;
+}

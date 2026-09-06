@@ -15,48 +15,20 @@
 //     markup APIs (untrusted session D-Bus data, T-01-02 / T-02-01 mitigation).
 //   - section.removeAll() is the FIRST call (Pitfall C: never mutate while iterating).
 
+import Clutter from 'gi://Clutter';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateItem} from './empty-state.js';
+import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateItem,
+    buildDaemonTooNewItem} from './empty-state.js';
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
-
-// Explicit-deny list of property-bag keys gated behind the
-// `show-technical-details` GSettings boolean. Anchored in CONTEXT
-// 260526-c6p §"Property split — Balanced" (LOCKED). Forward-compat:
-// any property key NOT in this set always renders, regardless of the
-// toggle — the gate is deny-list, never allow-list (CONTEXT D-2).
-const GATED_KEYS = new Set([
-    'serial',
-    'data_role',
-    'power_mode',
-    'pd_revision',
-    'plug_orientation',
-    'cable_max_current',
-    'cable_type',
-    'drivers',
-]);
-
-// Property-bag keys consumed by dedicated UI surfaces (transport pill strip,
-// cable-trust row — quick task 260526-dmj §B/§C). Pulled out of the generic
-// property-bag loop UNCONDITIONALLY so they never double-render as bare
-// rows alongside their dedicated handler. Forward-compat (CONTEXT §E): the
-// generic loop still renders unknown keys — this set is a small explicit
-// deny-list, not an allow-list.
-const HANDLED_BY_DEDICATED_UI = new Set([
-    'cable.trust.zero_vid',
-    'cable.trust.vid_unknown',
-    'cable.trust.reserved_bits',
-    'transport.usb2',
-    'transport.usb3',
-    'transport.usb4',
-    'transport.dp_altmode',
-    'transport.tb',
-]);
+import {deriveAltMode, deriveHubInfo, deriveLinkInfo, propsOf, resolveHeadline}
+    from './link-verdict.js';
+import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
 
 /**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
@@ -74,6 +46,8 @@ const HANDLED_BY_DEDICATED_UI = new Set([
  * @param {PopupMenuSection} section  The section to populate.
  * @param {DeviceStore} store         Current device snapshot.
  * @param {Extension} extension       USBee extension instance (for GSettings).
+ * @returns {{count: number, issues: number}}  Rows rendered, and how many of
+ *   them carry an issue — the header subtitle reports the latter.
  */
 export function populateDeviceRows(section, store, extension) {
     // CR-02: disconnect any per-row accordion handlers from the prior
@@ -98,20 +72,28 @@ export function populateDeviceRows(section, store, extension) {
     const hideEmpty = settings.get_boolean('hide-empty-ports');
     const showHubs  = settings.get_boolean('show-hubs');
     // Quick task 260526-c6p — live read parallel to the two above. Gates
-    // the GATED_KEYS deny-list inside the property-bag loop of buildDeviceRow.
+    // the technical tier of src/property-policy.js inside buildDeviceRow's
+    // property-bag loop.
     const showTech  = settings.get_boolean('show-technical-details');
     let devices = store.devices;
     if (hideEmpty)
         devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
+    // Quick task 260905-b0s: a hub with an issue is shown even when hubs are
+    // hidden. `port.peer_state` — the key that explains WHY a SuperSpeed
+    // device linked at 480 Mb/s — exists only on root-hub ports, so the
+    // explanation lives on the hub row. Hiding it would leave a
+    // default-config user with a warning and no reachable cause. Only
+    // Degraded / over-budget hubs surface; a BelowCapability hub (the common,
+    // benign case) stays hidden.
     if (!showHubs)
-        devices = devices.filter(d => d.category !== 'Hub');
+        devices = devices.filter(d => d.category !== 'Hub' || hasIssue(d));
 
     if (devices.length === 0) {
         section.addMenuItem(new PopupMenu.PopupMenuItem(
             _('No USB devices attached'),
             {reactive: false, can_focus: false},
         ));
-        return 0;
+        return {count: 0, issues: 0};
     }
 
     // UI-03 — Issue-first stable sort. hasIssue(b) - hasIssue(a) floats
@@ -144,7 +126,10 @@ export function populateDeviceRows(section, store, extension) {
         });
         row._usbeeAccordionSigId = sigId;
     }
-    return devices.length;
+    return {
+        count:  devices.length,
+        issues: devices.filter(hasIssue).length,
+    };
 }
 
 /**
@@ -187,6 +172,23 @@ export function populateOutOfDateState(section, detectedVersion = '') {
 }
 
 /**
+ * Render the "daemon is NEWER than this extension" empty state (quick task
+ * 260905-b0s §D-7). Wired from tile.js when store.daemonState is
+ * DaemonState.TOO_NEW — i.e. the bus name is owned, the Devices5 proxy could
+ * not read a Version, and introspection found a higher interface generation.
+ *
+ * Distinct from populateOutOfDateState because the actionable component is
+ * the opposite one: telling this user to `cargo install usbeehive` would
+ * change nothing.
+ *
+ * @param {PopupMenuSection} section
+ */
+export function populateTooNewState(section) {
+    section.removeAll();
+    section.addMenuItem(buildDaemonTooNewItem());
+}
+
+/**
  * Build one accordion row for a device.
  *
  * Uses PopupSubMenuMenuItem (the gnome-shell widget from bluetooth.js /
@@ -201,18 +203,25 @@ export function populateOutOfDateState(section, detectedVersion = '') {
  *
  * @param {object} device   Unpacked DeviceEntry from the store.
  * @param {boolean} showTech  Live read of show-technical-details GSettings.
- *   When false, keys in GATED_KEYS are skipped in the property-bag loop;
- *   all other rows (Summary, charging_diag, driver-not-bound, Subclass,
- *   and unknown property keys) render unconditionally.
+ *   When false the property loop renders only the glanceable tier — the
+ *   curated advanced keys AND any key this build does not recognise are
+ *   held back (src/property-policy.js). The dedicated blocks (Summary,
+ *   Link, charging_diag, cable trust, PDOs, hub power, driver-not-bound,
+ *   Subclass) render unconditionally.
  * @returns {PopupMenu.PopupSubMenuMenuItem}
  */
 function buildDeviceRow(device, showTech) {
-    const headline = device.headline || device.id || '';
-
     // Property-bag lookup map — built once per row build. Daemon values
     // are STRINGS on the wire (a(ss)), so every boolean-flag check below
     // compares to the literal 'true', not a JS boolean.
-    const props = new Map(device.properties || []);
+    const props = propsOf(device);
+
+    // Quick task 260905-b0s §D-6: `product_db` fills in only for a device
+    // that publishes no iProduct string at all. It never overrides a real
+    // product name — hwdb entries can be wrong for re-badged PIDs.
+    const headline = resolveHeadline(device, props);
+
+    const link = deriveLinkInfo(device, props);
 
     // Second arg `true` enables the built-in .icon slot on the row.
     const row = new PopupMenu.PopupSubMenuMenuItem(headline, true);
@@ -222,8 +231,37 @@ function buildDeviceRow(device, showTech) {
     else
         row.icon.gicon = devIcon;  // Gio.FileIcon for bundled SVGs
     row.add_style_class_name('usbee-device-row');
-    if (device.charging_diag?.is_warning)
+    if (hasIssue(device))
         row.add_style_class_name('usbee-row-warning');
+
+    // Trailing rate caption on the collapsed row (quick task 260905-b0s
+    // §D-1) — the one number this extension exists to show, and until now
+    // visible only on the tile, for the single fastest link.
+    //
+    // PopupSubMenuMenuItem's children are [icon, label, _triangleBin], and
+    // the bin is what expands to push the chevron to the right edge. To put
+    // the caption between the headline and the chevron we expand the label
+    // instead and insert before the bin. Every step is guarded: on a shell
+    // whose child order differs, the caption simply appends and nothing
+    // throws.
+    if (link.rateText !== '') {
+        const rateLabel = new St.Label({
+            text:        link.rateText,
+            y_align:     Clutter.ActorAlign.CENTER,
+            style_class: 'usbee-row-rate',
+        });
+        if (link.isWarning)
+            rateLabel.add_style_class_name('usbee-detail-warning');
+        const bin = row._triangleBin;
+        const idx = bin ? row.get_children().indexOf(bin) : -1;
+        if (idx >= 0) {
+            row.label.x_expand = true;
+            bin.x_expand = false;
+            row.insert_child_at_index(rateLabel, idx);
+        } else {
+            row.add_child(rateLabel);
+        }
+    }
 
     // --- Transport pill strip (CONTEXT 260526-dmj §C) ---
     // First child of the expanded menu, ABOVE the detailItem. Renders only
@@ -253,6 +291,9 @@ function buildDeviceRow(device, showTech) {
         detailBox.add_child(buildPropertyRow(
             _('Summary'), device.subtitle, device.category));
     }
+
+    // Link speed + BOS verdict (quick task 260905-b0s §D-1/D-3/D-4).
+    buildLinkBlock(detailBox, device, link);
 
     // Charging diagnostic rows — rendered before the properties bag so the
     // most actionable info appears at the top of the detail panel.
@@ -301,6 +342,13 @@ function buildDeviceRow(device, showTech) {
     // capability is glance priority). No-op when pdo_list is empty.
     buildPdoListBlock(detailBox, device);
 
+    // Hub occupancy + bus-power budget (quick task 260905-b0s). No-op for
+    // non-hubs and for any hub whose daemon omitted the keys.
+    buildHubBlock(detailBox, device, props);
+
+    // Billboard alt mode — facts only, with exactly one actionable case.
+    buildAltModeBlock(detailBox, device, props);
+
     // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
     // Empty Type-C ports already say nothing about drivers — suppress the
     // row in that case (`status !== 'Empty'` gate).
@@ -322,31 +370,210 @@ function buildDeviceRow(device, showTech) {
     // One property row per machine-key pair from the daemon's properties bag
     // (CONTEXT D-2.0-04). Order is preserved — the daemon emits in a
     // deliberate order and labelForKey() is a pure resolver. Unknown keys
-    // render the raw key string (WIRE-04 forward-compat, label-table.js).
+    // still render the raw key string as their label; they are simply no
+    // longer visible by default (see below).
     //
-    // Quick task 260526-c6p: when showTech is false, skip the explicit-deny
-    // GATED_KEYS set (CONTEXT 260526-c6p D-2). Unknown keys are NEVER gated
-    // — forward-compat by design (deny-list, not allow-list).
-    //
-    // Quick task 260526-dmj: HANDLED_BY_DEDICATED_UI keys never render as
-    // bare rows — they are owned by the trust row and the pill strip above.
-    // Filtered unconditionally, regardless of show-technical-details.
+    // The four tiers live in src/property-policy.js. Quick task 260905-b0s
+    // §D-2 REVERSED the locked 260526-c6p D-2 deny-list: an unrecognised key
+    // is now technical, i.e. it renders only under "Show technical details".
+    // The daemon's BOS + connector waves add 24 keys at once, several of
+    // them opaque UUIDs and kernel object names, so the old policy turned
+    // the popover into a property dump the day the daemon updated. Unknown
+    // keys still never throw, never log, and stay one toggle away.
     //
     // Quick task 260526-dmj §D: legacy charger_max stringly row is
     // suppressed when the structured pdo_list is non-empty (the Charger
     // PDOs block above already covers that capability). When pdo_list is
     // empty, charger_max still renders — back-compat for daemons that emit
     // the property without the structured list.
+    let techSeparatorDone = false;
     for (const [key, value] of (device.properties || [])) {
         if (key === 'charger_max' && device.pdo_list?.length > 0) continue;
-        if (HANDLED_BY_DEDICATED_UI.has(key)) continue;
-        if (!showTech && GATED_KEYS.has(key)) continue;
+        if (!shouldRenderProperty(key, showTech)) continue;
+        // A thin separator above the first technical row so the panel reads
+        // as two tiers rather than one long list.
+        if (!techSeparatorDone && isTechnicalKey(key)) {
+            techSeparatorDone = true;
+            const sep = buildPropertyRow(_('Technical details'), '', device.category);
+            sep.add_style_class_name('usbee-detail-separator');
+            detailBox.add_child(sep);
+        }
         detailBox.add_child(buildPropertyRow(
             labelForKey(key), formatValueForKey(key, value), device.category));
     }
 
     row.menu.addMenuItem(detailItem);
     return row;
+}
+
+/**
+ * Render the Link block: negotiated rate, the daemon's capability verdict,
+ * the connector explanation, and the one instruction the user can act on.
+ *
+ * All of it is composed HERE from structured tokens rather than read out of
+ * the daemon's own `data_rate.summary` / `.detail` prose, because the
+ * daemon's strings are English-only while these go through gettext.
+ *
+ * The verdict rules are not negotiable (BOS spec §6):
+ *   AtCapability    — neutral confirmation.
+ *   BelowCapability — informational, phrased as a possibility. On the
+ *                     daemon's reference machine 2 of 2 BOS-bearing devices
+ *                     land here and both are working exactly as intended,
+ *                     so this must never look like a fault.
+ *   Degraded        — the only warning. Amber, plus a Fix row.
+ *   absent/unknown  — say nothing beyond the rate itself.
+ *
+ * @param {St.BoxLayout} detailBox
+ * @param {object} device
+ * @param {object} link  deriveLinkInfo() result.
+ */
+function buildLinkBlock(detailBox, device, link) {
+    if (link.rateText === '') return;
+
+    // "480 Mb/s (USB 2.1)" — the version is a daemon string rendered
+    // verbatim, so an unrecognised future value still reads correctly.
+    const base = link.usbVersion
+        // Translators: %1$s is a link rate ("480 Mb/s"), %2$s a USB version
+        // number ("2.1"). Renders as "480 Mb/s (USB 2.1)".
+        ? _('%s (USB %s)').format(link.rateText, link.usbVersion)
+        : link.rateText;
+
+    let valueText = base;
+    if (link.verdict === 'AtCapability') {
+        // Translators: %s is "480 Mb/s (USB 2.1)". The device is running as
+        // fast as it is able to.
+        valueText = _('%s — full capability').format(base);
+    } else if (link.verdict === 'BelowCapability' && link.capableText !== '') {
+        // Translators: %1$s is the current link ("480 Mb/s (USB 2.1)"),
+        // %2$s the speed the device advertises ("SuperSpeed 5 Gbps"). A
+        // POSSIBILITY, never a fault — the device's own vendor declares it
+        // fully functional at the slower rate.
+        valueText = _('%s — could run at %s on a faster port')
+            .format(base, link.capableText);
+    } else if (link.isWarning) {
+        const needed = link.floorText || link.capableText;
+        valueText = needed
+            // Translators: %1$s is the current link, %2$s the rate the
+            // device's own descriptor says it needs to work properly.
+            ? _('%s — below the %s this device needs').format(base, needed)
+            : base;
+    }
+
+    const linkRow = buildPropertyRow(_('Link'), valueText, device.category);
+    if (link.isWarning)
+        linkRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+    detailBox.add_child(linkRow);
+
+    // The connector explanation. Reuses the existing 'Detail' key so the
+    // panel keeps one vocabulary for "here is why".
+    const hintText = connectorHintText(link.connectorHint);
+    if (hintText !== '') {
+        detailBox.add_child(buildPropertyRow(
+            _('Detail'), hintText, device.category));
+    }
+
+    // Only a Degraded verdict earns an instruction. BelowCapability already
+    // said "could", which is as far as the evidence goes.
+    if (link.isWarning) {
+        detailBox.add_child(buildPropertyRow(
+            _('Fix'),
+            _('Move it to a USB 3 port or use a cable that supports it'),
+            device.category));
+    }
+}
+
+/**
+ * Translate a connector-hint token into prose. Unknown tokens (and null)
+ * render nothing — "say nothing" is a first-class outcome here.
+ *
+ * @param {?string} hint  deriveLinkInfo().connectorHint
+ * @returns {string}
+ */
+function connectorHintText(hint) {
+    switch (hint) {
+    case 'ss-never-linked':
+        return _('The SuperSpeed lines of this connector never linked — a USB 2-only cable or port');
+    case 'ss-unstable':
+        return _('The SuperSpeed link on this connector is unstable — try another cable');
+    case 'ss-elsewhere':
+        return _("This connector's high-speed lanes are up, but this device is not on them");
+    default:
+        return '';
+    }
+}
+
+/**
+ * Hub occupancy and bus-power budget rows (TRIM spec §3.1/§3.2).
+ *
+ * Wording matters: `bMaxPower` is a *declared* maximum, not a measured
+ * draw (TRIM spec §8.2). Never say "draws" or "using".
+ *
+ * A self-powered hub publishes no budget — there is no bus-derived ceiling
+ * worth quoting — so the committed figure renders alone in that case.
+ *
+ * @param {St.BoxLayout} detailBox
+ * @param {object} device
+ * @param {Map<string,string>} props
+ */
+function buildHubBlock(detailBox, device, props) {
+    const hub = deriveHubInfo(device, props);
+
+    // `0` is a real answer ("this hub has ports and none are occupied"),
+    // which is why deriveHubInfo distinguishes it from null.
+    if (hub.portsUsed !== null && hub.portsTotal !== null) {
+        detailBox.add_child(buildPropertyRow(
+            _('Ports'),
+            // Translators: %1$d hub ports occupied, %2$d ports in total.
+            _('%d of %d in use').format(hub.portsUsed, hub.portsTotal),
+            device.category));
+    }
+
+    if (hub.committedMa !== null) {
+        const valueText = hub.budgetMa !== null
+            // Translators: %1$d mA committed to this hub's children, %2$d mA
+            // the hub's bus-power budget. "Committed", never "drawn" — the
+            // figure is the sum of the children's DECLARED maxima.
+            ? _('%d of %d mA committed').format(hub.committedMa, hub.budgetMa)
+            : _('%d mA committed').format(hub.committedMa);
+        const powerRow = buildPropertyRow(
+            _('Bus power'), valueText, device.category);
+        if (hub.overBudget)
+            powerRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+        detailBox.add_child(powerRow);
+    }
+}
+
+/**
+ * Billboard alt-mode row (BOS spec §7.4).
+ *
+ * Facts only — there is no warning flag and no signal for alt mode, and a
+ * Billboard device reporting NotAttempted is very often simply not
+ * connected through a Type-C port at all. The single actionable
+ * combination is Unsuccessful + `no_usb_pd`, which is a cable or port that
+ * cannot do USB Power Delivery; that one gets an always-visible row. Every
+ * other state is left to the technical tier via the usb_altmode_state
+ * property row.
+ *
+ * @param {St.BoxLayout} detailBox
+ * @param {object} device
+ * @param {Map<string,string>} props
+ */
+function buildAltModeBlock(detailBox, device, props) {
+    const alt = deriveAltMode(device, props);
+    if (!alt.actionable) return;
+
+    // Name the SVID through the strings the transport pills already use;
+    // anything else stays bare hex (BOS spec §3.3).
+    let keyText = _('Alt mode');
+    if (alt.svids.includes('ff01')) keyText = _('DisplayPort');
+    else if (alt.svids.includes('8087')) keyText = _('Thunderbolt');
+
+    const altRow = buildPropertyRow(
+        keyText,
+        _('Alt mode failed: no USB-PD on this connection — use a USB-C port and cable that support Power Delivery'),
+        device.category);
+    altRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+    detailBox.add_child(altRow);
 }
 
 /**
