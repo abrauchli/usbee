@@ -5,11 +5,17 @@
 //   - buildEmptyStateItem()         — service installed but stopped
 //                                     ('systemctl --user enable --now usbeehived')
 //   - buildDaemonNotInstalledItem() — service unit file missing on disk
-//                                     ('usbeehived --install-service')
+//                                     (the full install chain, INSTALL_CMD)
 //   - buildDaemonOutOfDateItem()    — daemon reachable but Version too old
 //                                     ('cargo install usbeehive --features=dbus
 //                                       && systemctl --user restart usbeehived',
 //                                      see UPDATE_CMD in src/daemon-status.js)
+//   - buildDaemonTooNewItem()       — daemon reachable but speaks a NEWER
+//                                     interface generation than this build.
+//                                     The only one of the four with no
+//                                     command: the fix is to update the
+//                                     extension, which the user does in the
+//                                     Extensions app (quick task 260905-b0s)
 //
 // Each one is a PopupMenuItem containing a title label, a hint label, and a
 // command row (buildCommandRow): a read-only-but-selectable St.Entry with the
@@ -31,12 +37,11 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 // UPDATE_CMD lives in the shared module so prefs.js — a separate process
 // that cannot import anything from this file — renders the exact same
 // string in its About group.
-import {MIN_USBEEHIVE_VERSION, UPDATE_CMD} from './daemon-status.js';
+import {INSTALL_CMD, MIN_USBEEHIVE_VERSION, UPDATE_CMD} from './daemon-status.js';
 
-// Shell-only commands: the preferences window never surfaces these two,
-// so they stay local.
+// Shell-only command: the preferences window never surfaces this one, so it
+// stays local. (INSTALL_CMD lives in the shared module beside UPDATE_CMD.)
 const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehived';
-const INSTALL_CMD   = 'usbeehived --install-service';
 
 // How long the copy button shows its confirmation checkmark before
 // reverting to the copy icon.
@@ -249,6 +254,11 @@ export function buildDaemonNotInstalledItem() {
     });
     title.clutter_text.line_wrap = true;
 
+    // Quick task 260905-b0s §D-7: the command used to be only
+    // `usbeehived --install-service`, i.e. step two of three. This state is
+    // reached because no unit file exists anywhere, which for most users
+    // means the binary is missing too — so the hint's "Install usbeehive,
+    // then start it" now matches what the command line actually does.
     const hint = new St.Label({
         text: _('Install usbeehive, then start it. This list will populate automatically:'),
         x_expand: true,
@@ -336,6 +346,56 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
     box.add_child(versions);
     box.add_child(hint);
     box.add_child(buildCommandRow(UPDATE_CMD));
+    item.add_child(box);
+
+    return item;
+}
+
+/**
+ * Build the daemon-is-NEWER-than-the-extension empty-state row (quick task
+ * 260905-b0s §D-7). Returns a PopupMenu.PopupMenuItem.
+ *
+ * usbeehive has cut its D-Bus interface generation four times in four
+ * months, and every cut keeps the bus name and object path. So a future
+ * daemon owns the name USBee watches while exposing nothing USBee's
+ * Devices5 proxy can call: the `Version` read fails, the gate fails closed,
+ * and — before this state existed — the popover told the user their
+ * *daemon* was out of date and offered a `cargo install` that would have
+ * changed nothing.
+ *
+ * Deliberately carries NO command row. Updating a Shell extension is not a
+ * shell command; it is the Extensions app or extensions.gnome.org, followed
+ * by a session reload.
+ */
+export function buildDaemonTooNewItem() {
+    const item = new PopupMenu.PopupMenuItem('', {
+        reactive: false,
+        can_focus: false,
+    });
+    item.add_style_class_name('usbee-empty-state');
+    item.label.hide();
+
+    const box = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+        style_class: 'usbee-empty-state-body',
+    });
+
+    const title = new St.Label({
+        text: _('usbeehive is newer than USBee'),
+        style_class: 'usbee-empty-state-title',
+        x_expand: true,
+    });
+    title.clutter_text.line_wrap = true;
+
+    const hint = new St.Label({
+        text: _('Update the USBee extension from the Extensions app, then reload the session.'),
+        x_expand: true,
+    });
+    hint.clutter_text.line_wrap = true;
+
+    box.add_child(title);
+    box.add_child(hint);
     item.add_child(box);
 
     return item;

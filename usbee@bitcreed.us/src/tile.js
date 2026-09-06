@@ -17,7 +17,8 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {populateDeviceRows, populateEmptyState, populateNotInstalledState, populateOutOfDateState} from './popover.js';
+import {populateDeviceRows, populateEmptyState, populateNotInstalledState,
+    populateOutOfDateState, populateTooNewState} from './popover.js';
 import {isUsbeehiveServiceInstalled} from './empty-state.js';
 import {DaemonState} from './daemon-status.js';
 
@@ -172,13 +173,24 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         //                   a. not installed → install hint (no unit file on disk)
         //                   b. installed but stopped → systemctl enable --now hint
         let n = -1;
+        let issues = 0;
         switch (this._store.daemonState) {
         case DaemonState.OUT_OF_DATE:
             populateOutOfDateState(this._rowsSection, this._store.daemonVersion);
             break;
-        case DaemonState.RUNNING:
-            n = populateDeviceRows(this._rowsSection, this._store, this._extension);
+        case DaemonState.TOO_NEW:
+            // usbeehive moved past the interface generation this build
+            // speaks — the user must update USBee, not the daemon
+            // (quick task 260905-b0s §D-7).
+            populateTooNewState(this._rowsSection);
             break;
+        case DaemonState.RUNNING: {
+            const result = populateDeviceRows(
+                this._rowsSection, this._store, this._extension);
+            n = result.count;
+            issues = result.issues;
+            break;
+        }
         default:
             if (!isUsbeehiveServiceInstalled())
                 populateNotInstalledState(this._rowsSection);
@@ -188,7 +200,12 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         }
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
-        this.menu.setHeader('drive-harddisk-usb-symbolic', hdrTitle, '');
+        // The header's subtitle slot was always set to ''. It is the free
+        // place to say how much is wrong without competing with the device
+        // count (quick task 260905-b0s).
+        const hdrSubtitle = issues === 0 ? ''
+            : issues === 1 ? _('1 issue') : _('%d issues').format(issues);
+        this.menu.setHeader('drive-harddisk-usb-symbolic', hdrTitle, hdrSubtitle);
     }
 });
 

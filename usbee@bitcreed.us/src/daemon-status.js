@@ -41,6 +41,23 @@ export const MIN_USBEEHIVE_VERSION = '0.10.0';
 export const UPDATE_CMD =
     'cargo install usbeehive --features=dbus && systemctl --user restart usbeehived';
 
+// The full install chain, for the state where no systemd user unit exists
+// on disk at all. Reaching that state usually means the *binary* is missing
+// too, so showing only `usbeehived --install-service` was step two of three
+// (quick task 260905-b0s §D-7). Displayed and copied only; never executed.
+export const INSTALL_CMD =
+    'cargo install usbeehive --features=dbus && usbeehived --install-service '
+    + '&& systemctl --user enable --now usbeehived';
+
+// The interface generation this build's proxy speaks:
+// org.usbeehive.Devices<N>. usbeehive has cut the interface four times in
+// four months, and each cut renames the interface while KEEPING the bus
+// name and object path — so a future daemon owns the name USBee watches
+// while exposing nothing USBee can call, and the Version read fails.
+// Distinguishing that from "the daemon is ancient" is what
+// DaemonState.TOO_NEW exists for; see DBusClient._probeInterfaceGeneration.
+export const IFACE_GENERATION = 5;
+
 /**
  * The daemon's lifecycle state as seen by USBee. Owned by DeviceStore;
  * every surface (tile pill, popover routing) reads it from there so the
@@ -49,11 +66,15 @@ export const UPDATE_CMD =
  *   RUNNING     — on the bus, version accepted by the gate.
  *   STOPPED     — not on the bus (never started, or exited).
  *   OUT_OF_DATE — on the bus, but Version failed isVersionAtLeast.
+ *   TOO_NEW     — on the bus, Version unreadable, and introspection found a
+ *                 HIGHER org.usbeehive.Devices<N> generation than this build
+ *                 speaks. The user must update USBee, not usbeehive.
  */
 export const DaemonState = Object.freeze({
     RUNNING:     'running',
     STOPPED:     'stopped',
     OUT_OF_DATE: 'out-of-date',
+    TOO_NEW:     'too-new',
 });
 
 /**
