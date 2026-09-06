@@ -35,6 +35,14 @@ function check(name, cond) {
     }
 }
 
+// Read a repo-relative source file as text, for the structural guards over
+// wiring that bare gjs cannot exercise directly (no session daemon here).
+function readSource(relPath) {
+    const [ok, raw] = GLib.file_get_contents(
+        GLib.build_filenamev([GLib.get_current_dir(), relPath]));
+    return ok ? new TextDecoder().decode(raw) : '';
+}
+
 // --- Test doubles -----------------------------------------------------------
 // Minimal stand-ins matching only the surface dbus-client.js touches on the
 // paths under test. Each records enough to assert ordering/idempotency.
@@ -63,6 +71,14 @@ function makeStore() {
             this.daemonVersion = version || '';
             this.calls.push(['setDaemonOutOfDate', this.daemonVersion]);
         },
+        // Quick task 260905-b0s §D-7 — the daemon-is-NEWER state, written by
+        // the async interface-generation probe on the Version-unreadable path.
+        setDaemonTooNew() {
+            this.daemonRunning = false;
+            this.daemonState = DaemonState.TOO_NEW;
+            this.daemonVersion = '';
+            this.calls.push(['setDaemonTooNew']);
+        },
         setDevices(d) { this.devices = d; this.calls.push(['setDevices', d.length]); },
     };
 }
@@ -83,6 +99,15 @@ function makeNotifier() {
         onDeviceRemoved(_id, _headline, _kind) { this.deviceRemovedCalls++; },
         onCapabilityDegraded(_port, _summary, _detail) { this.capabilityDegradedCalls++; },
         onCapabilityRestored(_port) { this.capabilityRestoredCalls++; },
+        // Quick task 260905-b0s §D-5 — the data-rate pair, keyed on the
+        // string device id. Records the arguments so the id → headline
+        // resolution can be asserted.
+        dataRateDegradedCalls: [],
+        dataRateRestoredCalls: [],
+        onDataRateDegraded(id, summary, detail, headline) {
+            this.dataRateDegradedCalls.push([id, summary, detail, headline]);
+        },
+        onDataRateRestored(id) { this.dataRateRestoredCalls.push(id); },
     };
 }
 
@@ -343,6 +368,72 @@ print('# _applyVersionGate — one write path for the out-of-date state');
     check('passing gate stays in STOPPED (caller marks running)',
         store.daemonState === DaemonState.STOPPED);
     check("passing gate emits no 'daemon-too-old'", tooOld === 0);
+}
+
+print('# the daemon-is-NEWER path (quick task 260905-b0s D-7)');
+{
+    // The unreadable-Version gate now fires an async introspection probe.
+    // It must stay strictly additive: the synchronous contract asserted
+    // above (fail closed to OUT_OF_DATE, record '', emit once) is unchanged,
+    // and a proxy with no live connection — every test double, and any
+    // future teardown ordering — must not throw.
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.2'); // no Version, no get_connection
+
+    let threw = false;
+    try { client._applyVersionGate(); } catch (_e) { threw = true; }
+    check('probe on a connection-less proxy does not throw', threw === false);
+    check('probe leaves the synchronous OUT_OF_DATE verdict in place',
+        store.daemonState === DaemonState.OUT_OF_DATE);
+    check('probe did not write TOO_NEW without evidence',
+        !store.calls.some(c => c[0] === 'setDaemonTooNew'));
+
+    // No probe at all when the daemon DID report a version — that is an
+    // honest "your daemon is old", not an interface mismatch.
+    const store2 = makeStore();
+    const client2 = newClient(store2);
+    client2._proxy = makeProxy(':1.2', '0.9.9');
+    client2._applyVersionGate();
+    check('a readable-but-old version still parks in OUT_OF_DATE',
+        store2.daemonState === DaemonState.OUT_OF_DATE);
+    check('a readable-but-old version records itself',
+        store2.daemonVersion === '0.9.9');
+
+    // Structural: the probe must look for a HIGHER generation than the one
+    // this build speaks, and must not be a synchronous D-Bus call (D-15).
+    const [ok, raw] = GLib.file_get_contents(
+        GLib.build_filenamev([GLib.get_current_dir(), 'usbee@bitcreed.us/src/dbus-client.js']));
+    const src = ok ? new TextDecoder().decode(raw) : '';
+    check('dbus-client.js defines _probeInterfaceGeneration',
+        src.includes('_probeInterfaceGeneration()'));
+    check('the probe compares against IFACE_GENERATION',
+        src.includes('IFACE_GENERATION'));
+    check('the probe writes TOO_NEW only above that generation',
+        src.includes('setDaemonTooNew()'));
+    check('the probe uses the async Introspect call, never a sync one',
+        src.includes("'Introspect'") && !src.includes('call_sync('));
+}
+
+print('# DataRate signals — subscribed, forwarded, never silently dropped');
+{
+    const src = readSource('usbee@bitcreed.us/src/dbus-client.js');
+    check("subscribes connectSignal('DataRateDegraded')",
+        src.includes("connectSignal('DataRateDegraded'"));
+    check("subscribes connectSignal('DataRateRestored')",
+        src.includes("connectSignal('DataRateRestored'"));
+    check('forwards DataRateDegraded to the notifier',
+        src.includes('onDataRateDegraded('));
+    check('forwards DataRateRestored to the notifier',
+        src.includes('onDataRateRestored(id)'));
+    check('resolves the headline from the store before notifying',
+        src.includes("dev?.headline || id"));
+    // Both are declared in the interface literal, else connectSignal is a
+    // silent no-op and the notifications never fire.
+    check('DataRateDegraded is declared in IFACE_XML',
+        src.includes('<signal name="DataRateDegraded">'));
+    check('DataRateRestored is declared in IFACE_XML',
+        src.includes('<signal name="DataRateRestored">'));
 }
 
 print('# out-of-date daemon that exits — returns to STOPPED (the ke2 regression)');

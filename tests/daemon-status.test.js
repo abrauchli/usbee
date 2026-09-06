@@ -28,7 +28,8 @@
 import System from 'system';
 import GLib from 'gi://GLib';
 
-import {DaemonState, MIN_USBEEHIVE_VERSION, UPDATE_CMD, isVersionAtLeast}
+import {DaemonState, IFACE_GENERATION, INSTALL_CMD, MIN_USBEEHIVE_VERSION,
+    UPDATE_CMD, isVersionAtLeast}
     from '../usbee@bitcreed.us/src/daemon-status.js';
 
 let failures = 0;
@@ -89,16 +90,59 @@ print('# module constants');
     check('UPDATE_CMD restarts the user unit',
         UPDATE_CMD.includes('systemctl --user restart usbeehived'));
     check('UPDATE_CMD chains both halves', UPDATE_CMD.includes('&&'));
+
+    // Quick task 260905-b0s §D-7 — the not-installed state is reached when
+    // NO unit file exists anywhere, which for most users means the binary is
+    // missing too. The command used to show only step two of three.
+    check('INSTALL_CMD installs the binary',
+        INSTALL_CMD.includes('cargo install usbeehive --features=dbus'));
+    check('INSTALL_CMD installs the unit file',
+        INSTALL_CMD.includes('usbeehived --install-service'));
+    check('INSTALL_CMD starts the unit',
+        INSTALL_CMD.includes('systemctl --user enable --now usbeehived'));
+
+    // The interface generation this build's proxy speaks. Bumping it is a
+    // deliberate edit paired with a new IFACE_XML, never an accident.
+    check('IFACE_GENERATION is 5', IFACE_GENERATION === 5);
 }
 
 print('# DaemonState');
 {
-    check('RUNNING/STOPPED/OUT_OF_DATE are distinct',
-        new Set([DaemonState.RUNNING, DaemonState.STOPPED, DaemonState.OUT_OF_DATE]).size === 3);
+    check('the four states are distinct',
+        new Set([DaemonState.RUNNING, DaemonState.STOPPED,
+            DaemonState.OUT_OF_DATE, DaemonState.TOO_NEW]).size === 4);
     check('DaemonState is frozen', Object.isFrozen(DaemonState));
     check("RUNNING is 'running'", DaemonState.RUNNING === 'running');
     check("STOPPED is 'stopped'", DaemonState.STOPPED === 'stopped');
     check("OUT_OF_DATE is 'out-of-date'", DaemonState.OUT_OF_DATE === 'out-of-date');
+    check("TOO_NEW is 'too-new'", DaemonState.TOO_NEW === 'too-new');
+}
+
+print('# the TOO_NEW state reaches every surface');
+{
+    const store = readSource('usbee@bitcreed.us/src/device-store.js');
+    const tile  = readSource('usbee@bitcreed.us/src/tile.js');
+    const pop   = readSource('usbee@bitcreed.us/src/popover.js');
+    const empty = readSource('usbee@bitcreed.us/src/empty-state.js');
+    check('device-store.js has a TOO_NEW tile branch',
+        store.includes('case DaemonState.TOO_NEW:'));
+    check('the tile pill blames the extension, not the daemon',
+        store.includes("_('Extension out of date')"));
+    check('tile.js routes TOO_NEW to its own popover state',
+        tile.includes('case DaemonState.TOO_NEW:')
+        && tile.includes('populateTooNewState(this._rowsSection)'));
+    check('popover.js exports populateTooNewState',
+        pop.includes('export function populateTooNewState('));
+    check('empty-state.js builds the too-new item',
+        empty.includes('export function buildDaemonTooNewItem('));
+    check('the too-new state names the extension as what to update',
+        empty.includes("_('usbeehive is newer than USBee')"));
+    // The one empty state with NO command row: updating a Shell extension
+    // is not a shell command.
+    const tooNewStart = empty.indexOf('export function buildDaemonTooNewItem(');
+    const tooNewBody = empty.slice(tooNewStart);
+    check('the too-new state offers no shell command',
+        !tooNewBody.includes('buildCommandRow('));
 }
 
 // --- Cross-process contract: this module imports NOTHING --------------------

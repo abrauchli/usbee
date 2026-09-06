@@ -48,13 +48,18 @@ jobs:
           sudo apt-get install -y gjs
 
       # Only self-contained tests run here: those importing solely gi://
-      # modules. Tests whose targets import the gnome-shell extension
-      # resource URI (resource:///org/gnome/shell/extensions/extension.js)
-      # — e.g. tests/forward-compat.test.js, via device-store.js's gettext
-      # import — can ONLY run inside gnome-shell, not bare CI gjs. Add new
-      # CI-safe test files to this list as they appear.
+      # modules, plus the four zero-import policy modules
+      # (src/daemon-status.js, src/property-policy.js, src/link-verdict.js,
+      # src/notify-policy.js). Anything importing the gnome-shell extension
+      # resource URI (resource:///org/gnome/shell/extensions/extension.js —
+      # device-store.js, popover.js, notifier.js and friends, for gettext)
+      # can ONLY run inside gnome-shell, so those files are covered by
+      # source-level structural guards inside these suites instead. That is
+      # also why the verdict, containment and notification logic lives in
+      # the zero-import modules. Add new CI-safe test files to this list.
       - name: Run unit tests
         run: |
           gjs --version
           gjs -m tests/dbus-client.test.js
           gjs -m tests/daemon-status.test.js
+          gjs -m tests/forward-compat.test.js

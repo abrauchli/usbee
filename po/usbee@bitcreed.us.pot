@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: USBee 2.5.0\n"
+"Project-Id-Version: USBee 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-21 15:03-0600\n"
+"POT-Creation-Date: 2026-09-05 22:10-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,310 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: usbee@bitcreed.us/src/device-store.js:93
-#: usbee@bitcreed.us/src/device-store.js:106
-#: usbee@bitcreed.us/src/device-store.js:121
-msgid "—"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:188
-#: usbee@bitcreed.us/src/popover.js:267
-msgid "Charging"
-msgstr ""
-
-#. Translators: Tile subtitle when the sink requests less
-#. than its PD contract allows (e.g. a battery charge
-#. limit); %s is a formatted wattage like "15 W".
-#: usbee@bitcreed.us/src/device-store.js:193
-#, javascript-format
-msgid "up to %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:198
-msgid "Powering"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:201
-msgid "USB-C"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:202
-msgid "charging"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:231
-#: usbee@bitcreed.us/src/device-store.js:239
-#: usbee@bitcreed.us/src/device-store.js:309
-#: usbee@bitcreed.us/src/device-store.js:313
-msgid "USB"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:233
-msgid "1 device"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:234
-#, javascript-format
-msgid "%d devices"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:239
-msgid "Nothing connected"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:309
-msgid "Daemon out of date"
-msgstr ""
-
-#: usbee@bitcreed.us/src/device-store.js:313
-msgid "Daemon not running"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:145 usbee@bitcreed.us/prefs.js:243
-msgid "Copy command"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:199
-msgid "usbeehive daemon not running"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:206
-msgid "Run this command, then this list will populate automatically:"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:246
-msgid "usbeehive not installed"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:253
-msgid ""
-"Install usbeehive, then start it. This list will populate automatically:"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:308
-msgid "usbeehive daemon out of date"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:321
-msgid "unknown"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:323
-#, javascript-format
-msgid "Requires usbeehive %s or newer — detected %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/empty-state.js:330
-msgid ""
-"Update usbeehive, then restart the daemon. This list will populate "
-"automatically:"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:35
-msgid "Serial"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:36
-msgid "Mount"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:37
-msgid "Drivers"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:38
-msgid "Data role"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:39
-msgid "Power mode"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:40
-msgid "PD revision"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:41
-msgid "Plug orientation"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:42
-msgid "PD contract"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:43
-msgid "Cable speed"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:44
-msgid "Cable max current"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:45
-msgid "Cable max power"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:46
-msgid "Cable type"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:47
-msgid "Cable vendor"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:49
-msgid "Cable e-marker"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:50
-msgid "Cable data limit"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:51
-msgid "USB device"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:52
-msgid "Charger max"
-msgstr ""
-
-#: usbee@bitcreed.us/src/label-table.js:53
-msgid "Max bus power"
-msgstr ""
-
-#. Translators: Row value for cable.no_emarker=true — the charger
-#. offers >3A but no cable e-marker is visible (non-e-marked
-#. cables are limited to 3A).
-#: usbee@bitcreed.us/src/label-table.js:96
-msgid "not visible (3 A limit may apply)"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:169
-#, javascript-format
-msgid "Connected: %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:170
-#, javascript-format
-msgid "Disconnected: %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:193
-msgid "USBee"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:214
-#, javascript-format
-msgid "USB-C Port %d — %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:256
-msgid "Don't notify for this port again"
-msgstr ""
-
-#: usbee@bitcreed.us/src/notifier.js:263
-msgid "Open Preferences"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:115
-msgid "No USB devices attached"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:258
-msgid "Summary"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:267
-msgid "Charging issue"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:275
-msgid "Detail"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:289
-msgid "vendor ID is zero"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:291
-msgid "vendor ID not in USB-IF list"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:293
-msgid "reserved bits set in Cable VDO"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:295
-#, javascript-format
-msgid "This cable looks unusual: %s"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:296
-msgid ", "
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:298
-msgid "Cable trust"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:313
-msgid "Driver"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:313
-msgid "not bound"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:323
-msgid "Subclass"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:384
-msgid "USB 2"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:385
-msgid "USB 3"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:386
-msgid "USB 4"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:387
-msgid "DisplayPort"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:388
-msgid "Thunderbolt"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:436
-msgid "Charger PDOs"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:457
-msgid "◀"
-msgstr ""
-
-#: usbee@bitcreed.us/src/tile.js:41 usbee@bitcreed.us/src/tile.js:190
-msgid "USB devices"
-msgstr ""
-
-#: usbee@bitcreed.us/src/tile.js:135
-msgid "Preferences…"
-msgstr ""
-
-#: usbee@bitcreed.us/src/tile.js:189
-msgid "1 USB device"
-msgstr ""
-
-#: usbee@bitcreed.us/src/tile.js:190
-#, javascript-format
-msgid "%d USB devices"
-msgstr ""
-
-#: usbee@bitcreed.us/prefs.js:47 usbee@bitcreed.us/prefs.js:126
+#: usbee@bitcreed.us/prefs.js:47 usbee@bitcreed.us/prefs.js:171
 msgid "General"
 msgstr ""
 
@@ -329,106 +26,652 @@ msgid "Notifications"
 msgstr ""
 
 #: usbee@bitcreed.us/prefs.js:61
-msgid "Manage which USB-C ports may raise degradation warnings"
+msgid "Manage which ports and devices may raise warnings"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:75
-msgid "No muted ports"
+#: usbee@bitcreed.us/prefs.js:87
+msgid "Nothing muted"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:76
-msgid "Mute a port from a notification to see it here"
+#: usbee@bitcreed.us/prefs.js:88
+msgid "Mute a port or device from a notification to see it here"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:90
+#: usbee@bitcreed.us/prefs.js:103
+msgid "Data-rate warnings muted"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:107
+msgid "Unmute this device"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:132
 #, javascript-format
 msgid "USB-C Port %d"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:91
+#: usbee@bitcreed.us/prefs.js:133
 msgid "Notifications muted"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:95
+#: usbee@bitcreed.us/prefs.js:137
 msgid "Unmute this port"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:130
+#: usbee@bitcreed.us/prefs.js:175
 msgid "Hide empty USB-C ports"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:131
+#: usbee@bitcreed.us/prefs.js:176
 msgid "Don't list ports with nothing attached"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:138
+#: usbee@bitcreed.us/prefs.js:183
 msgid "Show USB Hubs"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:139
+#: usbee@bitcreed.us/prefs.js:184
 msgid "Include USB hub devices in the device list"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:149
+#: usbee@bitcreed.us/prefs.js:197
 msgid "Show technical details"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:150
+#: usbee@bitcreed.us/prefs.js:198
 msgid ""
-"Include advanced rows (serial, data role, cable details, drivers) in the "
-"device popover"
+"Include advanced rows and unrecognised daemon fields in the device popover"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:171
+#: usbee@bitcreed.us/prefs.js:219
 msgid "All device changes"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:172
+#: usbee@bitcreed.us/prefs.js:220
 msgid "Charging-relevant only"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:173
+#: usbee@bitcreed.us/prefs.js:221
 msgid "Off"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:179
+#: usbee@bitcreed.us/prefs.js:227
 msgid "Notify on device changes"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:180
+#: usbee@bitcreed.us/prefs.js:228
 msgid "Toasts when a USB device is connected or disconnected"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:218
+#: usbee@bitcreed.us/prefs.js:266
 msgid "About"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:222
+#: usbee@bitcreed.us/prefs.js:270
 msgid "Version"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:228
+#: usbee@bitcreed.us/prefs.js:276
 msgid "usbeehive daemon"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:229
+#: usbee@bitcreed.us/prefs.js:277
 msgid "Checking…"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:236
+#: usbee@bitcreed.us/prefs.js:284
 msgid "Update command"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:290
+#: usbee@bitcreed.us/prefs.js:291 usbee@bitcreed.us/src/empty-state.js:150
+msgid "Copy command"
+msgstr ""
+
+#: usbee@bitcreed.us/prefs.js:338
 #, javascript-format
 msgid "usbeehived %s — out of date, requires %s or newer"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:292
+#: usbee@bitcreed.us/prefs.js:340
 #, javascript-format
 msgid "usbeehived — version unknown, requires %s or newer"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:297
+#: usbee@bitcreed.us/prefs.js:345
 msgid "Start usbeehived daemon"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:94
+#: usbee@bitcreed.us/src/device-store.js:107
+#: usbee@bitcreed.us/src/device-store.js:122
+msgid "—"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:161
+#: usbee@bitcreed.us/src/device-store.js:223
+#: usbee@bitcreed.us/src/popover.js:301
+msgid "Charging"
+msgstr ""
+
+#. Translators: Tile subtitle when a port is charging but
+#. something (cable, charger, port) is capping it. %s is a
+#. formatted wattage like "30 W".
+#: usbee@bitcreed.us/src/device-store.js:165
+#, javascript-format
+msgid "%s — limited"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:167
+#: usbee@bitcreed.us/src/device-store.js:262
+#: usbee@bitcreed.us/src/device-store.js:270
+#: usbee@bitcreed.us/src/device-store.js:347
+#: usbee@bitcreed.us/src/device-store.js:352
+#: usbee@bitcreed.us/src/device-store.js:356
+msgid "USB"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:167
+#: usbee@bitcreed.us/src/popover.js:301
+msgid "Charging issue"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:172
+msgid "Slow USB link"
+msgstr ""
+
+#. Translators: Tile subtitle when the sink requests less
+#. than its PD contract allows (e.g. a battery charge
+#. limit); %s is a formatted wattage like "15 W".
+#: usbee@bitcreed.us/src/device-store.js:228
+#, javascript-format
+msgid "up to %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:233
+msgid "Powering"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:236
+msgid "USB-C"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:237
+msgid "charging"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:264
+msgid "1 device"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:265
+#, javascript-format
+msgid "%d devices"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:270
+msgid "Nothing connected"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:347
+msgid "Daemon out of date"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:352
+msgid "Extension out of date"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:356
+msgid "Daemon not running"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:204
+msgid "usbeehive daemon not running"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:211
+msgid "Run this command, then this list will populate automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:251
+msgid "usbeehive not installed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:263
+msgid ""
+"Install usbeehive, then start it. This list will populate automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:318
+msgid "usbeehive daemon out of date"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:331
+msgid "unknown"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:333
+#, javascript-format
+msgid "Requires usbeehive %s or newer — detected %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:340
+msgid ""
+"Update usbeehive, then restart the daemon. This list will populate "
+"automatically:"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:385
+msgid "usbeehive is newer than USBee"
+msgstr ""
+
+#: usbee@bitcreed.us/src/empty-state.js:392
+msgid ""
+"Update the USBee extension from the Extensions app, then reload the session."
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:38
+msgid "Serial"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:39
+msgid "Mount"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:40
+msgid "Drivers"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:41
+msgid "Data role"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:42
+msgid "Power mode"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:43
+msgid "PD revision"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:44
+msgid "Plug orientation"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:45
+msgid "PD contract"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:46
+msgid "Cable speed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:47
+msgid "Cable max current"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:48
+msgid "Cable max power"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:49
+msgid "Cable type"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:50
+msgid "Cable vendor"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:52
+msgid "Cable e-marker"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:53
+msgid "Cable data limit"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:54
+msgid "USB device"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:55
+msgid "Charger max"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:56
+msgid "Max bus power"
+msgstr ""
+
+#. Translators: USB SuperSpeed generation, e.g. "Gen 2x1". The only
+#. key that distinguishes Gen 1x2 from Gen 2x1 — both aggregate to
+#. 10 Gbps, so it cannot be computed from the link speed.
+#: usbee@bitcreed.us/src/label-table.js:64
+msgid "Generation"
+msgstr ""
+
+#. Translators: the slowest link rate at which the device's own vendor
+#. declares it fully functional.
+#: usbee@bitcreed.us/src/label-table.js:67
+msgid "Needs at least"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:68
+msgid "Capability"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:564
+msgid "Alt mode"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:70
+msgid "Alt mode failure"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:73
+msgid "Port"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:74
+msgid "Connector"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:75
+msgid "Powered by"
+msgstr ""
+
+#. Translators: a workaround the Linux kernel applies to this specific
+#. device. The values are kernel identifiers and are NOT translated.
+#: usbee@bitcreed.us/src/label-table.js:78
+msgid "Kernel workaround"
+msgstr ""
+
+#. Translators: the model name from the system's USB hardware database,
+#. shown when it names the actual silicon (e.g. "RTS5411 Hub") more
+#. usefully than the device's own product string.
+#: usbee@bitcreed.us/src/label-table.js:82
+msgid "Identified as"
+msgstr ""
+
+#. Translators: a user-pluggable USB receptacle.
+#: usbee@bitcreed.us/src/label-table.js:140
+msgid "hot-pluggable"
+msgstr ""
+
+#. Translators: a device soldered to the board — there is no
+#. connector for the user to unplug.
+#: usbee@bitcreed.us/src/label-table.js:143
+msgid "built-in"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:144
+msgid "not in use"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:147
+msgid "USB bus"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:148
+msgid "own supply"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:151
+msgid "not attempted"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:152
+msgid "active"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:153
+msgid "failed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:154
+msgid "error"
+msgstr ""
+
+#. Translators: Row value for cable.no_emarker=true — the charger
+#. offers >3A but no cable e-marker is visible (non-e-marked
+#. cables are limited to 3A).
+#: usbee@bitcreed.us/src/label-table.js:173
+msgid "not visible (3 A limit may apply)"
+msgstr ""
+
+#: usbee@bitcreed.us/src/label-table.js:179
+msgid "unknown — the kernel skips this device's capability descriptor"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:213
+#, javascript-format
+msgid "Connected: %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:214
+#, javascript-format
+msgid "Disconnected: %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:237
+msgid "USBee"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:258
+#, javascript-format
+msgid "USB-C Port %d — %s"
+msgstr ""
+
+#. Translators: notification title; %1$s is a device name, %2$s the
+#. daemon's one-line description of the data-rate shortfall.
+#: usbee@bitcreed.us/src/notifier.js:307
+#, javascript-format
+msgid "%s — %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:333
+msgid "Don't notify for this device again"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:336 usbee@bitcreed.us/src/notifier.js:384
+msgid "Open Preferences"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:377
+msgid "Don't notify for this port again"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:92
+msgid "No USB devices attached"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:289
+msgid "Summary"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:309 usbee@bitcreed.us/src/popover.js:469
+msgid "Detail"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:323
+msgid "vendor ID is zero"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:325
+msgid "vendor ID not in USB-IF list"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:327
+msgid "reserved bits set in Cable VDO"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:329
+#, javascript-format
+msgid "This cable looks unusual: %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:330
+msgid ", "
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:332
+msgid "Cable trust"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:354
+msgid "Driver"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:354
+msgid "not bound"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:364
+msgid "Subclass"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:394
+msgid "Technical details"
+msgstr ""
+
+#. Translators: %1$s is a link rate ("480 Mb/s"), %2$s a USB version
+#. number ("2.1"). Renders as "480 Mb/s (USB 2.1)".
+#: usbee@bitcreed.us/src/popover.js:435
+#, javascript-format
+msgid "%s (USB %s)"
+msgstr ""
+
+#. Translators: %s is "480 Mb/s (USB 2.1)". The device is running as
+#. fast as it is able to.
+#: usbee@bitcreed.us/src/popover.js:442
+#, javascript-format
+msgid "%s — full capability"
+msgstr ""
+
+#. Translators: %1$s is the current link ("480 Mb/s (USB 2.1)"),
+#. %2$s the speed the device advertises ("SuperSpeed 5 Gbps"). A
+#. POSSIBILITY, never a fault — the device's own vendor declares it
+#. fully functional at the slower rate.
+#: usbee@bitcreed.us/src/popover.js:448
+#, javascript-format
+msgid "%s — could run at %s on a faster port"
+msgstr ""
+
+#. Translators: %1$s is the current link, %2$s the rate the
+#. device's own descriptor says it needs to work properly.
+#: usbee@bitcreed.us/src/popover.js:455
+#, javascript-format
+msgid "%s — below the %s this device needs"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:459
+msgid "Link"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:476
+msgid "Fix"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:477
+msgid "Move it to a USB 3 port or use a cable that supports it"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:492
+msgid ""
+"The SuperSpeed lines of this connector never linked — a USB 2-only cable or "
+"port"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:494
+msgid "The SuperSpeed link on this connector is unstable — try another cable"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:496
+msgid ""
+"This connector's high-speed lanes are up, but this device is not on them"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:522
+msgid "Ports"
+msgstr ""
+
+#. Translators: %1$d hub ports occupied, %2$d ports in total.
+#: usbee@bitcreed.us/src/popover.js:524
+#, javascript-format
+msgid "%d of %d in use"
+msgstr ""
+
+#. Translators: %1$d mA committed to this hub's children, %2$d mA
+#. the hub's bus-power budget. "Committed", never "drawn" — the
+#. figure is the sum of the children's DECLARED maxima.
+#: usbee@bitcreed.us/src/popover.js:533
+#, javascript-format
+msgid "%d of %d mA committed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:534
+#, javascript-format
+msgid "%d mA committed"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:536
+msgid "Bus power"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:565 usbee@bitcreed.us/src/popover.js:607
+msgid "DisplayPort"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:566 usbee@bitcreed.us/src/popover.js:608
+msgid "Thunderbolt"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:570
+msgid ""
+"Alt mode failed: no USB-PD on this connection — use a USB-C port and cable "
+"that support Power Delivery"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:604
+msgid "USB 2"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:605
+msgid "USB 3"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:606
+msgid "USB 4"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:656
+msgid "Charger PDOs"
+msgstr ""
+
+#: usbee@bitcreed.us/src/popover.js:677
+msgid "◀"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:42 usbee@bitcreed.us/src/tile.js:202
+msgid "USB devices"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:136
+msgid "Preferences…"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:201
+msgid "1 USB device"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:202
+#, javascript-format
+msgid "%d USB devices"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:207
+msgid "1 issue"
+msgstr ""
+
+#: usbee@bitcreed.us/src/tile.js:207
+#, javascript-format
+msgid "%d issues"
 msgstr ""
