@@ -50,7 +50,10 @@ jobs:
       # Only self-contained tests run here: those importing solely gi://
       # modules, plus the four zero-import policy modules
       # (src/daemon-status.js, src/property-policy.js, src/link-verdict.js,
-      # src/notify-policy.js). Anything importing the gnome-shell extension
+      # src/notify-policy.js) and the gi-only src/service-probe.js, whose
+      # filesystem probes run anywhere and whose D-Bus surface is guarded
+      # structurally rather than exercised (no systemd user manager on a
+      # CI runner). Anything importing the gnome-shell extension
       # resource URI (resource:///org/gnome/shell/extensions/extension.js —
       # device-store.js, popover.js, notifier.js and friends, for gettext)
       # can ONLY run inside gnome-shell, so those files are covered by
@@ -63,3 +66,4 @@ jobs:
           gjs -m tests/dbus-client.test.js
           gjs -m tests/daemon-status.test.js
           gjs -m tests/forward-compat.test.js
+          gjs -m tests/service-probe.test.js

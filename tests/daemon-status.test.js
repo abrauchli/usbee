@@ -29,7 +29,7 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {DaemonState, IFACE_GENERATION, INSTALL_CMD, MIN_USBEEHIVE_VERSION,
-    UPDATE_CMD, isVersionAtLeast}
+    SETUP_CMD, UPDATE_CMD, isVersionAtLeast}
     from '../usbee@bitcreed.us/src/daemon-status.js';
 
 let failures = 0;
@@ -100,6 +100,18 @@ print('# module constants');
         INSTALL_CMD.includes('usbeehived --install-service'));
     check('INSTALL_CMD starts the unit',
         INSTALL_CMD.includes('systemctl --user enable --now usbeehived'));
+
+    // Quick task 260910-myu — the state where `usbeehived` is already on
+    // PATH but no unit file exists. Telling that user to `cargo install`
+    // again was the complaint; SETUP_CMD is INSTALL_CMD minus that step.
+    check('SETUP_CMD installs the unit file',
+        SETUP_CMD.includes('usbeehived --install-service'));
+    check('SETUP_CMD starts the unit',
+        SETUP_CMD.includes('systemctl --user enable --now usbeehived'));
+    check('SETUP_CMD does NOT re-run cargo install',
+        !SETUP_CMD.includes('cargo install'));
+    check('SETUP_CMD is the tail of INSTALL_CMD',
+        INSTALL_CMD.endsWith(SETUP_CMD));
 
     // The interface generation this build's proxy speaks. Bumping it is a
     // deliberate edit paired with a new IFACE_XML, never an accident.
@@ -256,10 +268,22 @@ print('# empty-state.js command rows are copyable');
     const src = readSource('usbee@bitcreed.us/src/empty-state.js');
     check('empty-state.js defines the shared buildCommandRow helper',
         src.includes('function buildCommandRow('));
-    check('all three empty states use buildCommandRow',
-        (src.match(/buildCommandRow\(/g) || []).length === 4); // 1 definition + 3 uses
+    // 1 definition + one use per command-bearing state: stopped,
+    // service-not-set-up, not-installed, out-of-date. The too-new state
+    // deliberately has none.
+    check('every command-bearing empty state uses buildCommandRow',
+        (src.match(/buildCommandRow\(/g) || []).length === 5);
     check('empty-state.js copies via the Shell clipboard API',
         src.includes('St.Clipboard.get_default().set_text('));
+    // Quick task 260910-myu: the command used to live in an St.Entry, which
+    // is single-line and does not reflow — INSTALL_CMD rendered as
+    // "cargo install usbeehive --features=dbu…". A wrapping St.Label is the
+    // mechanism 260910-ggy already proved works in this file.
+    check('empty-state.js no longer renders commands in a non-reflowing St.Entry',
+        !src.includes('new St.Entry('));
+    check('empty-state.js wraps the command text',
+        src.includes('entry.clutter_text.line_wrap = true') &&
+        src.includes('Pango.WrapMode.WORD_CHAR'));
     check('empty-state.js removes pending feedback timers on destroy (T-ke2-04)',
         src.includes("connect('destroy'") && src.includes('GLib.Source.remove('));
     check('empty-state.js takes UPDATE_CMD from the shared module',
@@ -295,10 +319,22 @@ print('# prefs.js gates the detected version (separate process, C5)');
     check('prefs.js clamps the daemon version (T-ke2-01)',
         src.includes('.slice(0, 32)'));
     // C5: prefs.js runs where the gnome-shell extension resource URI does
-    // not resolve, so daemon-status.js must be its ONLY src/ import.
+    // not resolve, so it may import a src/ module only when that module
+    // pulls in no such URI itself. Two qualify: daemon-status.js (imports
+    // nothing at all) and service-probe.js (gi:// only — quick task
+    // 260910-myu). Anything else — dbus-client.js, empty-state.js — drags in
+    // gettext from a resource URI and blanks the preferences window at load.
+    const allowedSrcImports = ['./src/daemon-status.js', './src/service-probe.js'];
     const srcImports = importSpecifiers(src).filter(s => s.startsWith('./'));
-    check('prefs.js imports no other src/ module',
-        srcImports.length === 1 && srcImports[0] === './src/daemon-status.js');
+    check('prefs.js imports only the two resource-free src/ modules',
+        srcImports.length > 0 &&
+        srcImports.every(s => allowedSrcImports.includes(s)));
+    // The allowlist is only safe while the allowed module stays gi-only.
+    // tests/service-probe.test.js pins that from the other direction; this
+    // is the belt to its braces.
+    check('service-probe.js pulls in no gnome-shell resource URI',
+        !readSource('usbee@bitcreed.us/src/service-probe.js')
+            .includes("from 'resource:///"));
 }
 
 // --- Summary ----------------------------------------------------------------
