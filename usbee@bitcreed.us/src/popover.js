@@ -22,7 +22,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateItem,
-    buildDaemonTooNewItem} from './empty-state.js';
+    buildDaemonTooNewItem, buildServiceNotSetUpItem} from './empty-state.js';
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
@@ -133,8 +133,8 @@ export function populateDeviceRows(section, store, extension) {
 }
 
 /**
- * Render the empty state (daemon not running).
- * Unchanged from v1.0 — delegates to buildEmptyStateItem.
+ * Render the "installed but stopped" empty state — the one that carries the
+ * Start button (quick task 260910-myu). Delegates to buildEmptyStateItem.
  *
  * @param {PopupMenuSection} section
  */
@@ -145,15 +145,28 @@ export function populateEmptyState(section) {
 
 /**
  * Render the "daemon not installed" empty state (quick task 260526-i7q).
- * Wired from tile.js _rebuildPopover() when the daemon is not running AND
- * isUsbeehiveServiceInstalled() returns false. Mirrors the populateEmptyState
- * shape but uses the dedicated copy from src/empty-state.js.
+ * Wired from tile.js _rebuildPopover() when the daemon is not running and
+ * probeInstallState() returns InstallState.NOT_INSTALLED — no unit file
+ * anywhere AND no `usbeehived` on PATH.
  *
  * @param {PopupMenuSection} section
  */
 export function populateNotInstalledState(section) {
     section.removeAll();
     section.addMenuItem(buildDaemonNotInstalledItem());
+}
+
+/**
+ * Render the "binary installed, service not set up" empty state (quick task
+ * 260910-myu). Wired from tile.js when probeInstallState() returns
+ * InstallState.SERVICE_MISSING — `usbeehived` is on PATH but no unit file
+ * exists, so the user needs SETUP_CMD rather than another `cargo install`.
+ *
+ * @param {PopupMenuSection} section
+ */
+export function populateServiceNotSetUpState(section) {
+    section.removeAll();
+    section.addMenuItem(buildServiceNotSetUpItem());
 }
 
 /**

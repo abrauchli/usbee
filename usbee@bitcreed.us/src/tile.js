@@ -18,8 +18,10 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {populateDeviceRows, populateEmptyState, populateNotInstalledState,
-    populateOutOfDateState, populateTooNewState} from './popover.js';
-import {isUsbeehiveServiceInstalled} from './empty-state.js';
+    populateOutOfDateState, populateServiceNotSetUpState, populateTooNewState}
+    from './popover.js';
+import {InstallState, probeInstallState, refreshInstallStateAsync}
+    from './service-probe.js';
 import {DaemonState} from './daemon-status.js';
 
 const USBeeToggle = GObject.registerClass(
@@ -169,9 +171,13 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         //                 and the detected version.
         //   RUNNING     — render device rows.
         //   default     — STOPPED (and any unknown state) → not on the bus,
-        //                 split into:
-        //                   a. not installed → install hint (no unit file on disk)
-        //                   b. installed but stopped → systemctl enable --now hint
+        //                 split three ways by src/service-probe.js
+        //                 probeInstallState() (quick task 260910-myu):
+        //                   a. NOT_INSTALLED   → the full install chain
+        //                   b. SERVICE_MISSING → binary present, no unit:
+        //                      `usbeehived --install-service`, NOT another
+        //                      `cargo install`
+        //                   c. INSTALLED       → a Start button
         let n = -1;
         let issues = 0;
         switch (this._store.daemonState) {
@@ -192,10 +198,26 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             break;
         }
         default:
-            if (!isUsbeehiveServiceInstalled())
+            switch (probeInstallState()) {
+            case InstallState.NOT_INSTALLED:
                 populateNotInstalledState(this._rowsSection);
-            else
+                break;
+            case InstallState.SERVICE_MISSING:
+                populateServiceNotSetUpState(this._rowsSection);
+                break;
+            default:
                 populateEmptyState(this._rowsSection);
+                break;
+            }
+            // The render above used a synchronous stat() over a fixed path
+            // list, because the popover rebuild cannot block on D-Bus
+            // (D-15). Ask systemd for the authoritative answer in the
+            // background so a unit in a directory this build does not
+            // enumerate — a `systemctl --user link`ed one, say — is right
+            // by the next time the user opens the popover. Rebuilding the
+            // popover from under the user's cursor would be worse than
+            // being one open behind.
+            refreshInstallStateAsync();
             break;
         }
         const hdrTitle = n === 1 ? _('1 USB device')

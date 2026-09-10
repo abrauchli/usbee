@@ -49,6 +49,14 @@ export const INSTALL_CMD =
     'cargo install usbeehive --features=dbus && usbeehived --install-service '
     + '&& systemctl --user enable --now usbeehived';
 
+// The tail of INSTALL_CMD, for the state where the `usbeehived` binary is
+// already on PATH but no systemd unit exists — i.e. `cargo install` has
+// been run and `--install-service` has not (quick task 260910-myu). Telling
+// this user to `cargo install` again is the exact complaint that motivated
+// the state split. Displayed and copied only; never executed.
+export const SETUP_CMD =
+    'usbeehived --install-service && systemctl --user enable --now usbeehived';
+
 // The interface generation this build's proxy speaks:
 // org.usbeehive.Devices<N>. usbeehive has cut the interface four times in
 // four months, and each cut renames the interface while KEEPING the bus

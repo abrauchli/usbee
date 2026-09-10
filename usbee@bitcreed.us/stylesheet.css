@@ -13,15 +13,54 @@
     margin-bottom: 2px;
 }
 
+/* The command text itself. An St.Label, not an St.Entry — St.Entry is
+ * single-line and truncated the longest commands (quick task 260910-myu),
+ * so the widget changed and the code-block chrome the entry used to supply
+ * for free now has to come from here. */
 .usbee-empty-state-entry {
     margin-top: 4px;
     font-family: monospace;
     font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.25);
 }
 
-/* Command line = entry + copy button (src/empty-state.js buildCommandRow). */
+/* Command line = command label + copy button (src/empty-state.js
+ * buildCommandRow). The label wraps, so the button is pinned to the top
+ * rather than floating beside a multi-line block's centre. */
 .usbee-empty-state-command {
     spacing: 6px;
+}
+
+/* Start-daemon affordance (src/empty-state.js buildStartRow). */
+.usbee-empty-state-start {
+    spacing: 6px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.usbee-start-button {
+    padding: 6px 16px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.usbee-start-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Pressed-but-not-yet-answered ("Starting…") and every failure message use
+ * the same row; insensitive styling is what marks the in-flight state. */
+.usbee-start-button:insensitive {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Outcome line under the Start button. Amber because every message it can
+ * carry is a failure — the success path destroys the whole empty state. */
+.usbee-empty-state-status {
+    color: #e5a50a;
+    font-size: 0.9em;
 }
 
 .usbee-copy-button {

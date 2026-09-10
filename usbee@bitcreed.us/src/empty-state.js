@@ -1,31 +1,40 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // src/empty-state.js
 //
-// Daemon empty-state widgets — three distinct flavours (quick task 260526-i7q):
-//   - buildEmptyStateItem()         — service installed but stopped
-//                                     ('systemctl --user enable --now usbeehived')
-//   - buildDaemonNotInstalledItem() — service unit file missing on disk
-//                                     (the full install chain, INSTALL_CMD)
-//   - buildDaemonOutOfDateItem()    — daemon reachable but Version too old
-//                                     ('cargo install usbeehive --features=dbus
-//                                       && systemctl --user restart usbeehived',
-//                                      see UPDATE_CMD in src/daemon-status.js)
-//   - buildDaemonTooNewItem()       — daemon reachable but speaks a NEWER
-//                                     interface generation than this build.
-//                                     The only one of the four with no
-//                                     command: the fix is to update the
-//                                     extension, which the user does in the
-//                                     Extensions app (quick task 260905-b0s)
+// Daemon empty-state widgets — five distinct flavours:
+//   - buildEmptyStateItem()          — unit installed but stopped. Carries
+//                                      the Start button (quick task
+//                                      260910-myu); the command row is the
+//                                      manual fallback.
+//   - buildServiceNotSetUpItem()     — `usbeehived` is on PATH but no unit
+//                                      file exists: `cargo install` ran,
+//                                      `--install-service` did not. Needs
+//                                      SETUP_CMD, not another cargo install
+//                                      (quick task 260910-myu).
+//   - buildDaemonNotInstalledItem()  — neither binary nor unit file
+//                                      (the full install chain, INSTALL_CMD)
+//   - buildDaemonOutOfDateItem()     — daemon reachable but Version too old
+//                                      ('cargo install usbeehive --features=dbus
+//                                        && systemctl --user restart usbeehived',
+//                                       see UPDATE_CMD in src/daemon-status.js)
+//   - buildDaemonTooNewItem()        — daemon reachable but speaks a NEWER
+//                                      interface generation than this build.
+//                                      The only one with no command: the fix
+//                                      is to update the extension, which the
+//                                      user does in the Extensions app
+//                                      (quick task 260905-b0s)
 //
-// Each one is a PopupMenuItem containing a title label, a hint label, and a
-// command row (buildCommandRow): a read-only-but-selectable St.Entry with the
-// relevant command plus a copy-to-clipboard button.
+// Each one is a PopupMenuItem containing a title label, a hint label, and
+// usually a command row (buildCommandRow): a selectable, WRAPPING St.Label
+// carrying the command plus a copy-to-clipboard button.
+//
+// Which of the first three applies is decided by src/service-probe.js
+// probeInstallState(), not by this file — see tile.js _rebuildPopover().
 //
 // No retry button (UI-SPEC #primary-cta): NameOwnerChanged auto-recovers.
-// No subprocess spawning (D-18, EGO PACK-05): user runs the command themselves.
-// The not-installed detection uses Gio.File.query_exists() (synchronous local
-// stat() on a small known set of paths — explicitly permitted under D-15,
-// which prohibits sync D-Bus and network calls, not local file probes).
+// No subprocess spawning (D-18, EGO PACK-05): the Start button is an async
+// StartUnit D-Bus call to the user's own systemd, never a Gio.Subprocess
+// forking systemctl, and nothing here ever *installs* software.
 //
 // Every wrapping label here pairs `line_wrap = true` with
 // `ellipsize = Pango.EllipsizeMode.NONE`, and the pair is not optional:
@@ -36,7 +45,6 @@
 // single truncated line (quick task 260910-ggy).
 
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
@@ -46,81 +54,46 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 // UPDATE_CMD lives in the shared module so prefs.js — a separate process
 // that cannot import anything from this file — renders the exact same
 // string in its About group.
-import {INSTALL_CMD, MIN_USBEEHIVE_VERSION, UPDATE_CMD} from './daemon-status.js';
+import {INSTALL_CMD, MIN_USBEEHIVE_VERSION, SETUP_CMD, UPDATE_CMD}
+    from './daemon-status.js';
+import {startDaemonUnit} from './service-probe.js';
 
-// Shell-only command: the preferences window never surfaces this one, so it
-// stays local. (INSTALL_CMD lives in the shared module beside UPDATE_CMD.)
+// Shell-only command: the preferences window surfaces its own Start button
+// instead, so this manual fallback stays local. (INSTALL_CMD and SETUP_CMD
+// live in the shared module beside UPDATE_CMD.)
 const SYSTEMCTL_CMD = 'systemctl --user enable --now usbeehived';
 
 // How long the copy button shows its confirmation checkmark before
 // reverting to the copy icon.
 const COPY_FEEDBACK_MS = 1500;
 
-// Cache for isUsbeehiveServiceInstalled(). The popover is opened on user
-// click — we don't need sub-second freshness, but we DO want a user who
-// just ran `usbeehived --install-service` in a terminal to see the state
-// flip without restarting gnome-shell. 30 s is short enough for that and
-// long enough that rapid open/close cycles of the popover don't repeatedly
-// hit the filesystem.
-const INSTALLED_CACHE_TTL_US = 30 * GLib.USEC_PER_SEC;
-let _installedCache = null;
-let _cachedAt = 0;
-
-// Standard systemd user-unit search paths, in lookup order:
-//   1. XDG user data dir   — installs via `usbeehived --install-service`
-//   2. /usr/lib/systemd    — distro-packaged installs (Fedora, Arch)
-//   3. /etc/systemd        — sysadmin-managed installs
-const UNIT_SEARCH_PATHS = [
-    `${GLib.get_user_data_dir()}/systemd/user/usbeehived.service`,
-    '/usr/lib/systemd/user/usbeehived.service',
-    '/etc/systemd/user/usbeehived.service',
-];
+// How long to wait, after systemd accepts the start job, for the daemon to
+// actually own its bus name. StartUnit returns once the job is ENQUEUED, so
+// success from D-Bus is not success from the user's point of view: a daemon
+// that starts and immediately exits produces exactly the silent no-op a
+// start button must never be. When the daemon does arrive, DBusClient emits
+// 'ready', tile.js rebuilds the popover, this whole item is destroyed and
+// the timer is removed with it — so this timeout only ever fires on the
+// failure path.
+const START_WATCHDOG_MS = 8000;
 
 /**
- * Return true when the usbeehived.service unit file exists in any of the
- * standard systemd user-unit search paths. Cached for INSTALLED_CACHE_TTL_US
- * microseconds so a rebuild storm doesn't stat() the filesystem repeatedly.
- *
- * @returns {boolean}
- */
-export function isUsbeehiveServiceInstalled() {
-    const now = GLib.get_monotonic_time();
-    if (_installedCache !== null && (now - _cachedAt) < INSTALLED_CACHE_TTL_US)
-        return _installedCache;
-
-    let found = false;
-    for (const path of UNIT_SEARCH_PATHS) {
-        if (Gio.File.new_for_path(path).query_exists(null)) {
-            found = true;
-            break;
-        }
-    }
-    _installedCache = found;
-    _cachedAt = now;
-    return found;
-}
-
-/**
- * Invalidate the cached unit-file probe result. Exported for future use by
- * a NameOwnerChanged hook that wants to force a re-stat when the daemon
- * appears or vanishes. Not consumed in this commit — kept here so the
- * symmetry is visible from a single-file read.
- */
-export function invalidateInstalledCache() {
-    _installedCache = null;
-    _cachedAt = 0;
-}
-
-/**
- * Build one command line: a read-only-but-selectable St.Entry carrying the
+ * Build one command line: a selectable, wrapping St.Label carrying the
  * command, plus a copy-to-clipboard button.
  *
  * A reactive child inside a `reactive: false` PopupMenuItem works — the
- * focusable St.Entry these items already carried proves it.
+ * focusable copy button proves it.
  *
- * The entry stays single-line (St.Entry does not reflow); with the copy
- * button present, a command too long for the popover width is no longer a
- * dead end.
+ * This used to be an St.Entry, which is single-line and does not reflow: the
+ * longest command (INSTALL_CMD, ~100 characters) rendered as
+ * `cargo install usbeehive --features=dbu…` in a Quick Settings popover.
+ * A truncated shell command is the one thing on this panel that has to be
+ * exact, and the copy button alone does not fix it — a user cannot judge
+ * whether to run a command they cannot read. An St.Label with line_wrap and
+ * ellipsize NONE is the wrapping mechanism this file already proved works
+ * (quick task 260910-ggy); St.Entry's multi-line mode is not, so the label
+ * is what ships. Selectability is preserved on the ClutterText, so
+ * click-drag + Ctrl+C still works alongside the button.
  *
  * @param {string} command  Literal shell command. Always a module constant,
  *   never daemon- or user-supplied — nothing interpolates into the
@@ -133,19 +106,20 @@ function buildCommandRow(command) {
         style_class: 'usbee-empty-state-command',
     });
 
-    const entry = new St.Entry({
-        can_focus: true,
+    const entry = new St.Label({
+        can_focus: false,
         reactive: true,
         x_expand: true,
         text: command,
         style_class: 'usbee-empty-state-entry',
     });
-    // [ASSUMED A1 — RESEARCH §Pitfall B]: if direct property assignment
-    // doesn't take effect at runtime, swap for:
-    //   entry.clutter_text.set_editable(false);
-    //   entry.clutter_text.set_selectable(true);
-    entry.clutter_text.editable = false;
     entry.clutter_text.selectable = true;
+    entry.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+    entry.clutter_text.line_wrap = true;
+    // WORD_CHAR, not WORD: shell commands contain long unbreakable tokens
+    // (`--features=dbus`, an absolute path) that WORD alone would push past
+    // the popover edge rather than break.
+    entry.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
 
     const icon = new St.Icon({
         icon_name: 'edit-copy-symbolic',
@@ -155,7 +129,10 @@ function buildCommandRow(command) {
         style_class: 'usbee-copy-button',
         can_focus: true,
         reactive: true,
-        y_align: Clutter.ActorAlign.CENTER,
+        // START, not CENTER: the command label wraps now, so centring the
+        // button against a three-line block would drift it away from the
+        // first line it belongs to.
+        y_align: Clutter.ActorAlign.START,
         accessible_name: _('Copy command'),
         child: icon,
     });
@@ -192,8 +169,130 @@ function buildCommandRow(command) {
 }
 
 /**
- * Build the empty-state row. Returns a PopupMenu.PopupMenuItem.
- * The command line is copy-pasteable and carries a copy button.
+ * A wrapping body label. Every empty state needs several, and every one of
+ * them must clear the inherited ellipsize alongside line_wrap — see the
+ * file header. Centralising the pair makes forgetting it impossible.
+ *
+ * @param {string} text            Already-translated text.
+ * @param {string} [styleClass]    Optional extra style class.
+ * @returns {St.Label}
+ */
+function buildWrappedLabel(text, styleClass = '') {
+    const props = {text, x_expand: true};
+    if (styleClass) props.style_class = styleClass;
+    const label = new St.Label(props);
+    label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+    label.clutter_text.line_wrap = true;
+    return label;
+}
+
+/**
+ * Build the "Start usbeehive daemon" affordance: a button plus the status
+ * line underneath it that reports what happened.
+ *
+ * The button asks systemd to start the unit over D-Bus (see
+ * src/service-probe.js startDaemonUnit). It is not a Gio.Subprocess running
+ * `systemctl` — EGO reviewers flag subprocess spawning from an extension,
+ * and a session-bus method call to the user's own service manager is the
+ * documented alternative.
+ *
+ * Three failures are made visible, because a start button that silently
+ * does nothing is worse than no button at all:
+ *
+ *   1. systemd refuses the job (no unit, no user manager). The remote error
+ *      is shown with its GDBus prefix stripped.
+ *   2. systemd accepts the job and the daemon never reaches the bus within
+ *      START_WATCHDOG_MS — the "starts, then exits" case. The status line
+ *      names the journalctl command that explains why.
+ *   3. Nothing at all happens: impossible to reach, because the button
+ *      commits to a visible state ("Starting…") the instant it is pressed.
+ *
+ * The success path needs no handling here. When the daemon owns its name,
+ * DBusClient emits 'ready', tile.js rebuilds the popover, and this whole
+ * item — button, status line, watchdog and all — is destroyed and replaced
+ * by the device list.
+ *
+ * @returns {St.BoxLayout}
+ */
+function buildStartRow() {
+    const box = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+        style_class: 'usbee-empty-state-start',
+    });
+
+    const button = new St.Button({
+        style_class: 'usbee-start-button',
+        can_focus: true,
+        reactive: true,
+        x_align: Clutter.ActorAlign.START,
+        label: _('Start usbeehive daemon'),
+    });
+
+    // Hidden until there is something to say. An empty label would still
+    // claim vertical space in the BoxLayout.
+    const status = buildWrappedLabel('', 'usbee-empty-state-status');
+    status.visible = false;
+
+    const setStatus = text => {
+        status.text = text;
+        status.visible = true;
+    };
+
+    // Same teardown contract as buildCommandRow (T-ke2-04): the popover
+    // section is destroyed on every rebuild, and a surviving timer would
+    // raise GLib-CRITICAL on the lock/unlock cycle.
+    const pending = new Set();
+
+    button.connect('clicked', () => {
+        button.reactive = false;
+        button.label = _('Starting…');   // U+2026
+        status.visible = false;
+
+        startDaemonUnit(error => {
+            if (error) {
+                button.reactive = true;
+                button.label = _('Start usbeehive daemon');
+                setStatus(_('Could not start the daemon: %s').format(error));
+                return;
+            }
+
+            // systemd took the job. Give the daemon a moment to own its bus
+            // name; if this timer ever fires, it didn't.
+            const id = GLib.timeout_add(
+                GLib.PRIORITY_DEFAULT, START_WATCHDOG_MS, () => {
+                    pending.delete(id);
+                    button.reactive = true;
+                    button.label = _('Start usbeehive daemon');
+                    setStatus(_('systemd started usbeehived, but it did not '
+                        + 'appear on the bus. Check: journalctl --user -u '
+                        + 'usbeehived -e'));
+                    return GLib.SOURCE_REMOVE;
+                });
+            pending.add(id);
+        });
+    });
+
+    button.connect('destroy', () => {
+        for (const id of pending) GLib.Source.remove(id);
+        pending.clear();
+    });
+
+    box.add_child(button);
+    box.add_child(status);
+    return box;
+}
+
+/**
+ * Build the daemon-installed-but-stopped empty state. Returns a
+ * PopupMenu.PopupMenuItem.
+ *
+ * Reached when a usbeehived.service unit file exists but nothing owns
+ * org.usbeehive.Devices. Since the unit is there, starting it is a button
+ * press rather than a trip to a terminal (quick task 260910-myu) — the
+ * copy-pasteable command stays as the fallback for anyone who would rather
+ * enable it permanently, which is what `enable --now` does and the button
+ * does not.
  */
 export function buildEmptyStateItem() {
     const item = new PopupMenu.PopupMenuItem('', {
@@ -209,24 +308,53 @@ export function buildEmptyStateItem() {
         style_class: 'usbee-empty-state-body',
     });
 
-    const title = new St.Label({
-        text: _('usbeehive daemon not running'),
-        style_class: 'usbee-empty-state-title',
-        x_expand: true,
-    });
-    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    title.clutter_text.line_wrap = true;
-
-    const hint = new St.Label({
-        text: _('Run this command, then this list will populate automatically:'),
-        x_expand: true,
-    });
-    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    hint.clutter_text.line_wrap = true;
-
-    box.add_child(title);
-    box.add_child(hint);
+    box.add_child(buildWrappedLabel(
+        _('usbeehive daemon not running'), 'usbee-empty-state-title'));
+    box.add_child(buildWrappedLabel(
+        _('usbeehive is installed. Start it and this list will populate '
+          + 'automatically.')));
+    box.add_child(buildStartRow());
+    box.add_child(buildWrappedLabel(
+        _('Or start it yourself, and have it start with every session:')));
     box.add_child(buildCommandRow(SYSTEMCTL_CMD));
+    item.add_child(box);
+
+    return item;
+}
+
+/**
+ * Build the binary-installed-but-service-not-set-up empty state. Returns a
+ * PopupMenu.PopupMenuItem.
+ *
+ * Reached when `usbeehived` resolves on PATH but no unit file exists
+ * anywhere — i.e. `cargo install usbeehive` has been run and
+ * `usbeehived --install-service` has not (quick task 260910-myu). Before
+ * this state existed, these users were shown "usbeehive not installed" and
+ * a `cargo install` they had already completed.
+ *
+ * There is nothing to Start: with no unit, StartUnit can only fail. The one
+ * useful action is SETUP_CMD.
+ */
+export function buildServiceNotSetUpItem() {
+    const item = new PopupMenu.PopupMenuItem('', {
+        reactive: false,
+        can_focus: false,
+    });
+    item.add_style_class_name('usbee-empty-state');
+    item.label.hide();
+
+    const box = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+        style_class: 'usbee-empty-state-body',
+    });
+
+    box.add_child(buildWrappedLabel(
+        _('usbeehive service not set up'), 'usbee-empty-state-title'));
+    box.add_child(buildWrappedLabel(
+        _('usbeehive is installed but has no systemd service yet. Run this '
+          + 'once, and this list will populate automatically:')));
+    box.add_child(buildCommandRow(SETUP_CMD));
     item.add_child(box);
 
     return item;
@@ -235,11 +363,16 @@ export function buildEmptyStateItem() {
 /**
  * Build the daemon-not-installed empty-state row. Returns a PopupMenu.PopupMenuItem.
  *
- * Distinct from buildEmptyStateItem() — the systemd user unit file for
- * usbeehived is absent from every standard search path (see
- * isUsbeehiveServiceInstalled). The user needs to run the install command
- * before `systemctl --user enable --now usbeehived` will work. The command
- * line is copy-pasteable and carries a copy button.
+ * Distinct from buildEmptyStateItem() and buildServiceNotSetUpItem(): NO
+ * usbeehived.service unit file exists in any systemd user-unit search path
+ * AND `usbeehived` does not resolve on PATH (see src/service-probe.js
+ * probeInstallState). This is the only one of the three states where
+ * `cargo install` is genuinely the user's next move.
+ *
+ * Quick task 260910-myu narrowed exactly that. The unit-file probe used to
+ * miss $XDG_CONFIG_HOME/systemd/user — where usbeehive's own installer
+ * writes — so this state also swallowed every merely-stopped daemon and
+ * told well-installed users to install what they already had.
  *
  * Wired from src/tile.js _rebuildPopover() via populateNotInstalledState
  * in src/popover.js (quick task 260526-i7q).
@@ -258,28 +391,13 @@ export function buildDaemonNotInstalledItem() {
         style_class: 'usbee-empty-state-body',
     });
 
-    const title = new St.Label({
-        text: _('usbeehive not installed'),
-        style_class: 'usbee-empty-state-title',
-        x_expand: true,
-    });
-    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    title.clutter_text.line_wrap = true;
-
+    box.add_child(buildWrappedLabel(
+        _('usbeehive not installed'), 'usbee-empty-state-title'));
     // Quick task 260905-b0s §D-7: the command used to be only
-    // `usbeehived --install-service`, i.e. step two of three. This state is
-    // reached because no unit file exists anywhere, which for most users
-    // means the binary is missing too — so the hint's "Install usbeehive,
-    // then start it" now matches what the command line actually does.
-    const hint = new St.Label({
-        text: _('Install usbeehive, then start it. This list will populate automatically:'),
-        x_expand: true,
-    });
-    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    hint.clutter_text.line_wrap = true;
-
-    box.add_child(title);
-    box.add_child(hint);
+    // `usbeehived --install-service`, i.e. step two of three.
+    box.add_child(buildWrappedLabel(
+        _('Install usbeehive, then start it. This list will populate '
+          + 'automatically:')));
     box.add_child(buildCommandRow(INSTALL_CMD));
     item.add_child(box);
 
@@ -327,14 +445,6 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
         style_class: 'usbee-empty-state-body',
     });
 
-    const title = new St.Label({
-        text: _('usbeehive daemon out of date'),
-        style_class: 'usbee-empty-state-title',
-        x_expand: true,
-    });
-    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    title.clutter_text.line_wrap = true;
-
     // T-ke2-01: `detectedVersion` is bus data — any session process can own
     // org.usbeehive.Devices and report an arbitrary Version string. Clamp it
     // before rendering. St.Label does not enable Pango markup, so the clamp
@@ -343,24 +453,15 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
     const detected = typeof detectedVersion === 'string' && detectedVersion
         ? detectedVersion.slice(0, 32)
         : _('unknown');
-    const versions = new St.Label({
-        text: _('Requires usbeehive %s or newer — detected %s')
-            .format(MIN_USBEEHIVE_VERSION, detected),
-        x_expand: true,
-    });
-    versions.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    versions.clutter_text.line_wrap = true;
 
-    const hint = new St.Label({
-        text: _('Update usbeehive, then restart the daemon. This list will populate automatically:'),
-        x_expand: true,
-    });
-    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    hint.clutter_text.line_wrap = true;
-
-    box.add_child(title);
-    box.add_child(versions);
-    box.add_child(hint);
+    box.add_child(buildWrappedLabel(
+        _('usbeehive daemon out of date'), 'usbee-empty-state-title'));
+    box.add_child(buildWrappedLabel(
+        _('Requires usbeehive %s or newer — detected %s')
+            .format(MIN_USBEEHIVE_VERSION, detected)));
+    box.add_child(buildWrappedLabel(
+        _('Update usbeehive, then restart the daemon. This list will populate '
+          + 'automatically:')));
     box.add_child(buildCommandRow(UPDATE_CMD));
     item.add_child(box);
 
@@ -397,23 +498,11 @@ export function buildDaemonTooNewItem() {
         style_class: 'usbee-empty-state-body',
     });
 
-    const title = new St.Label({
-        text: _('usbeehive is newer than USBee'),
-        style_class: 'usbee-empty-state-title',
-        x_expand: true,
-    });
-    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    title.clutter_text.line_wrap = true;
-
-    const hint = new St.Label({
-        text: _('Update the USBee extension from the Extensions app, then reload the session.'),
-        x_expand: true,
-    });
-    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    hint.clutter_text.line_wrap = true;
-
-    box.add_child(title);
-    box.add_child(hint);
+    box.add_child(buildWrappedLabel(
+        _('usbeehive is newer than USBee'), 'usbee-empty-state-title'));
+    box.add_child(buildWrappedLabel(
+        _('Update the USBee extension from the Extensions app, then reload '
+          + 'the session.')));
     item.add_child(box);
 
     return item;
