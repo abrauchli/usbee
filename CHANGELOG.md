@@ -8,6 +8,41 @@ unrelated.
 
 ## [Unreleased]
 
+### Added
+
+- A **Start usbeehive daemon** button, in both the Quick Settings
+  popover and the preferences window, for the case where usbeehive is
+  installed and simply not running. It asks your own session's systemd
+  to start the service — no terminal, and no software is installed on
+  your behalf. It also tells you when starting *didn't* work: if
+  systemd refuses the job you see why, and if the daemon starts and
+  then exits you are told that and pointed at `journalctl` rather than
+  left staring at a button that appeared to do nothing.
+
+### Fixed
+
+- USBee no longer claims usbeehive is **not installed** when it is
+  installed and merely stopped. It looked for the systemd service file
+  in three directories, and the one directory usbeehive's own installer
+  actually writes to — `~/.config/systemd/user` — was not among them.
+  Every user with a correctly installed, stopped daemon was told to run
+  a `cargo install` they had already run. USBee now searches systemd's
+  real unit path, and afterwards asks systemd directly, so a service
+  installed anywhere at all is found.
+- A third state now exists between "installed" and "not installed": if
+  the `usbeehived` program is present but its service was never set up,
+  USBee says so and offers `usbeehived --install-service` instead of
+  suggesting you reinstall usbeehive from scratch.
+- The commands USBee shows you are no longer cut off at the edge of the
+  panel. `cargo install usbeehive --features=dbu…` was impossible to
+  read and impossible to check before running; the command now wraps
+  onto as many lines as it needs, stays selectable, and keeps its copy
+  button.
+- The preferences window used to summarise a stopped daemon as the
+  single line "Start usbeehived daemon", with no indication of whether
+  usbeehive was installed or how to start it. It now says which of the
+  three states you are in and offers the matching button or command.
+
 ## [2.7.1] — 2026-09-10
 
 ### Fixed
