@@ -79,10 +79,10 @@ export function populateDeviceRows(section, store, extension) {
     if (hideEmpty)
         devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
     // Quick task 260905-b0s: a hub with an issue is shown even when hubs are
-    // hidden. `port.peer_state` — the key that explains WHY a SuperSpeed
-    // device linked at 480 Mb/s — exists only on root-hub ports, so the
+    // hidden. `port.peer_state` — the key that gates the "SuperSpeed did not
+    // come up" explanation — exists only on root-hub ports, so the
     // explanation lives on the hub row. Hiding it would leave a
-    // default-config user with a warning and no reachable cause. Only
+    // default-config user with a warning and no reachable detail. Only
     // Degraded / over-budget hubs surface; a BelowCapability hub (the common,
     // benign case) stays hidden.
     if (!showHubs)
@@ -491,12 +491,12 @@ function buildLinkBlock(detailBox, device, link) {
  */
 function connectorHintText(hint) {
     switch (hint) {
-    case 'ss-never-linked':
-        return _('The SuperSpeed lines of this connector never linked — a USB 2-only cable or port');
-    case 'ss-unstable':
-        return _('The SuperSpeed link on this connector is unstable — try another cable');
-    case 'ss-elsewhere':
-        return _("This connector's high-speed lanes are up, but this device is not on them");
+    case 'ss-cause-unknown':
+        // Translators: shown for a device that advertises SuperSpeed but
+        // linked at USB 2 speed. USBee can see THAT SuperSpeed did not come
+        // up, never WHERE it was lost, so this must stay a list of
+        // candidates — never "this cable is the problem".
+        return _('SuperSpeed did not come up on this link — the cause could be the cable, the port, or a hub in between');
     default:
         return '';
     }

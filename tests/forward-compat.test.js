@@ -238,26 +238,32 @@ print('# deriveLinkInfo — verdict composition');
 
 // --- The connector hint (BOS §6 × TRIM §6) ---------------------------------
 
-print('# deriveLinkInfo — port.peer_state explains, never warns');
+print('# deriveLinkInfo — the connector hint names no socket and no cause');
 {
     const info = deriveLinkInfo(hubWithDeadCompanion());
-    check('BelowCapability + not attached → SS-never-linked hint',
-        info.connectorHint === 'ss-never-linked');
+    check('BelowCapability + companion port → cause-agnostic hint',
+        info.connectorHint === 'ss-cause-unknown');
     check('…and it is still not a warning', info.isWarning === false);
 }
 {
-    const dev = hubWithDeadCompanion();
-    dev.properties = dev.properties.map(
-        ([k, v]) => k === 'port.peer_state' ? [k, 'reconnecting'] : [k, v]);
-    check('BelowCapability + reconnecting → unstable hint',
-        deriveLinkInfo(dev).connectorHint === 'ss-unstable');
-}
-{
-    const dev = hubWithDeadCompanion();
-    dev.properties = dev.properties.map(
-        ([k, v]) => k === 'port.peer_state' ? [k, 'configured'] : [k, v]);
-    check('BelowCapability + configured → "lanes are up elsewhere"',
-        deriveLinkInfo(dev).connectorHint === 'ss-elsewhere');
+    // THE REGRESSION THIS FIX EXISTS FOR. The kernel's `peer` symlink comes
+    // from ACPI `_PLD` (or a bare index guess) and is wrong on the project's
+    // reference machine: the USB-C socket's SuperSpeed lanes live on
+    // `usb6-port1`, not on the `usb6-port2` that `_PLD` claims. A healthy
+    // USB 3 hub on that socket therefore shows a `not attached` companion
+    // while its own SuperSpeed half is up and running at 5 Gb/s. USBee must
+    // NOT turn that into a "USB 2-only cable" verdict — the peer state's
+    // VALUE must select nothing.
+    const states = ['not attached', 'powered', 'reconnecting',
+        'configured', 'suspended', 'addressed', 'default'];
+    const tokens = new Set(states.map(state => {
+        const dev = hubWithDeadCompanion();
+        dev.properties = dev.properties.map(
+            ([k, v]) => k === 'port.peer_state' ? [k, state] : [k, v]);
+        return deriveLinkInfo(dev).connectorHint;
+    }));
+    check('every kernel peer state yields the same cause-agnostic token',
+        tokens.size === 1 && tokens.has('ss-cause-unknown'));
 }
 {
     // TRIM spec §6 row 4 — the live TP-Link UB500 case: a not-attached

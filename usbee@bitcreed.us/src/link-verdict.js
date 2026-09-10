@@ -28,12 +28,43 @@
 // null and renders neutrally.
 const KNOWN_VERDICTS = new Set(['AtCapability', 'BelowCapability', 'Degraded']);
 
-// Kernel `port.peer_state` vocabulary (TRIM spec §3.5), grouped by what it
-// means for the SuperSpeed half of a physical receptacle. Unlisted values
-// (the kernel may add more) yield no hint at all.
-const PEER_NEVER_LINKED = new Set(['not attached']);
-const PEER_UNSTABLE     = new Set(['powered', 'reconnecting']);
-const PEER_LINKED       = new Set(['configured', 'suspended', 'addressed', 'default']);
+// THE OTHER RULE THAT MATTERS: `port.peer_id` is NOT a fact about this
+// receptacle, so nothing USBee says may depend on which port it names.
+//
+// The kernel builds that link in `find_and_link_peer()`. When a root port's
+// ACPI `_PLD`-derived `location` is non-zero it matches on exact location
+// equality, first index match wins; when it is zero it falls back to plain
+// same-index matching. Which of the two produced a given `peer` is logged at
+// `pr_debug` level only — sysfs records neither the mechanism nor the
+// `location` the daemon would need to reconstruct it, and usbeehive 0.12.0
+// does not read `location` at all.
+//
+// Firmware gets this wrong in the field. On the project's reference machine
+// the sole USB-C receptacle is wired D+/D- to `usb5-port2` and its
+// SuperSpeed lanes to `usb6-port1`, while `_PLD` reports a confident,
+// internally consistent and completely wrong 1:1 index map
+// (`usb5-port2 <-> usb6-port2`). A perfectly healthy USB 3 hub on that
+// socket lands its SuperSpeed half on `6-1`, leaving the claimed companion
+// `usb6-port2` reading `not attached` — which is how 2.7.0 came to call a
+// hub running at 5 Gb/s a "USB 2-only cable". Duplicate and zero
+// `location` values are live on this board's other controllers too.
+//
+// So `port.peer_state` is used for one thing only: its PRESENCE says the
+// daemon saw a port object with some companion, which keeps the hint off
+// devices that have no connector story at all. Its VALUE selects nothing.
+// The hint below therefore states only what USBee can actually see — this
+// device's own capability and its own negotiated rate — and names no
+// socket and no single cause.
+//
+// Re-opening the specific claims needs the daemon to publish pairing
+// provenance and confidence (and root-port state, or a pre-computed
+// controller-level verdict); until then this is the one gate to change.
+//
+// Unlisted values (the kernel may add more) yield no hint at all.
+const PEER_STATES_KNOWN = new Set([
+    'not attached', 'powered', 'reconnecting',
+    'configured', 'suspended', 'addressed', 'default',
+]);
 
 // The SuperSpeed floor: a device advertising >= 5 Gbps that negotiated
 // <= 480 Mbps is the only shape where a connector's SuperSpeed lanes are a
@@ -148,21 +179,31 @@ export function deriveLinkInfo(device, propsMap) {
 }
 
 /**
- * The `port.peer_state` explanation, per BOS spec §6 × TRIM spec §6.
+ * The connector explanation, per BOS spec §6 × TRIM spec §6 — reduced to
+ * what the wire can actually support.
  *
  * Returns one of:
- *   'ss-never-linked' — the SuperSpeed half of this connector never came
- *                       up: a USB 2-only cable, or a USB-A 2.0 receptacle.
- *   'ss-unstable'     — it is powered / retraining but not configured.
- *   'ss-elsewhere'    — the fast lanes ARE up; this device is not on them.
- *                       Describe, do not instruct (spec's own wording).
- *   null              — say nothing.
+ *   'ss-cause-unknown' — this device advertises SuperSpeed and linked at
+ *                        High Speed or below. SuperSpeed did not come up
+ *                        on ITS link. The cause is somewhere on the path
+ *                        (cable, port, or an intervening hub) and USBee
+ *                        cannot tell which.
+ *   null               — say nothing.
+ *
+ * Everything this token asserts is read off the device itself: its own BOS
+ * capability, its own negotiated rate, and the daemon's own verdict. It
+ * deliberately makes NO claim about the companion port — see the
+ * `PEER_STATES_KNOWN` commentary above for why the kernel's `peer` cannot
+ * carry one.
  *
  * Guard rails, all of which mean "say nothing":
- *   - no BOS verdict at all → a `not attached` companion is just a fact
- *     about the connector, not evidence of anything (spec §6 row 4);
+ *   - no BOS verdict at all → capability is unknown, so a slow link is
+ *     just a fact, not evidence of anything (spec §6 row 4);
  *   - `AtCapability` → the link is already as fast as the device gets;
- *   - no companion port (the key is absent) → no evidence (§6 row 3);
+ *   - no companion port (the key is absent) → the daemon saw no connector
+ *     object worth talking about (§6 row 3);
+ *   - an unrecognised kernel peer state → a state this build does not
+ *     understand is not a foundation to speak from (TRIM spec §3.5);
  *   - the device is not SuperSpeed-capable, or did not land at High Speed
  *     or below → the SuperSpeed lanes are not the story.
  *
@@ -172,18 +213,13 @@ export function deriveLinkInfo(device, propsMap) {
 function deriveConnectorHint(info) {
     if (info.verdict !== 'BelowCapability' && info.verdict !== 'Degraded')
         return null;
-    if (info.peerState === '') return null;
+    if (!PEER_STATES_KNOWN.has(info.peerState)) return null;
     if (info.capableMbps === null || info.capableMbps < SUPERSPEED_MBPS)
         return null;
     if (info.negotiatedMbps <= 0 || info.negotiatedMbps > HIGHSPEED_MBPS)
         return null;
 
-    if (PEER_NEVER_LINKED.has(info.peerState)) return 'ss-never-linked';
-    if (PEER_UNSTABLE.has(info.peerState))     return 'ss-unstable';
-    if (PEER_LINKED.has(info.peerState))       return 'ss-elsewhere';
-    // Unrecognised kernel state — new values may appear without an
-    // interface bump (TRIM spec §3.5). Render neutrally: say nothing.
-    return null;
+    return 'ss-cause-unknown';
 }
 
 /**
