@@ -210,12 +210,12 @@ gnome-extensions pack usbee@bitcreed.us \
   unzip -l usbee@bitcreed.us.shell-extension.zip
   ```
 
-  As of v2.7.1 a correct zip has **24 entries / ~198 KB** uncompressed
-  (13 modules under `src/`). A zip that lost `src/` has **10 entries /
-  ~29 KB** — that is the failure signature. The entry count grows with
-  every module added under `src/`; the `src/` prefix appearing at all is
-  the real signal, so check for it rather than pattern-matching the
-  total.
+  As of quick task 260910-myu a correct zip has **25 entries / ~231 KB**
+  uncompressed (14 modules under `src/`). A zip that lost `src/` has
+  **10 entries / ~29 KB** — that is the failure signature. The entry
+  count grows with every module added under `src/`; the `src/` prefix
+  appearing at all is the real signal, so check for it rather than
+  pattern-matching the total.
 
 Install the built zip for the current user:
 
@@ -249,6 +249,21 @@ disk rather than trusting the CLI:
 ```sh
 grep '"version' ~/.local/share/gnome-shell/extensions/usbee@bitcreed.us/metadata.json
 ```
+
+The **preferences window can be tested without restarting the Shell** —
+it runs in its own process, `org.gnome.Shell.Extensions`, and loads
+`prefs.js` from disk. `gnome-extensions prefs usbee@bitcreed.us` opens
+it and its errors land in `journalctl --user`. One trap: that process is
+D-Bus-activated and *persists* after the window closes, with the ESM
+modules cached, so a second launch after a reinstall silently re-runs
+the old code. Kill it first:
+
+```sh
+pkill -f org.gnome.Shell.Extensions
+```
+
+This is the only surface that can be verified end-to-end mid-session;
+the popover needs a Shell restart (quick task 260910-myu).
 
 `gnome-extensions info usbee@bitcreed.us` keeps reporting the
 *previously loaded* version until the Shell restarts — it reads live
