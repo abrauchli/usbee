@@ -593,6 +593,42 @@ print('# popover.js contains the property dump');
         src.includes('issues: devices.filter(hasIssue).length'));
 }
 
+// --- Wrapping labels must clear St.Label's default ellipsize ----------------
+// St.Label builds its ClutterText with PANGO_ELLIPSIZE_END. ClutterText hands
+// Pango both the ellipsize mode and the wrap mode but never sets a layout
+// height, and Pango's default height of -1 means "ellipsize at line one" — so
+// a label that sets only line_wrap still renders one truncated line. That was
+// quick task 260910-ggy's bug: every value in the device property panel read
+// as "Realtek · Vendor Spec…". Guard the pairing, not the individual call
+// sites, so a new wrapping label cannot reintroduce it.
+print('# every wrapping label also clears the inherited ellipsize');
+for (const relPath of ['usbee@bitcreed.us/src/popover.js',
+    'usbee@bitcreed.us/src/empty-state.js']) {
+    const src = readSource(relPath);
+    check(`${relPath} is readable`, src.length > 0);
+    const wraps = (src.match(/\.clutter_text\.line_wrap\s*=\s*true/g) || []).length;
+    const clears = (src.match(
+        /\.clutter_text\.ellipsize\s*=\s*Pango\.EllipsizeMode\.NONE/g) || []).length;
+    check(`${relPath} sets line_wrap somewhere`, wraps > 0);
+    check(`${relPath} clears ellipsize at least once per wrapping label`,
+        clears >= wraps);
+    check(`${relPath} imports Pango`, src.includes("from 'gi://Pango'"));
+}
+
+print('# property rows never truncate the key column');
+{
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    // With an ellipsize mode set, ClutterText reports a minimum width of 0 and
+    // a squeezed row can cut the key too; ellipsize NONE without wrap pins the
+    // minimum to the natural width instead.
+    check('popover.js clears ellipsize on the key label',
+        src.includes('keyLbl.clutter_text.ellipsize = Pango.EllipsizeMode.NONE'));
+    check('popover.js clears ellipsize on the value label',
+        /valLbl\.clutter_text\.ellipsize\s*=\s*Pango\.EllipsizeMode\.NONE/.test(src));
+    check('popover.js top-aligns the key beside a wrapped value',
+        /y_align:\s*Clutter\.ActorAlign\.START/.test(src));
+}
+
 print('# device-store.js has a Tier-0 issue tier');
 {
     const src = readSource('usbee@bitcreed.us/src/device-store.js');
