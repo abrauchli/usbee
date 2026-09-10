@@ -236,6 +236,80 @@ print('# deriveLinkInfo — verdict composition');
     check('billboard-only BOS: no warning', info.isWarning === false);
 }
 
+// --- The Capability row (quick task 260910-n10) ----------------------------
+
+print('# deriveLinkInfo — the Capability row states a fact and suppresses noise');
+{
+    // The live RTL8153: SuperSpeed silicon linked at High Speed. The row
+    // exists to carry the device's own rating — and NOTHING about where that
+    // rating could be met, because this device is capped by a USB-2.0-only
+    // hub inside a monitor and no port on the machine would help.
+    check('BelowCapability with a higher capability shows the row',
+        deriveLinkInfo(belowCapability()).showCapability === true);
+    check('the row value is the daemon capability label, verbatim',
+        deriveLinkInfo(belowCapability()).capableText === 'SuperSpeed 5 Gbps');
+    check('Degraded also shows the row',
+        deriveLinkInfo(degraded()).showCapability === true);
+}
+{
+    // A row reading "Capability: 480 Mb/s" beside "Link: 480 Mb/s" is noise.
+    const dev = device({
+        link_speed_mbps: 480,
+        properties: [['usb_capable_speed_mbps', '480'],
+            ['usb_capable_speed', 'High Speed 480 Mbps'],
+            ['usb_link_verdict', 'BelowCapability']],
+    });
+    check('capability equal to the link is suppressed',
+        deriveLinkInfo(dev).showCapability === false);
+}
+{
+    // Numbers beat prose: a daemon that says "below" while reporting a
+    // capability at or under the link gets no row.
+    const dev = device({
+        link_speed_mbps: 5000,
+        properties: [['usb_capable_speed_mbps', '480'],
+            ['usb_capable_speed', 'High Speed 480 Mbps'],
+            ['usb_link_verdict', 'BelowCapability']],
+    });
+    check('a capability below the link is suppressed',
+        deriveLinkInfo(dev).showCapability === false);
+}
+{
+    check('AtCapability is suppressed — the Link row already says it',
+        deriveLinkInfo(device({
+            link_speed_mbps: 10000,
+            properties: [['usb_capable_speed_mbps', '10000'],
+                ['usb_capable_speed', 'SuperSpeed+ 10 Gbps'],
+                ['usb_link_verdict', 'AtCapability']],
+        })).showCapability === false);
+    check('no BOS at all: no row', deriveLinkInfo(noBos()).showCapability === false);
+    check('bos_suppressed: no row (capability is UNKNOWN, not slow)',
+        deriveLinkInfo(device({
+            properties: [['usb_bos_suppressed', 'true']],
+        })).showCapability === false);
+}
+{
+    // BOS spec §3.2 forward-compat. Without the numeric twin the verdict is
+    // the only evidence, so an unrecognised verdict must say nothing.
+    const withVerdict = v => deriveLinkInfo(device({
+        properties: [['usb_capable_speed', 'SuperSpeed 5 Gbps'],
+            ['usb_link_verdict', v]],
+    })).showCapability;
+    check('no numeric twin + BelowCapability still shows the row',
+        withVerdict('BelowCapability') === true);
+    check('no numeric twin + Degraded still shows the row',
+        withVerdict('Degraded') === true);
+    check('no numeric twin + AtCapability shows nothing',
+        withVerdict('AtCapability') === false);
+    check('no numeric twin + an unknown verdict shows nothing',
+        withVerdict('CosmicallyDegraded') === false);
+    check('a capability number with no label shows nothing',
+        deriveLinkInfo(device({
+            properties: [['usb_capable_speed_mbps', '5000'],
+                ['usb_link_verdict', 'BelowCapability']],
+        })).showCapability === false);
+}
+
 // --- The connector hint (BOS §6 × TRIM §6) ---------------------------------
 
 print('# deriveLinkInfo — the connector hint names no socket and no cause');
@@ -593,6 +667,16 @@ print('# popover.js contains the property dump');
     check('popover.js renders a Link row', src.includes("_('Link')"));
     check('popover.js never derives its own capable-vs-negotiated warning',
         !/capable\w*\s*>\s*(negotiated|link_speed)/i.test(src));
+    // Quick task 260910-n10 — the run-on Link row is split in two, and the
+    // half that promised a remedy is gone for good. USBee cannot see WHERE a
+    // device's capability is lost (the live case is a USB-2.0-only hub inside
+    // a monitor), so the Capability row states the rating and stops.
+    check('popover.js renders a separate Capability row',
+        src.includes("_('Capability')") && src.includes('link.showCapability'));
+    check('popover.js no longer promises a faster port',
+        !src.includes('could run at') && !/on a faster port/.test(src));
+    check('popover.js no longer prints the bcdUSB version beside the rate',
+        !src.includes("_('%s (USB %s)')"));
     check('popover.js shows hubs that have an issue',
         src.includes("d.category !== 'Hub' || hasIssue(d)"));
     check('popover.js returns the issue count for the header',

@@ -19,6 +19,30 @@ unrelated.
   then exits you are told that and pointed at `journalctl` rather than
   left staring at a button that appeared to do nothing.
 
+### Changed
+
+- The link line in a device's detail panel is now two lines, one fact
+  each: **Link** for the speed the device actually connected at, and a
+  new **Capability** line for the speed the device itself says it
+  supports. The old single line ran the two together and finished with
+  advice — "could run at SuperSpeed 5 Gbps on a faster port" — that
+  USBee has no way to stand behind. It was wrong on the machine USBee
+  is developed on: the network adapter built into the monitor there is
+  held to USB 2 speed by a USB 2.0-only hub chip *inside the monitor*,
+  so no port on the computer would have made any difference. What the
+  device can do is printed on the device and is safe to report; where
+  it could do it depends on everything between the two, which USBee
+  cannot see. The Capability line therefore stops at the fact, and is
+  left out entirely when the device is already running as fast as it
+  can. Naming the actual bottleneck has to wait for the daemon to
+  report it.
+- The Link line no longer prints a USB version number beside the speed.
+  It came from the device's `bcdUSB` field, whose usual value here,
+  2.10, only means the device carries a capability descriptor — there
+  is no USB 2.1 specification for it to refer to, and next to a speed
+  it read like a version worth acting on. The speed already says it,
+  and says it more exactly.
+
 ### Fixed
 
 - USBee no longer claims usbeehive is **not installed** when it is

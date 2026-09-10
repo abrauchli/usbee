@@ -420,8 +420,9 @@ function buildDeviceRow(device, showTech) {
 }
 
 /**
- * Render the Link block: negotiated rate, the daemon's capability verdict,
- * the connector explanation, and the one instruction the user can act on.
+ * Render the Link block: the negotiated rate, the device's own capability,
+ * the connector explanation, and the one instruction the user can act on —
+ * one fact per row.
  *
  * All of it is composed HERE from structured tokens rather than read out of
  * the daemon's own `data_rate.summary` / `.detail` prose, because the
@@ -429,10 +430,12 @@ function buildDeviceRow(device, showTech) {
  *
  * The verdict rules are not negotiable (BOS spec §6):
  *   AtCapability    — neutral confirmation.
- *   BelowCapability — informational, phrased as a possibility. On the
- *                     daemon's reference machine 2 of 2 BOS-bearing devices
- *                     land here and both are working exactly as intended,
- *                     so this must never look like a fault.
+ *   BelowCapability — informational: the bare rate on the Link row and the
+ *                     device's own rating on the Capability row, with no
+ *                     verdict prose joining them. On the daemon's reference
+ *                     machine 2 of 2 BOS-bearing devices land here and both
+ *                     are working exactly as intended, so this must never
+ *                     look like a fault — and must never suggest a fix.
  *   Degraded        — the only warning. Amber, plus a Fix row.
  *   absent/unknown  — say nothing beyond the rate itself.
  *
@@ -443,26 +446,21 @@ function buildDeviceRow(device, showTech) {
 function buildLinkBlock(detailBox, device, link) {
     if (link.rateText === '') return;
 
-    // "480 Mb/s (USB 2.1)" — the version is a daemon string rendered
-    // verbatim, so an unrecognised future value still reads correctly.
-    const base = link.usbVersion
-        // Translators: %1$s is a link rate ("480 Mb/s"), %2$s a USB version
-        // number ("2.1"). Renders as "480 Mb/s (USB 2.1)".
-        ? _('%s (USB %s)').format(link.rateText, link.usbVersion)
-        : link.rateText;
+    // The MEASURED fact, alone. `usb_version` is deliberately NOT appended:
+    // it is the daemon's canonicalised `bcdUSB`, and its commonest value here
+    // — "2.1", from `bcdUSB 2.10` — names a USB specification that does not
+    // exist. All 2.10 declares is that the device carries a BOS descriptor,
+    // yet beside a rate it reads like an actionable version number. The rate
+    // already says the same thing, more precisely. The field is still on the
+    // wire and still renders in the tile title (src/device-store.js).
+    const base = link.rateText;
 
     let valueText = base;
     if (link.verdict === 'AtCapability') {
-        // Translators: %s is "480 Mb/s (USB 2.1)". The device is running as
-        // fast as it is able to.
+        // Translators: %s is a link rate ("10 Gb/s"). The device is running
+        // as fast as it is able to. The Capability row below is suppressed
+        // in this case, so this is where "as fast as it gets" is said.
         valueText = _('%s — full capability').format(base);
-    } else if (link.verdict === 'BelowCapability' && link.capableText !== '') {
-        // Translators: %1$s is the current link ("480 Mb/s (USB 2.1)"),
-        // %2$s the speed the device advertises ("SuperSpeed 5 Gbps"). A
-        // POSSIBILITY, never a fault — the device's own vendor declares it
-        // fully functional at the slower rate.
-        valueText = _('%s — could run at %s on a faster port')
-            .format(base, link.capableText);
     } else if (link.isWarning) {
         const needed = link.floorText || link.capableText;
         valueText = needed
@@ -477,6 +475,27 @@ function buildLinkBlock(detailBox, device, link) {
         linkRow.get_children()[0].add_style_class_name('usbee-detail-warning');
     detailBox.add_child(linkRow);
 
+    // What the DEVICE can do, as its own BOS descriptor declares it — a fact
+    // about the silicon, needing no knowledge of ports, cables or hubs.
+    //
+    // It states the capability and stops. It deliberately does NOT say where
+    // that speed could be reached: the reference device is an RTL8153 behind
+    // a USB-2.0-only GL850 hub inside a monitor, so the remedy the old copy
+    // recommended could not have worked and could not have been checked.
+    // Suppressed entirely when it would only repeat the Link row — see
+    // deriveShowCapability() in src/link-verdict.js.
+    //
+    // The label is the same one usb_bos_suppressed uses (src/label-table.js)
+    // for the complementary "capability unknown" case; the two never both
+    // appear, so the panel keeps one word for one concept.
+    if (link.showCapability) {
+        detailBox.add_child(buildPropertyRow(
+            // Translators: row label for the speed the device's own
+            // descriptor says it supports, as opposed to the speed it
+            // actually negotiated on the "Link" row above.
+            _('Capability'), link.capableText, device.category));
+    }
+
     // The connector explanation. Reuses the existing 'Detail' key so the
     // panel keeps one vocabulary for "here is why".
     const hintText = connectorHintText(link.connectorHint);
@@ -485,8 +504,9 @@ function buildLinkBlock(detailBox, device, link) {
             _('Detail'), hintText, device.category));
     }
 
-    // Only a Degraded verdict earns an instruction. BelowCapability already
-    // said "could", which is as far as the evidence goes.
+    // Only a Degraded verdict earns an instruction. BelowCapability gets the
+    // Capability row and nothing more — stating the device's rating is as far
+    // as the evidence goes, and a remedy would outrun it.
     if (link.isWarning) {
         detailBox.add_child(buildPropertyRow(
             _('Fix'),
