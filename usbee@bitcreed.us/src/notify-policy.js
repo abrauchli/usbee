@@ -18,8 +18,10 @@
 //
 // Keying data-rate mutes on the device `id` is deliberate: the id is
 // topological (`usb:<bus_port>`), so "this device on this port" is exactly
-// the thing being muted — and moving it to a faster port changes the id
-// *and* clears the condition.
+// the thing being muted — replug it elsewhere and it has a different id,
+// which this mute does not cover. That follows from how ids are built; it
+// is not a claim that another port would link any faster (quick task
+// 260910-o99).
 
 /**
  * Normalise a raw `data-rate-mutes` GSettings value into `[id, headline]`

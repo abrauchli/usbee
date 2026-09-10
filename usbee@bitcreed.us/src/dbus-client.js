@@ -304,6 +304,11 @@ export const DBusClient = GObject.registerClass({
                 const rateDegradedId = this._proxy.connectSignal('DataRateDegraded',
                     (_proxy, _sender, [id, summary, detail]) => {
                         const dev = this._store?.devices?.find(d => d.id === id);
+                        // `detail` is forwarded whole and dropped by the
+                        // Notifier — the daemon composes a remedy into it
+                        // that USBee cannot back (see src/notifier.js).
+                        // Forwarded rather than discarded here so this stays
+                        // a faithful reading of the wire.
                         this._notifier?.onDataRateDegraded(
                             id, summary, detail, dev?.headline || id);
                     });

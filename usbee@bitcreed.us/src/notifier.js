@@ -10,7 +10,7 @@
 //   onDaemonVanished()      — destroy every live notification + clear map
 //   onCapabilityDegraded(portNumber, summary, detail)
 //   onCapabilityRestored(portNumber)
-//   onDataRateDegraded(id, summary, detail, headline)  — persistent, keyed
+//   onDataRateDegraded(id, summary, _detail, headline)  — persistent, keyed
 //                             on the daemon's STRING device id (quick task
 //                             260905-b0s §D-5)
 //   onDataRateRestored(id)  — dismiss-only
@@ -35,6 +35,17 @@
 //   - Daemon strings (summary, detail) flow ONLY into plain text properties.
 //     Never enable Pango markup on the notification body and never run
 //     daemon strings through template interpolation (RESEARCH §Security V5).
+//   - The daemon's DataRateDegraded `detail` is accepted and NOT rendered
+//     (quick task 260910-o99). usbeehive composes it as
+//     "Device advertises up to <rate>; move it to a faster port or use a
+//     cable that supports it" (usbeehive src/bos.rs:824), and that second
+//     clause is a remedy neither program can back — the reference machine's
+//     RTL8153 is capped by a USB-2.0-only GL850 hub INSIDE the monitor, so
+//     no port on the computer would help. USBee does not split the daemon's
+//     sentence either; splitting on the ';' would invent a claim boundary
+//     the wire does not define. It drops the string whole and composes its
+//     own body under gettext, the same discipline buildLinkBlock() follows
+//     in src/popover.js.
 
 import GLib from 'gi://GLib';
 
@@ -114,24 +125,36 @@ export class Notifier {
      * says it needs (usbeehive's `usb_link_verdict == "Degraded"`).
      *
      * Persistent and coalesced by device id, the same shape as
-     * CapabilityDegraded, because it is equally actionable: move it to a
-     * faster port, or use a cable that supports the speed. The daemon's
-     * conservatism (it flags only `negotiated < functional_floor`) is what
-     * makes this safe to raise as a notification at all — the merely
-     * informational `BelowCapability` verdict never reaches here and must
-     * never raise anything.
+     * CapabilityDegraded. What makes it safe to raise as a notification at
+     * all is the daemon's conservatism: `Degraded` means `negotiated <
+     * functional_floor`, i.e. the device's OWN `bFunctionalitySupport`
+     * declares it will not work properly at the speed it got. That is a
+     * malfunction report, not advice. The merely informational
+     * `BelowCapability` verdict never reaches here and must never raise
+     * anything.
+     *
+     * It still fires, and still at Urgency.NORMAL, even though USBee can
+     * name no remedy: the fault is real, it surfaces at plug time when the
+     * user is holding the cable, and Urgency.LOW would suppress the banner
+     * outright (gnome-shell messageTray `_onNotificationRequestBanner`
+     * returns early for LOW) — filing a genuine fault silently in the tray
+     * would trade a false remedy for a false calm. The per-device mute
+     * action is the exit for anyone who disagrees.
      *
      * The 2.5 s daemon-appear suppression applies, so a permanently
      * misplugged device does not toast on every login; it stays visible on
      * the tile and in the popover instead.
      *
      * @param {string} id        Daemon device id, e.g. 'usb:5-2.1.1'.
-     * @param {string} summary   Daemon prose, one line.
-     * @param {string} detail    Daemon prose, may be ''.
+     * @param {string} summary   Daemon prose, one line. A measurement
+     *                           ("Linked at 480 Mb/s — below the 5 Gb/s
+     *                           this device needs"); safe to show verbatim.
+     * @param {string} _detail   Daemon prose. Accepted for wire symmetry and
+     *                           deliberately NOT rendered — see the header.
      * @param {string} headline  Device name resolved by the caller from the
      *                           store; falls back to the id.
      */
-    onDataRateDegraded(id, summary, detail, headline) {
+    onDataRateDegraded(id, summary, _detail, headline) {
         if (GLib.get_monotonic_time() < this._suppressUntil) return;
 
         // LIVE read — never cache (RESEARCH §Pitfall G / §Pattern 2).
@@ -139,7 +162,7 @@ export class Notifier {
             this._settings.get_value('data-rate-mutes').deep_unpack());
         if (isDataRateMuted(entries, id)) return;
 
-        this._emitDataRateDegraded(id, summary, detail, headline);
+        this._emitDataRateDegraded(id, summary, headline);
     }
 
     /**
@@ -257,7 +280,11 @@ export class Notifier {
         // skips template literals (RESEARCH §Pitfall I).
         const title = _('USB-C Port %d — %s').format(portNumber, summary);
         // Daemon string verbatim — never wrap in _(), never markup
-        // (RESEARCH §Security V5, DIAG-02).
+        // (RESEARCH §Security V5, DIAG-02). Unlike the data-rate detail this
+        // one IS rendered: every charging detail usbeehive composes is an
+        // observation ("Cable rated for 60W, but charger can deliver 100W",
+        // usbeehive src/diagnostic.rs:96-140) and none of them prescribes a
+        // remedy. Re-audit that if the daemon's charging copy changes.
         const body = detail;
 
         const existing = this._notifications.get(portNumber);
@@ -295,7 +322,7 @@ export class Notifier {
         source.addNotification(notification);
     }
 
-    _emitDataRateDegraded(id, summary, detail, headline) {
+    _emitDataRateDegraded(id, summary, headline) {
         const source = this._ensureSource();
 
         // The daemon's summary is one line of English prose describing the
@@ -305,10 +332,20 @@ export class Notifier {
         // Translators: notification title; %1$s is a device name, %2$s the
         // daemon's one-line description of the data-rate shortfall.
         const title = _('%s — %s').format(headline || id, summary);
-        // Daemon string verbatim — never wrap in _(), never markup. It
-        // already carries the advice ("move it to a faster port or use a
-        // cable that supports it").
-        const body = detail;
+
+        // The body USBee composes itself, in place of the daemon's `detail`.
+        // It is exhaustive and needs no topology: `Degraded` means the
+        // device's own descriptor advertises more than it negotiated, so the
+        // device is not the limit by its own account, and everything else on
+        // a USB path is the cable, the receptacle or an intervening hub.
+        // Which of the three it is, USBee cannot see — so it lists them and
+        // stops, exactly as the popover's connector hint does. Naming a
+        // culprit needs the daemon to publish an upstream-chain verdict.
+        // Translators: notification body for a device that linked below the
+        // speed its own descriptor says it needs. USBee can see THAT the
+        // link fell short, never WHERE — so this must stay a list of
+        // candidates and must never tell the user to change ports.
+        const body = _('The cause could be the cable, the port, or a hub in between');
 
         const existing = this._notifications.get(id);
         if (existing) {
@@ -350,8 +387,10 @@ export class Notifier {
 
     /**
      * Mute one device's data-rate warnings. Keyed on the daemon id, which is
-     * topological — so this means "this device on this port", and moving it
-     * to a faster port both changes the id and clears the condition.
+     * topological — so this means "this device on this port", and replugging
+     * it anywhere else yields a different id, which the mute does not cover.
+     * That is a statement about how ids are formed, not a promise that a
+     * different port would link any faster.
      * The headline travels with it so the preferences row can name the
      * device rather than showing `usb:5-2.1.1`.
      *

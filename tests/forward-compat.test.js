@@ -739,7 +739,7 @@ print('# notifier.js tiers the new signals correctly');
     const src = readSource('usbee@bitcreed.us/src/notifier.js');
     check('notifier.js source is readable', src.length > 0);
     check('notifier.js handles DataRateDegraded',
-        src.includes('onDataRateDegraded(id, summary, detail, headline)'));
+        src.includes('onDataRateDegraded(id, summary, _detail, headline)'));
     check('notifier.js handles DataRateRestored', src.includes('onDataRateRestored(id)'));
     check('DataRateDegraded honours the suppression window',
         src.includes('onDataRateDegraded') && src.includes('this._suppressUntil'));
