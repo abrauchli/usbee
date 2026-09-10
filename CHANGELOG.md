@@ -8,6 +8,31 @@ unrelated.
 
 ## [Unreleased]
 
+## [2.7.1] — 2026-09-10
+
+### Fixed
+
+- Device detail panel now spells out long property values instead of
+  cutting them off. Every value row rendered as a single ellipsized
+  line — "Realtek · Vendor Spec…", "480 Mb/s (USB 2.1) —…" — which
+  defeats the point of a panel whose whole job is to say what a port
+  can actually do. `buildPropertyRow` already asked for wrapping, but
+  `St.Label` constructs its `ClutterText` with `PANGO_ELLIPSIZE_END`;
+  ClutterText forwards both the ellipsize mode and the wrap mode to
+  Pango and never sets a layout height, and Pango's default height of
+  `-1` means "ellipsize at line one", so the ellipsize mode won and
+  `line_wrap` was inert. Clearing it is what makes the wrap take
+  effect. The left-hand key label gets the same reset plus
+  `y_align: START`, so a narrow panel can no longer truncate the key
+  either — the key always renders in full, top-aligned beside a
+  wrapped value, and the value column absorbs the squeeze.
+- Daemon setup instructions no longer stop after one line. The four
+  "usbeehive not installed" / "daemon not running" / "daemon out of
+  date" / "daemon too new" empty states carried the same latent bug in
+  nine labels: any title, hint or version line long enough to need a
+  second line was silently cut instead of wrapping. All nine now pair
+  `line_wrap` with an explicit ellipsize reset.
+
 ## [2.7.0] — 2026-09-05
 
 Consumes the two purely-additive waves usbeehive shipped on the
@@ -527,6 +552,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.7.1]: https://github.com/abrauchli/usbee/releases/tag/v2.7.1
 [2.7.0]: https://github.com/abrauchli/usbee/releases/tag/v2.7.0
 [2.6.0]: https://github.com/abrauchli/usbee/releases/tag/v2.6.0
 [2.5.0]: https://github.com/abrauchli/usbee/releases/tag/v2.5.0

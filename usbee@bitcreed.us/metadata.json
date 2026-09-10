@@ -6,6 +6,6 @@
   "url": "https://github.com/abrauchli/usbee",
   "gettext-domain": "usbee@bitcreed.us",
   "settings-schema": "org.gnome.shell.extensions.usbee",
-  "version": 11,
-  "version-name": "2.7.0"
+  "version": 12,
+  "version-name": "2.7.1"
 }
