@@ -265,6 +265,16 @@ print('# the three install states reach every surface');
     check('prefs.js escapes systemd error text before an Adwaita subtitle',
         prefs.includes("_('Could not start usbeehived: %s')") &&
         prefs.includes('GLib.markup_escape_text(String(error), -1)'));
+    // Adwaita subtitles parse Pango markup and EVERY command here chains
+    // with `&&`, which Pango reads as an unterminated entity and refuses
+    // outright — "Failed to set text ... escape ampersand as &amp;" in the
+    // journal, and a row that renders wrong. Caught by opening the real
+    // preferences window during 260910-myu; it had been broken for the
+    // update-command row since that row was added.
+    check('prefs.js markup-escapes the command it puts in a subtitle',
+        prefs.includes('GLib.markup_escape_text(command, -1)'));
+    check('prefs.js still copies the RAW command to the clipboard',
+        prefs.includes('get_clipboard().set(command)'));
 }
 
 // --- Summary ----------------------------------------------------------------

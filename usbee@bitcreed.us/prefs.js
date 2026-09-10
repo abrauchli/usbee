@@ -327,7 +327,14 @@ export default class USBeePreferences extends ExtensionPreferences {
         const buildCommandRow = (title, command) => {
             const row = new Adw.ActionRow({
                 title,
-                subtitle: command,       // NOT translated — a literal command
+                // NOT translated — a literal command. It IS markup-escaped:
+                // Adwaita subtitles parse Pango markup, and every command
+                // here chains with `&&`, which Pango reads as an unterminated
+                // entity and refuses — "Failed to set text ... escape
+                // ampersand as &amp;" in the journal, and a row that renders
+                // wrong. Pango unescapes it again for display, and the
+                // clipboard write below still uses the raw command.
+                subtitle: GLib.markup_escape_text(command, -1),
                 subtitle_selectable: true,
                 visible: false,
             });
