@@ -13,13 +13,17 @@ import Adw from 'gi://Adw?version=1';
 import {ExtensionPreferences, gettext as _}
     from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-// src/daemon-status.js is the ONLY src/ module this file may import, and
-// only because it imports nothing itself. This process cannot resolve
-// resource:///org/gnome/shell/extensions/extension.js, so importing
+// src/daemon-status.js and src/service-probe.js are the ONLY src/ modules
+// this file may import, and only because neither pulls in a gnome-shell
+// resource URI: daemon-status.js imports nothing at all, service-probe.js
+// imports gi://Gio and gi://GLib and nothing else. This process cannot
+// resolve resource:///org/gnome/shell/extensions/extension.js, so importing
 // dbus-client.js or empty-state.js (which pull it in for gettext) would
 // fail at load time and leave the preferences window blank.
-import {MIN_USBEEHIVE_VERSION, UPDATE_CMD, isVersionAtLeast}
-    from './src/daemon-status.js';
+import {INSTALL_CMD, MIN_USBEEHIVE_VERSION, SETUP_CMD, UPDATE_CMD,
+    isVersionAtLeast} from './src/daemon-status.js';
+import {InstallState, invalidateInstallCache, probeInstallState,
+    refreshInstallStateAsync, startDaemonUnit} from './src/service-probe.js';
 
 // Daemon bus coordinates — must match src/dbus-client.js. The generation
 // digit lives only on the interface name, not on bus name or object path.
@@ -276,47 +280,103 @@ export default class USBeePreferences extends ExtensionPreferences {
             title: _('usbeehive daemon'),
             subtitle: _('Checking…'),
         });
+
+        // Start button. Present only when a usbeehived.service unit exists
+        // and nothing owns the bus name — with no unit there is nothing to
+        // start, and with the daemon running there is nothing to do.
+        // Quick task 260910-myu: before this, the entire stopped-daemon
+        // story in this window was one subtitle reading "Start usbeehived
+        // daemon", which said nothing about how.
+        const startButton = new Gtk.Button({
+            label: _('Start'),
+            valign: Gtk.Align.CENTER,
+            visible: false,
+            css_classes: ['suggested-action'],
+        });
+        daemonRow.add_suffix(startButton);
         aboutGroup.add(daemonRow);
+
+        // Pending timeouts owned by this group, removed on window close so
+        // no source outlives its widget (T-ke2-04, prefs-process half).
+        const pending = new Set();
+        const addTimeout = (ms, fn) => {
+            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+                pending.delete(id);
+                fn();
+                return GLib.SOURCE_REMOVE;
+            });
+            pending.add(id);
+            return id;
+        };
+
+        // The window can close while an async D-Bus reply is still in
+        // flight; touching a finalized widget from the callback is how you
+        // get GTK criticals in the journal.
+        let alive = true;
+
+        /**
+         * One copy-pasteable command row. Three of them exist — update,
+         * service setup, full install — and exactly one is ever visible,
+         * chosen by the daemon's actual state.
+         *
+         * @param {string} title    Translated row title.
+         * @param {string} command  Literal shell command; never translated,
+         *   never interpolated from bus or user data.
+         * @returns {Adw.ActionRow}
+         */
+        const buildCommandRow = (title, command) => {
+            const row = new Adw.ActionRow({
+                title,
+                subtitle: command,       // NOT translated — a literal command
+                subtitle_selectable: true,
+                visible: false,
+            });
+            const copyButton = new Gtk.Button({
+                icon_name: 'edit-copy-symbolic',
+                tooltip_text: _('Copy command'),
+                valign: Gtk.Align.CENTER,
+                css_classes: ['flat'],
+            });
+            copyButton.connect('clicked', () => {
+                // GTK4 clipboard — a different API from the Shell's
+                // St.Clipboard in src/empty-state.js. The two processes
+                // cannot share one. Gdk.Clipboard.set_text is not
+                // introspectable under GJS; set() is.
+                window.get_display().get_clipboard().set(command);
+                copyButton.icon_name = 'object-select-symbolic';
+                addTimeout(1500, () => {
+                    if (alive) copyButton.icon_name = 'edit-copy-symbolic';
+                });
+            });
+            row.add_suffix(copyButton);
+            row.set_activatable_widget(copyButton);
+            aboutGroup.add(row);
+            return row;
+        };
 
         // Shown only when the detected daemon version fails the gate — a
         // user with a healthy daemon has no use for an update command.
-        const updateRow = new Adw.ActionRow({
-            title: _('Update command'),
-            subtitle: UPDATE_CMD,       // NOT translated — a literal command
-            subtitle_selectable: true,
-            visible: false,
-        });
-        const copyButton = new Gtk.Button({
-            icon_name: 'edit-copy-symbolic',
-            tooltip_text: _('Copy command'),
-            valign: Gtk.Align.CENTER,
-            css_classes: ['flat'],
-        });
-        // Pending copy-confirmation timeout, removed on window close so the
-        // source cannot outlive the widget (T-ke2-04, prefs-process half).
-        let copyFeedbackId = 0;
-        copyButton.connect('clicked', () => {
-            // GTK4 clipboard — a different API from the Shell's St.Clipboard
-            // in src/empty-state.js. The two processes cannot share one.
-            // Gdk.Clipboard.set_text is not introspectable under GJS; set()
-            // is.
-            window.get_display().get_clipboard().set(UPDATE_CMD);
-            copyButton.icon_name = 'object-select-symbolic';
-            if (copyFeedbackId !== 0) GLib.Source.remove(copyFeedbackId);
-            copyFeedbackId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
-                copyFeedbackId = 0;
-                copyButton.icon_name = 'edit-copy-symbolic';
-                return GLib.SOURCE_REMOVE;
-            });
-        });
-        updateRow.add_suffix(copyButton);
-        updateRow.set_activatable_widget(copyButton);
-        aboutGroup.add(updateRow);
+        const updateRow = buildCommandRow(_('Update command'), UPDATE_CMD);
+        // Binary present, no systemd unit: `cargo install` is already done.
+        const setupRow = buildCommandRow(_('Set-up command'), SETUP_CMD);
+        // Neither binary nor unit.
+        const installRow = buildCommandRow(_('Install command'), INSTALL_CMD);
+
+        const hideCommandRows = () => {
+            updateRow.visible = false;
+            setupRow.visible = false;
+            installRow.visible = false;
+        };
 
         // Live daemon-version probe — async (D-15: no sync D-Bus).
         // We hold a single proxy reference; bus_watch_name re-fires on
         // owner transitions and re-reads the cached Version property.
         let proxy = null;
+        // Whether anything currently owns org.usbeehive.Devices. Maintained
+        // by the name watch and consulted by the Start watchdog, which must
+        // distinguish "systemd took the job and the daemon came up" from
+        // "systemd took the job and the daemon died on its face".
+        let daemonOnBus = false;
 
         const setRunning = () => {
             const v = proxy?.Version;
@@ -324,10 +384,11 @@ export default class USBeePreferences extends ExtensionPreferences {
             // org.usbeehive.Devices. Adwaita subtitles parse Pango markup
             // (including <a href>), so clamp AND escape before display.
             const escaped = GLib.markup_escape_text(String(v).slice(0, 32), -1);
+            startButton.visible = false;
             if (isVersionAtLeast(v, MIN_USBEEHIVE_VERSION)) {
                 // Show "usbeehived 0.11.0" when the version is acceptable.
                 daemonRow.subtitle = `usbeehived ${escaped}`;
-                updateRow.visible = false;
+                hideCommandRows();
                 return;
             }
             // Reachable but rejected. Distinguish "we couldn't read a
@@ -339,14 +400,73 @@ export default class USBeePreferences extends ExtensionPreferences {
                     .format(escaped, MIN_USBEEHIVE_VERSION)
                 : _('usbeehived — version unknown, requires %s or newer')
                     .format(MIN_USBEEHIVE_VERSION);
+            hideCommandRows();
             updateRow.visible = true;
         };
-        const setStopped = () => {
-            daemonRow.subtitle = _('Start usbeehived daemon');
-            // Nothing on the bus — starting the daemon is the right advice,
-            // not updating it.
-            updateRow.visible = false;
+
+        // Nothing owns the bus name. WHY it isn't running decides what to
+        // say and what to offer, and the three answers are different enough
+        // that collapsing them (as this window used to) is the bug.
+        const applyStoppedState = state => {
+            if (!alive) return;
+            hideCommandRows();
+            switch (state) {
+            case InstallState.INSTALLED:
+                daemonRow.subtitle =
+                    _('Installed, but not running — start it to see devices');
+                startButton.visible = true;
+                startButton.sensitive = true;
+                break;
+            case InstallState.SERVICE_MISSING:
+                daemonRow.subtitle =
+                    _('Installed, but its systemd service is not set up yet');
+                startButton.visible = false;
+                setupRow.visible = true;
+                break;
+            default:
+                daemonRow.subtitle = _('Not installed');
+                startButton.visible = false;
+                installRow.visible = true;
+                break;
+            }
         };
+
+        const setStopped = () => {
+            daemonOnBus = false;
+            // The synchronous probe answers immediately; systemd's own
+            // answer lands a moment later and corrects it if the unit lives
+            // somewhere the path list does not enumerate. Both go through
+            // the same renderer, so the row never shows a half-state.
+            applyStoppedState(probeInstallState());
+            invalidateInstallCache();
+            refreshInstallStateAsync(applyStoppedState);
+        };
+
+        startButton.connect('clicked', () => {
+            startButton.sensitive = false;
+            daemonRow.subtitle = _('Starting…');   // U+2026
+            startDaemonUnit(error => {
+                if (!alive) return;
+                if (error) {
+                    startButton.sensitive = true;
+                    // The message is systemd's, and Adwaita subtitles parse
+                    // markup — escape it like every other foreign string here.
+                    daemonRow.subtitle = _('Could not start usbeehived: %s')
+                        .format(GLib.markup_escape_text(String(error), -1));
+                    return;
+                }
+                // StartUnit only means the job was accepted. If the daemon
+                // had actually come up, the name watch would have fired and
+                // setRunning() would already own this row.
+                addTimeout(8000, () => {
+                    if (!alive || daemonOnBus) return;
+                    startButton.sensitive = true;
+                    daemonRow.subtitle = _('Started, but usbeehived did not '
+                        + 'reach the bus. Check: journalctl --user -u '
+                        + 'usbeehived -e');
+                });
+            });
+        });
 
         const ensureProxy = () => {
             if (proxy !== null) {
@@ -358,6 +478,7 @@ export default class USBeePreferences extends ExtensionPreferences {
                 USBEEHIVE_BUS_NAME,
                 USBEEHIVE_OBJECT_PATH,
                 (p, error) => {
+                    if (!alive) return;
                     if (error) {
                         setStopped();
                         return;
@@ -372,7 +493,10 @@ export default class USBeePreferences extends ExtensionPreferences {
             Gio.BusType.SESSION,
             USBEEHIVE_BUS_NAME,
             Gio.BusNameWatcherFlags.NONE,
-            () => ensureProxy(),
+            () => {
+                daemonOnBus = true;
+                ensureProxy();
+            },
             () => {
                 // Owner vanished — the cached proxy is now talking to a
                 // dead name. Drop it so the next appear constructs fresh.
@@ -384,11 +508,10 @@ export default class USBeePreferences extends ExtensionPreferences {
         // Prefs-process lifecycle teardown — mirror the Notifications
         // group pattern. The Shell-side SignalRegistry doesn't reach here.
         window.connect('close-request', () => {
+            alive = false;
             Gio.bus_unwatch_name(busWatchId);
-            if (copyFeedbackId !== 0) {
-                GLib.Source.remove(copyFeedbackId);
-                copyFeedbackId = 0;
-            }
+            for (const id of pending) GLib.Source.remove(id);
+            pending.clear();
             proxy = null;
             return false;  // don't prevent close
         });
