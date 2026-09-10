@@ -694,6 +694,20 @@ function buildPdoListBlock(detailBox, device) {
  * The value label uses .usbee-detail-value (regular weight).
  * DIAG-02: value wraps cleanly via clutter_text.line_wrap.
  *
+ * Both labels MUST clear the ellipsize mode St.Label ships with
+ * (PANGO_ELLIPSIZE_END). ClutterText hands Pango both the ellipsize mode
+ * and the wrap mode but never sets a layout height, and Pango's default
+ * height of -1 means "ellipsize at line one" — so an St.Label with
+ * line_wrap = true and the stock ellipsize still renders exactly one
+ * truncated line. Setting ellipsize = NONE is what makes the wrap above
+ * take effect (quick task 260910-ggy).
+ *
+ * Clearing it on the KEY label matters for a second reason: with an
+ * ellipsize mode set, ClutterText reports a minimum width of 0, so a
+ * squeezed row could truncate the key too. With ellipsize = NONE and no
+ * wrap, its minimum width is its natural width — the key is always shown
+ * in full and the value column absorbs the squeeze.
+ *
  * @param {string} key    Translated left-column label (e.g. 'Speed').
  * @param {string} value  Raw daemon string — rendered via .text, never markup.
  * @param {string} _category  Device category (unused here; passed for forward use).
@@ -712,8 +726,11 @@ function buildPropertyRow(key, value, _category) {
     const keyLbl = new St.Label({
         text:        key,
         x_expand:    false,
+        // Sit on the first line of a value that wrapped to several.
+        y_align:     Clutter.ActorAlign.START,
         style_class: 'usbee-detail-key',
     });
+    keyLbl.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
     const valLbl = new St.Label({
         text:        value,
@@ -721,6 +738,7 @@ function buildPropertyRow(key, value, _category) {
         style_class: 'usbee-detail-value',
     });
     // DIAG-02: multi-line diagnostic strings must wrap cleanly.
+    valLbl.clutter_text.ellipsize      = Pango.EllipsizeMode.NONE;
     valLbl.clutter_text.line_wrap      = true;
     valLbl.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
 
