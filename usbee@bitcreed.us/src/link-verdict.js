@@ -134,7 +134,7 @@ function intProp(props, key) {
  *   negotiatedMbps: number, rateText: string, usbVersion: string,
  *   verdict: ?string, capableText: string, capableMbps: ?number,
  *   capableGen: string, floorMbps: ?number, floorText: string,
- *   bosSuppressed: boolean, isWarning: boolean,
+ *   bosSuppressed: boolean, isWarning: boolean, showCapability: boolean,
  *   peerState: string, connectorHint: ?string
  * }}
  */
@@ -160,6 +160,9 @@ export function deriveLinkInfo(device, propsMap) {
     const info = {
         negotiatedMbps,
         rateText:      formatRate(negotiatedMbps),
+        // Canonicalised `bcdUSB`. Kept on the token for completeness but no
+        // longer rendered beside the rate — "2.1" (from bcdUSB 2.10, which
+        // only declares a BOS descriptor) names no real USB specification.
         usbVersion:    device?.usb_version || '',
         verdict,
         capableText:   props.get('usb_capable_speed') || '',
@@ -171,11 +174,45 @@ export function deriveLinkInfo(device, propsMap) {
         // is UNKNOWN. Never a verdict, never a warning.
         bosSuppressed: props.get('usb_bos_suppressed') === 'true',
         isWarning,
+        showCapability: false,
         peerState:     props.get('port.peer_state') || '',
         connectorHint: null,
     };
+    info.showCapability = deriveShowCapability(info);
     info.connectorHint = deriveConnectorHint(info);
     return info;
+}
+
+/**
+ * Should the popover render a separate Capability row beside the Link row?
+ *
+ * The row states ONE thing: the speed this device's own BOS descriptor says
+ * it can do. That is a fact about the silicon, defensible with no topology
+ * knowledge whatsoever — which is exactly why it is the only half of the old
+ * run-on Link copy that survives. The other half ("could run at X on a
+ * faster port") was a REMEDY, and USBee cannot back one: the reference
+ * device is an RTL8153 capped by a USB-2.0-only GL850 hub inside a monitor,
+ * where no port on the machine would help. Same discipline as the withdrawn
+ * `ss-never-linked` / `ss-unstable` / `ss-elsewhere` hints — see the
+ * `PEER_STATES_KNOWN` commentary above. Naming a culprit needs the daemon to
+ * publish an upstream-chain verdict; until then the row stops at the fact.
+ *
+ * Suppression: a Capability row that repeats the Link row is noise, so it
+ * renders only when capability EXCEEDS the negotiated rate.
+ *   - no capability label → nothing to print;
+ *   - numeric twin present → it decides, and it must be strictly greater;
+ *   - numeric twin absent → fall back to the daemon's own verdict, both of
+ *     whose "below" values mean capable > negotiated (BOS spec §6). An
+ *     `AtCapability` or unrecognised verdict says nothing.
+ *
+ * @param {object} info  Partially-built deriveLinkInfo result.
+ * @returns {boolean}
+ */
+function deriveShowCapability(info) {
+    if (info.capableText === '') return false;
+    if (info.capableMbps !== null)
+        return info.capableMbps > info.negotiatedMbps;
+    return info.verdict === 'BelowCapability' || info.verdict === 'Degraded';
 }
 
 /**
