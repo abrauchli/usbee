@@ -210,14 +210,37 @@ gnome-extensions pack usbee@bitcreed.us \
   unzip -l usbee@bitcreed.us.shell-extension.zip
   ```
 
-  A correct zip has 21 entries / ~140 KB uncompressed. A zip that lost
-  `src/` has 10 entries / ~29 KB — that is the failure signature.
+  As of v2.7.1 a correct zip has **24 entries / ~198 KB** uncompressed
+  (13 modules under `src/`). A zip that lost `src/` has **10 entries /
+  ~29 KB** — that is the failure signature. The entry count grows with
+  every module added under `src/`; the `src/` prefix appearing at all is
+  the real signal, so check for it rather than pattern-matching the
+  total.
 
 Install the built zip for the current user:
 
 ```sh
 gnome-extensions install --force usbee@bitcreed.us.shell-extension.zip
 ```
+
+> **`--force` deletes through a symlinked dev install — verified
+> 2026-09-10, quick task 260910-hrj.** If
+> `~/.local/share/gnome-shell/extensions/usbee@bitcreed.us` is a symlink
+> to this repo's `usbee@bitcreed.us/` (the symlinked-checkout dev setup
+> used for e.g. PaperWM), `install --force` removes the *contents of the
+> symlink's target* before unpacking, then replaces the symlink with a
+> real directory. That wipes the repo's extension sources — every `.js`
+> under `src/`, `metadata.json`, `schemas/`, `icons/`, the lot. Recovery
+> is `git checkout -- 'usbee@bitcreed.us/'`, which loses any uncommitted
+> work in that tree. Check the destination before installing:
+>
+> ```sh
+> ls -ld ~/.local/share/gnome-shell/extensions/usbee@bitcreed.us
+> ```
+>
+> If it is a symlink, either skip the install entirely (the symlink
+> already makes the working tree live at next login) or `rm` just the
+> symlink first — never `rm -rf` it, which follows it into the repo.
 
 `install` compiles `schemas/gschemas.compiled` itself; no separate
 `glib-compile-schemas` run is needed. Verify what actually landed on
