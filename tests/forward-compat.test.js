@@ -675,6 +675,14 @@ print('# popover.js contains the property dump');
         src.includes("_('Capability')") && src.includes('link.showCapability'));
     check('popover.js no longer promises a faster port',
         !src.includes('could run at') && !/on a faster port/.test(src));
+    // Quick task 260910-o99 — the Fix row went the same way. Degraded says
+    // the link fell below what the device needs; it says nothing about
+    // WHERE, and the live case is a USB-2.0-only hub inside a monitor, so
+    // "move it" is the wrong instruction. Guard the row, not just the
+    // sentence, or the next rewording sneaks a remedy back in.
+    check('popover.js renders no Fix row', !src.includes("_('Fix')"));
+    check('popover.js no longer tells the user to change ports or cables',
+        !/USB 3 port/.test(src) && !/Move it to/.test(src));
     check('popover.js no longer prints the bcdUSB version beside the rate',
         !src.includes("_('%s (USB %s)')"));
     check('popover.js shows hubs that have an issue',
@@ -755,6 +763,23 @@ print('# notifier.js tiers the new signals correctly');
         restoredBody !== ''
         && restoredBody.includes('.destroy(')
         && !restoredBody.includes('new MessageTray.Notification'));
+    // Quick task 260910-o99 — usbeehive composes the DataRateDegraded detail
+    // as "…; move it to a faster port or use a cable that supports it"
+    // (usbeehive src/bos.rs:824). It is daemon-asserted, so USBee neither
+    // renders it nor splits it: the body is composed here under gettext.
+    // Slice out _emitDataRateDegraded so a later _emitDegraded (charging,
+    // where the daemon's detail IS rendered and is remedy-free) cannot
+    // satisfy the guard by accident.
+    const drStart = src.indexOf('\n    _emitDataRateDegraded(');
+    const drBody = drStart < 0 ? ''
+        : src.slice(drStart, src.indexOf('\n    }', drStart));
+    check('DataRateDegraded body is composed by USBee, not the daemon',
+        drBody !== ''
+        && !/body\s*=\s*detail/.test(drBody)
+        && drBody.includes("_('The cause could be the cable, the port, or a hub in between')"));
+    check('the daemon detail never reaches a DataRateDegraded notification',
+        src.includes('onDataRateDegraded(id, summary, _detail, headline)')
+        && !/_emitDataRateDegraded\([^)]*detail/.test(src));
     check('notifier.js reads data-rate-mutes live',
         src.includes("this._settings.get_value('data-rate-mutes')"));
     check('notifier.js delegates the toast decision to notify-policy.js',

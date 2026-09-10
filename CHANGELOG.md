@@ -36,6 +36,29 @@ unrelated.
   left out entirely when the device is already running as fast as it
   can. Naming the actual bottleneck has to wait for the daemon to
   report it.
+- The notification that appears when a device connects below the speed
+  it needs no longer tells you to move it to a faster port. That
+  sentence came from usbeehive and USBee simply passed it on, but
+  neither program can stand behind it: the machine USBee is developed
+  on has a network adapter inside a monitor that is held to USB 2 speed
+  by a USB 2.0-only chip *inside the same monitor*, downstream of every
+  port the computer has. Advice that cannot be checked is worse in a
+  notification than in a panel, because a notification interrupts
+  rather than waits to be read. The notification now says what was
+  measured — the speed the device connected at, and the speed it says
+  it needs — and adds only that the cause could be the cable, the port
+  or a hub in between. It still appears, and still with the same
+  prominence: a device reporting that it will not work properly at the
+  speed it got is worth knowing about at the moment you plug it in,
+  when you are the one holding the cable. Its buttons are unchanged.
+- The device detail panel's **Fix** line is gone for the same reason.
+  It advised moving the device to a USB 3 port or changing the cable,
+  which is the same promise the Link line dropped in the change above,
+  and it was wrong in the same case. The panel keeps what it can see:
+  the speed, the speed the device needs, what the device itself says it
+  supports, and — where it applies — that a SuperSpeed connection did
+  not come up, without guessing where. A real instruction returns when
+  the daemon can point at the component responsible.
 - The Link line no longer prints a USB version number beside the speed.
   It came from the device's `bcdUSB` field, whose usual value here,
   2.10, only means the device carries a capability descriptor — there

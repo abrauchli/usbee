@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: USBee 2.7.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-10 16:55-0600\n"
+"POT-Creation-Date: 2026-09-10 17:32-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -410,11 +410,11 @@ msgstr ""
 msgid "Needs at least"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:496
+#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:498
 msgid "Capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:600
+#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:606
 msgid "Alt mode"
 msgstr ""
 
@@ -486,39 +486,43 @@ msgstr ""
 msgid "unknown — the kernel skips this device's capability descriptor"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:213
+#: usbee@bitcreed.us/src/notifier.js:236
 #, javascript-format
 msgid "Connected: %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:214
+#: usbee@bitcreed.us/src/notifier.js:237
 #, javascript-format
 msgid "Disconnected: %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:237
+#: usbee@bitcreed.us/src/notifier.js:260
 msgid "USBee"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:258
+#: usbee@bitcreed.us/src/notifier.js:281
 #, javascript-format
 msgid "USB-C Port %d — %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:307
+#: usbee@bitcreed.us/src/notifier.js:334
 #, javascript-format
 msgid "%s — %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:333
+#: usbee@bitcreed.us/src/notifier.js:348
+msgid "The cause could be the cable, the port, or a hub in between"
+msgstr ""
+
+#: usbee@bitcreed.us/src/notifier.js:370
 msgid "Don't notify for this device again"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:336 usbee@bitcreed.us/src/notifier.js:384
+#: usbee@bitcreed.us/src/notifier.js:373 usbee@bitcreed.us/src/notifier.js:423
 msgid "Open Preferences"
 msgstr ""
 
-#: usbee@bitcreed.us/src/notifier.js:377
+#: usbee@bitcreed.us/src/notifier.js:416
 msgid "Don't notify for this port again"
 msgstr ""
 
@@ -530,7 +534,7 @@ msgstr ""
 msgid "Summary"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:325 usbee@bitcreed.us/src/popover.js:504
+#: usbee@bitcreed.us/src/popover.js:325 usbee@bitcreed.us/src/popover.js:506
 msgid "Detail"
 msgstr ""
 
@@ -575,88 +579,80 @@ msgstr ""
 msgid "Technical details"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:463
+#: usbee@bitcreed.us/src/popover.js:465
 #, javascript-format
 msgid "%s — full capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:469
+#: usbee@bitcreed.us/src/popover.js:471
 #, javascript-format
 msgid "%s — below the %s this device needs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:473
+#: usbee@bitcreed.us/src/popover.js:475
 msgid "Link"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:512
-msgid "Fix"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:513
-msgid "Move it to a USB 3 port or use a cable that supports it"
-msgstr ""
-
-#: usbee@bitcreed.us/src/popover.js:532
+#: usbee@bitcreed.us/src/popover.js:538
 msgid ""
 "SuperSpeed did not come up on this link — the cause could be the cable, the "
 "port, or a hub in between"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:558
+#: usbee@bitcreed.us/src/popover.js:564
 msgid "Ports"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:560
+#: usbee@bitcreed.us/src/popover.js:566
 #, javascript-format
 msgid "%d of %d in use"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:569
+#: usbee@bitcreed.us/src/popover.js:575
 #, javascript-format
 msgid "%d of %d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:570
+#: usbee@bitcreed.us/src/popover.js:576
 #, javascript-format
 msgid "%d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:572
+#: usbee@bitcreed.us/src/popover.js:578
 msgid "Bus power"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:601 usbee@bitcreed.us/src/popover.js:643
+#: usbee@bitcreed.us/src/popover.js:607 usbee@bitcreed.us/src/popover.js:649
 msgid "DisplayPort"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:602 usbee@bitcreed.us/src/popover.js:644
+#: usbee@bitcreed.us/src/popover.js:608 usbee@bitcreed.us/src/popover.js:650
 msgid "Thunderbolt"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:606
+#: usbee@bitcreed.us/src/popover.js:612
 msgid ""
 "Alt mode failed: no USB-PD on this connection — use a USB-C port and cable "
 "that support Power Delivery"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:640
+#: usbee@bitcreed.us/src/popover.js:646
 msgid "USB 2"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:641
+#: usbee@bitcreed.us/src/popover.js:647
 msgid "USB 3"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:642
+#: usbee@bitcreed.us/src/popover.js:648
 msgid "USB 4"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:692
+#: usbee@bitcreed.us/src/popover.js:698
 msgid "Charger PDOs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:713
+#: usbee@bitcreed.us/src/popover.js:719
 msgid "◀"
 msgstr ""
 

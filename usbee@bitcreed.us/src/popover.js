@@ -506,15 +506,17 @@ function buildLinkBlock(detailBox, device, link) {
             _('Detail'), hintText, device.category));
     }
 
-    // No verdict earns an instruction — not even Degraded. The Fix row used
-    // to read "Move it to a USB 3 port or use a cable that supports it", and
-    // quick task 260910-n10 left it in place only because that task was
-    // scoped to BelowCapability. The evidence is no better here: Degraded
-    // says the link fell below what the device's own descriptor needs, which
-    // is a measurement, and says nothing at all about where the shortfall
-    // happened. The reference device is an RTL8153 capped by a USB-2.0-only
-    // GL850 hub inside a monitor, where moving it is exactly the wrong
-    // advice. The amber Link row states the shortfall and the Detail row
+    // No verdict earns an instruction — not even Degraded. The Fix row that
+    // used to sit here told the user to change the port or the cable; quick
+    // task 260910-n10 left it in place only because that task was scoped to
+    // BelowCapability (260910-o99 withdrew it). The evidence is no better
+    // for Degraded either: the verdict says the link fell below what the
+    // device's own descriptor needs, which is a measurement, and says
+    // nothing at all about where the shortfall happened. The reference
+    // device is an RTL8153 capped by a USB-2.0-only GL850 hub inside a
+    // monitor, where relocating it is exactly the wrong advice — no port on
+    // the machine is upstream of that hub. The amber Link row states the
+    // shortfall and the Detail row
     // lists the candidates; naming a culprit — and only then a fix — needs
     // the daemon's upstream-chain verdict (link.culprit / link.action).
 }
