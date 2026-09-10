@@ -26,10 +26,19 @@
 // The not-installed detection uses Gio.File.query_exists() (synchronous local
 // stat() on a small known set of paths — explicitly permitted under D-15,
 // which prohibits sync D-Bus and network calls, not local file probes).
+//
+// Every wrapping label here pairs `line_wrap = true` with
+// `ellipsize = Pango.EllipsizeMode.NONE`, and the pair is not optional:
+// St.Label builds its ClutterText with PANGO_ELLIPSIZE_END, ClutterText
+// forwards both the ellipsize mode and the wrap mode to Pango without ever
+// setting a layout height, and Pango's default height of -1 means
+// "ellipsize at line one". Set only line_wrap and the label still renders a
+// single truncated line (quick task 260910-ggy).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -205,12 +214,14 @@ export function buildEmptyStateItem() {
         style_class: 'usbee-empty-state-title',
         x_expand: true,
     });
+    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     title.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Run this command, then this list will populate automatically:'),
         x_expand: true,
     });
+    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     hint.clutter_text.line_wrap = true;
 
     box.add_child(title);
@@ -252,6 +263,7 @@ export function buildDaemonNotInstalledItem() {
         style_class: 'usbee-empty-state-title',
         x_expand: true,
     });
+    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     title.clutter_text.line_wrap = true;
 
     // Quick task 260905-b0s §D-7: the command used to be only
@@ -263,6 +275,7 @@ export function buildDaemonNotInstalledItem() {
         text: _('Install usbeehive, then start it. This list will populate automatically:'),
         x_expand: true,
     });
+    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     hint.clutter_text.line_wrap = true;
 
     box.add_child(title);
@@ -319,6 +332,7 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
         style_class: 'usbee-empty-state-title',
         x_expand: true,
     });
+    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     title.clutter_text.line_wrap = true;
 
     // T-ke2-01: `detectedVersion` is bus data — any session process can own
@@ -334,12 +348,14 @@ export function buildDaemonOutOfDateItem(detectedVersion = '') {
             .format(MIN_USBEEHIVE_VERSION, detected),
         x_expand: true,
     });
+    versions.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     versions.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Update usbeehive, then restart the daemon. This list will populate automatically:'),
         x_expand: true,
     });
+    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     hint.clutter_text.line_wrap = true;
 
     box.add_child(title);
@@ -386,12 +402,14 @@ export function buildDaemonTooNewItem() {
         style_class: 'usbee-empty-state-title',
         x_expand: true,
     });
+    title.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     title.clutter_text.line_wrap = true;
 
     const hint = new St.Label({
         text: _('Update the USBee extension from the Extensions app, then reload the session.'),
         x_expand: true,
     });
+    hint.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
     hint.clutter_text.line_wrap = true;
 
     box.add_child(title);
