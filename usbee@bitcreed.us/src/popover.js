@@ -420,9 +420,8 @@ function buildDeviceRow(device, showTech) {
 }
 
 /**
- * Render the Link block: the negotiated rate, the device's own capability,
- * the connector explanation, and the one instruction the user can act on —
- * one fact per row.
+ * Render the Link block: the negotiated rate, the device's own capability
+ * and the connector explanation — one fact per row, and no instruction.
  *
  * All of it is composed HERE from structured tokens rather than read out of
  * the daemon's own `data_rate.summary` / `.detail` prose, because the
@@ -436,7 +435,10 @@ function buildDeviceRow(device, showTech) {
  *                     machine 2 of 2 BOS-bearing devices land here and both
  *                     are working exactly as intended, so this must never
  *                     look like a fault — and must never suggest a fix.
- *   Degraded        — the only warning. Amber, plus a Fix row.
+ *   Degraded        — the only warning. Amber Link row, and the Detail row
+ *                     when the SuperSpeed shape applies. No Fix row: USBee
+ *                     can see THAT the link fell short, never WHERE, so it
+ *                     has no remedy to give (quick task 260910-o99).
  *   absent/unknown  — say nothing beyond the rate itself.
  *
  * @param {St.BoxLayout} detailBox
@@ -504,15 +506,17 @@ function buildLinkBlock(detailBox, device, link) {
             _('Detail'), hintText, device.category));
     }
 
-    // Only a Degraded verdict earns an instruction. BelowCapability gets the
-    // Capability row and nothing more — stating the device's rating is as far
-    // as the evidence goes, and a remedy would outrun it.
-    if (link.isWarning) {
-        detailBox.add_child(buildPropertyRow(
-            _('Fix'),
-            _('Move it to a USB 3 port or use a cable that supports it'),
-            device.category));
-    }
+    // No verdict earns an instruction — not even Degraded. The Fix row used
+    // to read "Move it to a USB 3 port or use a cable that supports it", and
+    // quick task 260910-n10 left it in place only because that task was
+    // scoped to BelowCapability. The evidence is no better here: Degraded
+    // says the link fell below what the device's own descriptor needs, which
+    // is a measurement, and says nothing at all about where the shortfall
+    // happened. The reference device is an RTL8153 capped by a USB-2.0-only
+    // GL850 hub inside a monitor, where moving it is exactly the wrong
+    // advice. The amber Link row states the shortfall and the Detail row
+    // lists the candidates; naming a culprit — and only then a fix — needs
+    // the daemon's upstream-chain verdict (link.culprit / link.action).
 }
 
 /**
