@@ -30,7 +30,8 @@ progress:
 Phase: 04 (devices2-wire-shape-migration-v2-0) — COMPLETE
 Plan: 3 of 3 (all done; EGO upload held for v2.1.0)
 Status: v2.0.0 tagged + on GitHub; warning badge (1306c09) + device-change notifications + show-technical-details toggle landed (286c85f); ready for v2.1.0 release + first EGO submission
-Last activity: 2026-08-21 -- Quick task 260821-ke2: one store-owned daemon tri-state (pill and popover can no longer disagree); required + detected usbeehive version shown wherever the gate fails; copy buttons on every displayed command; `.pot` regenerated (was stale since 2.2.0)
+Last activity: 2026-09-10 -- Quick task 260910-ggy: device property-panel values wrap instead of ellipsizing (St.Label's inherited `PANGO_ELLIPSIZE_END` was cancelling the `line_wrap` the code already set); same fix in `empty-state.js`; CI guard on the pairing
+Previous activity: 2026-08-21 -- Quick task 260821-ke2: one store-owned daemon tri-state (pill and popover can no longer disagree); required + detected usbeehive version shown wherever the gate fails; copy buttons on every displayed command; `.pot` regenerated (was stale since 2.2.0)
 
 ## Performance Metrics
 
@@ -155,6 +156,7 @@ Steps:
 | fast | EGO AI-reference pass: drop non-throwing try/catch around destroy()/disconnect()/dispose() in notifier.js, popover.js, signal-registry.js (+ orphaned `kind` field) | 2026-08-21 | c3db795 | — |
 | 260822-hkn | Document the canonical `gnome-extensions pack` invocation (`--podir` + both `--extra-source` flags) in CLAUDE.md as shared source of truth with release.yml; warn that a wrong `--extra-source` is silently ignored and yields a `src/`-less zip; add local install + on-disk verification steps and the `gnome-extensions info` staleness caveat | 2026-08-22 | fc3c574 | [260822-hkn-document-pack-and-local-install](./quick/260822-hkn-document-pack-and-local-install/) |
 | 260905-b0s | Consume usbeehive's additive BOS + connector/power/quirks/hwdb waves on the unchanged Devices5: per-device Link row + capability verdict, `port.peer_state` explanation, hub occupancy/bus power, tile issue tier, `DataRateDegraded`/`DataRateRestored` notifications + `data-rate-mutes`, `product_db`, `DaemonState.TOO_NEW`. **Reverses LOCKED decision 260526-c6p D-2** — unknown property keys are now tech-gated (24 new daemon keys would otherwise render as a property dump). Three new zero-import modules (`property-policy.js`, `link-verdict.js`, `notify-policy.js`) and a revived, CI-wired `tests/forward-compat.test.js` | 2026-09-05 | 168790e, ed57431, 9033390, f3ed164, 59e6c5c, e09e2dd | [260905-b0s-bos-trim-consumer-ui](./quick/260905-b0s-bos-trim-consumer-ui/) |
+| 260910-ggy | Property-panel values no longer truncate: `St.Label`'s default `PANGO_ELLIPSIZE_END` was silently disabling the `line_wrap` `buildPropertyRow()` already asked for (Pango ellipsizes at line one when no layout height is set), so every value rendered as one cut-off line. Cleared on both the value and the key label (+ `y_align: START`), same nine-label fix in `empty-state.js`, and a CI guard on the `line_wrap`/`ellipsize` pairing | 2026-09-10 | 683708f, d6806ed, cedb4e8 | [260910-ggy-fix-ellipsized-value-text-in-the-device-](./quick/260910-ggy-fix-ellipsized-value-text-in-the-device-/) |
 
 ---
 *State initialized: 2026-05-11 after roadmap creation*
