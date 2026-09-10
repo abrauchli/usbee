@@ -12,6 +12,21 @@ unrelated.
 
 ### Fixed
 
+- The detail line under a slow link no longer blames the cable it
+  cannot see. A device that advertises SuperSpeed but connects at USB 2
+  speed used to be told which part of *this* socket was at fault — "the
+  SuperSpeed lines of this connector never linked — a USB 2-only cable
+  or port", or that they were unstable, or up but in use elsewhere.
+  Those three verdicts all rested on the kernel's idea of which USB 3
+  port shares a socket with which USB 2 port, which comes from the
+  motherboard firmware and is often wrong. On the machine USBee is
+  developed on it is wrong: a healthy USB 3 hub running at 5 Gb/s would
+  have been reported as being on a USB 2-only cable. USBee now says
+  only what it can actually establish — "SuperSpeed did not come up on
+  this link — the cause could be the cable, the port, or a hub in
+  between" — and lets you rule the candidates out yourself. The more
+  specific wording can come back once the daemon can tell USBee how
+  much to trust the port pairing.
 - Device detail panel now spells out long property values instead of
   cutting them off. Every value row rendered as a single ellipsized
   line — "Realtek · Vendor Spec…", "480 Mb/s (USB 2.1) —…" — which
