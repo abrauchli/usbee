@@ -359,7 +359,8 @@ function buildDeviceRow(device, showTech) {
     // non-hubs and for any hub whose daemon omitted the keys.
     buildHubBlock(detailBox, device, props);
 
-    // Billboard alt mode — facts only, with exactly one actionable case.
+    // Billboard alt mode — facts only, with exactly one case stated
+    // unprompted.
     buildAltModeBlock(detailBox, device, props);
 
     // DISP-04 / UX-1: flag devices the daemon could not bind a driver to.
@@ -587,11 +588,22 @@ function buildHubBlock(detailBox, device, props) {
  *
  * Facts only — there is no warning flag and no signal for alt mode, and a
  * Billboard device reporting NotAttempted is very often simply not
- * connected through a Type-C port at all. The single actionable
- * combination is Unsuccessful + `no_usb_pd`, which is a cable or port that
- * cannot do USB Power Delivery; that one gets an always-visible row. Every
- * other state is left to the technical tier via the usb_altmode_state
- * property row.
+ * connected through a Type-C port at all. The single combination worth an
+ * always-visible row is Unsuccessful + `no_usb_pd`: the daemon has NAMED
+ * the cause, so USBee can state it without inferring anything. Every other
+ * state is left to the technical tier via the usb_altmode_state property
+ * row.
+ *
+ * The row states a condition and stops — it does not tell the user to go
+ * get a PD-capable port and cable. Quick task 260910-p91: the information
+ * is sound (unlike the claims 260910-n10 and 260910-o99 withdrew — there
+ * `no_usb_pd` has no counterpart, the cause was never named), but the
+ * imperative is not. This machine has no PD controller at all
+ * (`/sys/class/typec` is absent), so "use a port and cable that support
+ * Power Delivery" resolves to "buy a different motherboard": an
+ * instruction to do something the reader may have no path to, phrased as
+ * though they do. Saying PD is absent, and what PD needs, carries the same
+ * information without the promise that a fix is within reach.
  *
  * @param {St.BoxLayout} detailBox
  * @param {object} device
@@ -609,7 +621,12 @@ function buildAltModeBlock(detailBox, device, props) {
 
     const altRow = buildPropertyRow(
         keyText,
-        _('Alt mode failed: no USB-PD on this connection — use a USB-C port and cable that support Power Delivery'),
+        // Translators: shown when a Billboard device reports that alt mode
+        // did not come up because USB Power Delivery is missing. State the
+        // condition only — PD needs a capable port AND a capable cable, and
+        // on a machine with no PD controller there is nothing the reader can
+        // swap. Must not become "use a USB-C port and cable that support…".
+        _('Alt mode did not start — this connection does not provide USB Power Delivery, which needs both a port and a cable that support it'),
         device.category);
     altRow.get_children()[0].add_style_class_name('usbee-detail-warning');
     detailBox.add_child(altRow);

@@ -296,10 +296,17 @@ export function deriveHubInfo(device, propsMap) {
  * Billboard alt-mode facts (BOS spec §3.3/§7.4).
  *
  * Facts only: there is no warning flag and no signal for alt mode. The one
- * genuinely actionable combination is `Unsuccessful` together with a
- * `no_usb_pd` failure reason — a cable or port that cannot do USB-PD.
+ * combination worth stating unprompted is `Unsuccessful` together with a
+ * `no_usb_pd` failure reason — the daemon has NAMED the cause, so this is
+ * the rare case where USBee can say why without inferring topology.
  * `NotAttempted` is very often just a device on a USB-A-to-C cable and must
  * read as a quiet fact, never a fault.
+ *
+ * `actionable` is a row selector, not a promise that the reader has a fix
+ * available: it means "this one earns an always-visible row". The row it
+ * selects states the condition and stops (quick task 260910-p91) — a
+ * machine with no PD controller cannot act on a PD instruction at all. The
+ * name is kept because tests/forward-compat.test.js pins it.
  *
  * @param {object} device
  * @param {Map<string,string>} [propsMap]
