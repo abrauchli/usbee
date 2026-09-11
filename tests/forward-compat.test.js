@@ -683,6 +683,24 @@ print('# popover.js contains the property dump');
     check('popover.js renders no Fix row', !src.includes("_('Fix')"));
     check('popover.js no longer tells the user to change ports or cables',
         !/USB 3 port/.test(src) && !/Move it to/.test(src));
+    // Quick task 260910-p91 — the alt-mode `no_usb_pd` row was the last
+    // remedy-shaped string. Unlike the two above, its cause IS named by the
+    // daemon, so the row survives; only the mood changed. Guard the
+    // TRANSLATED LITERALS, not the file text: both the docstring and the
+    // Translators comment quote the withdrawn imperative on purpose, and a
+    // plain substring test would fail on the very comments that keep the
+    // decision from being forgotten.
+    {
+        const literals = [...src.matchAll(/_\('((?:[^'\\]|\\.)*)'\)/g)]
+            .map(m => m[1]);
+        check('popover.js has translatable strings to inspect',
+            literals.length > 0);
+        check('no popover.js string tells the user to go get hardware',
+            !literals.some(s => /\buse a\b/i.test(s)));
+        check('the alt-mode PD row states a condition, not an instruction',
+            literals.some(s => s.startsWith('Alt mode did not start —')
+                && /does not provide USB Power Delivery/.test(s)));
+    }
     check('popover.js no longer prints the bcdUSB version beside the rate',
         !src.includes("_('%s (USB %s)')"));
     check('popover.js shows hubs that have an issue',

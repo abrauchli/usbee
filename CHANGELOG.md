@@ -65,6 +65,20 @@ unrelated.
   is no USB 2.1 specification for it to refer to, and next to a speed
   it read like a version worth acting on. The speed already says it,
   and says it more exactly.
+- The alt-mode line for a display or dock that could not start because
+  Power Delivery is missing now states the condition instead of issuing
+  an instruction. It used to end "use a USB-C port and cable that
+  support Power Delivery". The fact behind it is sound — unlike the
+  advice withdrawn above, this one rests on a cause the daemon names
+  outright, and a Power Delivery connection really does need both a
+  capable port and a capable cable. What was wrong is that it was
+  phrased as something to go and do. On a machine with no Power
+  Delivery controller at all, which is the machine USBee is developed
+  on, that instruction amounts to "buy a different motherboard". The
+  line now reads "Alt mode did not start — this connection does not
+  provide USB Power Delivery, which needs both a port and a cable that
+  support it": the same information, without the suggestion that a fix
+  is within reach.
 
 ### Fixed
 

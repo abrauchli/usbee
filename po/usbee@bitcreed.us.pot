@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: USBee 2.7.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-10 17:32-0600\n"
+"POT-Creation-Date: 2026-09-10 18:16-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -410,11 +410,11 @@ msgstr ""
 msgid "Needs at least"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:498
+#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:499
 msgid "Capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:606
+#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:618
 msgid "Alt mode"
 msgstr ""
 
@@ -534,7 +534,7 @@ msgstr ""
 msgid "Summary"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:325 usbee@bitcreed.us/src/popover.js:506
+#: usbee@bitcreed.us/src/popover.js:325 usbee@bitcreed.us/src/popover.js:507
 msgid "Detail"
 msgstr ""
 
@@ -563,96 +563,96 @@ msgstr ""
 msgid "Cable trust"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:370
+#: usbee@bitcreed.us/src/popover.js:371
 msgid "Driver"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:370
+#: usbee@bitcreed.us/src/popover.js:371
 msgid "not bound"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:380
+#: usbee@bitcreed.us/src/popover.js:381
 msgid "Subclass"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:410
+#: usbee@bitcreed.us/src/popover.js:411
 msgid "Technical details"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:465
+#: usbee@bitcreed.us/src/popover.js:466
 #, javascript-format
 msgid "%s — full capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:471
+#: usbee@bitcreed.us/src/popover.js:472
 #, javascript-format
 msgid "%s — below the %s this device needs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:475
+#: usbee@bitcreed.us/src/popover.js:476
 msgid "Link"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:538
+#: usbee@bitcreed.us/src/popover.js:539
 msgid ""
 "SuperSpeed did not come up on this link — the cause could be the cable, the "
 "port, or a hub in between"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:564
+#: usbee@bitcreed.us/src/popover.js:565
 msgid "Ports"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:566
+#: usbee@bitcreed.us/src/popover.js:567
 #, javascript-format
 msgid "%d of %d in use"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:575
+#: usbee@bitcreed.us/src/popover.js:576
 #, javascript-format
 msgid "%d of %d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:576
+#: usbee@bitcreed.us/src/popover.js:577
 #, javascript-format
 msgid "%d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:578
+#: usbee@bitcreed.us/src/popover.js:579
 msgid "Bus power"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:607 usbee@bitcreed.us/src/popover.js:649
+#: usbee@bitcreed.us/src/popover.js:619 usbee@bitcreed.us/src/popover.js:666
 msgid "DisplayPort"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:608 usbee@bitcreed.us/src/popover.js:650
+#: usbee@bitcreed.us/src/popover.js:620 usbee@bitcreed.us/src/popover.js:667
 msgid "Thunderbolt"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:612
+#: usbee@bitcreed.us/src/popover.js:629
 msgid ""
-"Alt mode failed: no USB-PD on this connection — use a USB-C port and cable "
-"that support Power Delivery"
+"Alt mode did not start — this connection does not provide USB Power "
+"Delivery, which needs both a port and a cable that support it"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:646
+#: usbee@bitcreed.us/src/popover.js:663
 msgid "USB 2"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:647
+#: usbee@bitcreed.us/src/popover.js:664
 msgid "USB 3"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:648
+#: usbee@bitcreed.us/src/popover.js:665
 msgid "USB 4"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:698
+#: usbee@bitcreed.us/src/popover.js:715
 msgid "Charger PDOs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:719
+#: usbee@bitcreed.us/src/popover.js:736
 msgid "◀"
 msgstr ""
 
