@@ -34,6 +34,12 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
   task 260514-mq0 on 2026-05-14).
 - **i18n**: English strings only for v1, but every user-visible
   string must go through gettext
+- **Distribution**: USBee is *not currently submitted* to
+  extensions.gnome.org. Releases end at the GitHub Release. The
+  EGO-derived rules above and below — no bundled binaries, no minified
+  or obfuscated JS, documented API surface only — are kept anyway, so
+  that submission remains possible and because each is good practice
+  in its own right.
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:research/STACK.md -->
@@ -92,6 +98,13 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 | **GSettings (`org.gnome.shell.extensions.usbee`)** | TOML under `$XDG_CONFIG_HOME/usbee/config.toml` | Never — `PROJECT.md` constraint pins GSettings. Also: GSettings is Flatpak-safe and visible in dconf-editor. |
 | **`tokio` (Rust)** | `async-std` (Rust) | Only relevant if a Rust binary existed. It doesn't. GJS uses GLib's main loop — there is no choice to make. |
 ## What NOT to Use
+> The EGO-review language in this table is **prospective**. USBee is not
+> currently submitted to extensions.gnome.org, so no reviewer is
+> rejecting anything today. The rules are kept because each stands on
+> its own merits and because keeping them leaves submission possible at
+> zero cost — read "EGO reviewers will reject it" as "this would block
+> submission, and is a bad idea regardless".
+
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
 | **A bundled Rust / C / Go binary inside the EGO zip** | EGO review guidelines: *"Extensions MUST NOT include binary executables or libraries."* Rejected on submission. | All logic in `usbeehive` (already a separate process). If something is missing from the D-Bus surface, add it upstream — per the user's explicit project rule. |
@@ -114,7 +127,7 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 - No build step required — GJS picks up the new file on Shell restart.
 - Ship that capability as a **separate Flatpak app** with its own D-Bus name on the session bus.
 - USBee still stays pure-GJS; it just talks to two D-Bus services instead of one.
-- Do **not** try to smuggle a binary into the EGO submission.
+- Do **not** try to smuggle a binary into the packed zip — it cannot run in the Shell process, and it would foreclose EGO submission.
 - Modern Quick Settings (`SystemIndicator` / `addExternalIndicator`) exists from 45 onward, but several method signatures changed in 46. Test under 45 explicitly before adding `"45"` to `shell-version`.
 - Currently out of scope — `PROJECT.md` pins min 46.
 - Reuse `lib/dbus.js` semantics in a thin Rust wrapper around `zbus` (same XML).
@@ -169,14 +182,34 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ## Release Process
 
-USBee is a pure GJS GNOME Shell extension. The EGO submission rules
-forbid bundled binaries, so there is no Rust/C/Go build step and no
-crates.io / cargo publish path. The release artifact is a single
-`.shell-extension.zip` built by `gnome-extensions pack`.
+USBee is a pure GJS GNOME Shell extension. It keeps the EGO rule against
+bundled binaries (see **Distribution status** below), so there is no
+Rust/C/Go build step and no crates.io / cargo publish path. The release
+artifact is a single `.shell-extension.zip` built by
+`gnome-extensions pack`.
+
+### Distribution status
+
+**USBee is not currently published on extensions.gnome.org.** A release
+ends at the GitHub Release created by `.github/workflows/release.yml`;
+users install the attached zip with `gnome-extensions install`.
+
+The EGO-derived constraints are nevertheless kept, deliberately: no
+bundled binaries, no minified or obfuscated JavaScript, and only the
+documented API surface (no private `St.*` / `Main.panel._*` internals).
+Each is good practice on its own merits — a binary could not run in the
+Shell process anyway, unreadable JS is unreviewable by anyone, and
+private internals break every six months — and keeping them costs
+nothing while leaving submission possible should it ever be wanted. CI
+runs EGO's `shexli` lint for the same reason
+(`.github/workflows/ci.yml`).
+
+Read every EGO reference in this document in that light: a standard the
+project holds itself to, not a review it is undergoing.
 
 Version fields in `usbee@bitcreed.us/metadata.json`:
-- `version` — EGO-required monotonic integer. Increment by 1 per
-  EGO submission. Unrelated to semver.
+- `version` — monotonic integer, EGO's required shape for the field.
+  Increment by 1 per release. Unrelated to semver.
 - `version-name` — human-facing semver string. Bumped per release.
 
 ### Packing and local install (development)
@@ -292,17 +325,17 @@ the new code (Xorg: `Alt+F2` → `r`; Wayland: full re-login).
    - Runs `gnome-extensions pack` to build the zip.
    - Extracts the matching `CHANGELOG.md` section as release notes.
    - Creates the GitHub Release and attaches the zip.
-6. **Upload to EGO** — download the zip from the GitHub Release page
-   and submit it at <https://extensions.gnome.org/upload/>. EGO review
-   is manual and asynchronous.
+
+   **That is the end of the release.** There is no upload step — see
+   **Distribution status** above.
 
 ### What does *not* get published
 
 - The zip is never committed to the repo (`.gitignore` excludes it).
-- `.planning/` is never shipped to EGO (the extension dir is the only
-  source for `gnome-extensions pack`). It stays in the repo for
-  decision provenance; use `/gsd-pr-branch` to filter it out of
-  external PR branches.
+- `.planning/` never ships (the extension dir is the only source for
+  `gnome-extensions pack`). It stays in the repo for decision
+  provenance; use `/gsd-pr-branch` to filter it out of external PR
+  branches.
 - No crates.io step. USBee has no Rust component.
 
 <!-- GSD:skills-start source:skills/ -->

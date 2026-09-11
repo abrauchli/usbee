@@ -139,6 +139,13 @@ busctl --user monitor org.usbeehive.Devices1
 
 ## What NOT to Use
 
+> The EGO-review language in this table is **prospective**. USBee is not
+> currently submitted to extensions.gnome.org, so no reviewer is
+> rejecting anything today. The rules are kept because each stands on
+> its own merits and because keeping them leaves submission possible at
+> zero cost — read "EGO reviewers will reject it" as "this would block
+> submission, and is a bad idea regardless".
+
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
 | **A bundled Rust / C / Go binary inside the EGO zip** | EGO review guidelines: *"Extensions MUST NOT include binary executables or libraries."* Rejected on submission. | All logic in `usbeehive` (already a separate process). If something is missing from the D-Bus surface, add it upstream — per the user's explicit project rule. |
@@ -168,7 +175,7 @@ busctl --user monitor org.usbeehive.Devices1
 **If a future capability genuinely cannot live in `usbeehive` (highly unlikely):**
 - Ship that capability as a **separate Flatpak app** with its own D-Bus name on the session bus.
 - USBee still stays pure-GJS; it just talks to two D-Bus services instead of one.
-- Do **not** try to smuggle a binary into the EGO submission.
+- Do **not** try to smuggle a binary into the packed zip — it cannot run in the Shell process, and it would foreclose EGO submission.
 
 **If the project needs to support GNOME 45 in addition to 46+:**
 - Modern Quick Settings (`SystemIndicator` / `addExternalIndicator`) exists from 45 onward, but several method signatures changed in 46. Test under 45 explicitly before adding `"45"` to `shell-version`.

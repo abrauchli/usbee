@@ -42,11 +42,10 @@ usbeehived --install-service
 systemctl --user enable --now usbeehived
 ```
 
-### From extensions.gnome.org (recommended)
+USBee is not published on extensions.gnome.org — install it from a
+GitHub Release or from source.
 
-*(EGO listing pending review — link will land here once approved.)*
-
-### From a GitHub Release
+### From a GitHub Release (recommended)
 
 1. Download `usbee@bitcreed.us.shell-extension.zip` from the
    [latest release](https://github.com/abrauchli/usbee/releases/latest).

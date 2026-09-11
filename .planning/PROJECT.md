@@ -164,9 +164,11 @@ usbeehive version constant and the first EGO submission.
 - **Target distros**: Fedora Workstation, Ubuntu GNOME (24.04 LTS,
   25.04, and the upcoming LTS), Arch + GNOME, openSUSE Tumbleweed
   GNOME — all of which ship GNOME 46+ today or imminently.
-- **Distribution channels**: GNOME Extensions (EGO) as the primary
-  channel; Flatpak considered for any companion binary if the chosen
-  architecture needs one.
+- **Distribution channels**: GNOME Extensions (EGO) was assumed at
+  project inception to be the primary channel. It is not one today —
+  USBee has not been submitted, and releases end at the GitHub Release
+  (see the **Distribution** constraint below). Flatpak considered for
+  any companion binary if the chosen architecture needs one.
 - **Existing repo state**: Greenfield. Only `USBEE.md` and this
   planning directory exist; no source code yet.
 
@@ -190,6 +192,12 @@ usbeehive version constant and the first EGO submission.
   task 260514-mq0 on 2026-05-14).
 - **i18n**: English strings only for v1, but every user-visible
   string must go through gettext
+- **Distribution**: USBee is *not currently submitted* to
+  extensions.gnome.org. Releases end at the GitHub Release. The
+  EGO-derived rules above and below — no bundled binaries, no minified
+  or obfuscated JS, documented API surface only — are kept anyway, so
+  that submission remains possible and because each is good practice
+  in its own right.
 
 ## Key Decisions
 
