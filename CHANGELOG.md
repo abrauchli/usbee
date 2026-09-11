@@ -8,6 +8,8 @@ unrelated.
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-09-10
+
 ### Added
 
 - A **Start usbeehive daemon** button, in both the Quick Settings
@@ -663,6 +665,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.8.0]: https://github.com/abrauchli/usbee/releases/tag/v2.8.0
 [2.7.1]: https://github.com/abrauchli/usbee/releases/tag/v2.7.1
 [2.7.0]: https://github.com/abrauchli/usbee/releases/tag/v2.7.0
 [2.6.0]: https://github.com/abrauchli/usbee/releases/tag/v2.6.0
