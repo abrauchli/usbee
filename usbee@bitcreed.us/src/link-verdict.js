@@ -384,6 +384,121 @@ export function resolveHeadline(device, propsMap) {
 }
 
 /**
+ * Format a device's USB vendor:product identifier the way `lsusb` prints
+ * it — lowercase, zero-padded to four hex digits, colon separated
+ * (`1d6b:0003`). Byte-for-byte the daemon's own `{:04x}:{:04x}`, which
+ * matters: usbIdRowText() below compares this against the headline, and the
+ * daemon substitutes exactly this form when a device publishes no product
+ * name (usbeehive display_name()/headline).
+ *
+ * Says nothing — '' — in four cases, because a wrong ID is worse than no ID
+ * (WR-05 discipline):
+ *   - either field absent, non-integer or negative;
+ *   - either field above 0xffff: the USB descriptor fields are 16-bit, so a
+ *     larger value means a malformed wire, and a 5-digit ID would be an
+ *     invention;
+ *   - BOTH fields exactly 0 — Type-C port entries hardcode the pair to zero
+ *     (usbeehive summary.rs), and `0000:0000` on every port row means
+ *     nothing. A lone zero is a legal half of a real ID and is not a
+ *     sentinel.
+ *
+ * Total by construction: `undefined` in, '' out, never a throw. This runs
+ * inside gnome-shell's own process (quick task 260915-ikd).
+ *
+ * @param {object} device  Unpacked DeviceEntry from the store.
+ * @returns {string}  'vvvv:pppp', or '' when there is nothing to say.
+ */
+export function formatUsbId(device) {
+    const vid = device?.vendor_id;
+    const pid = device?.product_id;
+    if (!Number.isInteger(vid) || !Number.isInteger(pid)) return '';
+    if (vid < 0 || pid < 0 || vid > 0xffff || pid > 0xffff) return '';
+    if (vid === 0 && pid === 0) return '';
+    const hex = n => n.toString(16).padStart(4, '0');
+    return `${hex(vid)}:${hex(pid)}`;
+}
+
+/**
+ * The USB ID as the detail panel should render it — '' when the row would
+ * be redundant.
+ *
+ * The row exists for the case a "show the ID when the name is unknown"
+ * feature would MISS: the daemon already falls back to the formatted ID
+ * itself when `product` is empty, so the unnamed device reads `1d6b:0003`
+ * in the popover today. What is nowhere on screen is the ID of a device
+ * whose name DOES resolve ("Intel Wireless"), which is precisely the one a
+ * user needs to look the exact part up. So the row renders always, and only
+ * suppression is derived here.
+ *
+ * Suppressed when the headline already CONTAINS the ID (trimmed,
+ * case-insensitive substring). That covers the daemon's own fallback and
+ * any composed headline that embeds the ID; a substring rule cannot lose
+ * information, because if the ID is inside the headline the ID is already on
+ * screen. Case-insensitive so a future daemon emitting uppercase still
+ * suppresses, even though both sides lowercase today.
+ *
+ * @param {object} device  Unpacked DeviceEntry from the store.
+ * @param {Map<string,string>} [propsMap]  Pre-built props Map (optional).
+ * @returns {string}  '' when the row should not render.
+ */
+export function usbIdRowText(device, propsMap) {
+    const id = formatUsbId(device);
+    if (id === '') return '';
+    const headline = resolveHeadline(device, propsMap).trim().toLowerCase();
+    return headline.includes(id) ? '' : id;
+}
+
+/**
+ * The index of the single highest-power PDO a charger+cable pair
+ * advertises — the ceiling, against which the active PDO is read. That
+ * comparison ("what it is using versus the most it could use") is the direct
+ * answer to USBee's core charging question, and it is derived entirely from
+ * `pdo_list[].power_mw`, which is already on the wire. No daemon change.
+ *
+ * Returns null — say nothing — when:
+ *   - the argument is absent or not an array;
+ *   - fewer than two PDOs: with one, the ceiling is trivially itself and the
+ *     marker carries zero information;
+ *   - no entry has a finite `power_mw > 0`;
+ *   - the maximum is not UNIQUE: marking several rows "max" is noise, not
+ *     guidance;
+ *   - the winning entry's `index` is not an integer. The popover matches on
+ *     `pdo.index === maxIdx` exactly as the active check one line above it
+ *     does, so a well-formed wire gets the daemon's own index back; a
+ *     malformed one gets no marker rather than a marker on every indexless
+ *     row.
+ *
+ * @param {Array<object>} pdoList  device.pdo_list from src/device-store.js.
+ * @returns {?number}  The daemon's `index` for the ceiling PDO.
+ */
+export function maxPdoIndex(pdoList) {
+    if (!Array.isArray(pdoList) || pdoList.length < 2) return null;
+
+    // `bestPower` starts at 0 and only powers > 0 are considered, so the
+    // first valid entry always clears the `>` test — no separate "is this
+    // the first one" branch is needed. `unique` is re-armed on every strict
+    // new maximum and cleared by any tie with the current one, so a tie that
+    // is later beaten (100, 100, 200) still yields 200.
+    let bestPower = 0;
+    let bestIndex = null;
+    let unique = false;
+    for (const pdo of pdoList) {
+        const power = pdo?.power_mw;
+        if (!Number.isFinite(power) || power <= 0) continue;
+        if (power > bestPower) {
+            bestPower = power;
+            bestIndex = pdo.index;
+            unique = true;
+        } else if (power === bestPower) {
+            unique = false;
+        }
+    }
+
+    if (!unique || !Number.isInteger(bestIndex)) return null;
+    return bestIndex;
+}
+
+/**
  * True when a device's *data* story (as opposed to its charging story)
  * warrants the issue treatment: amber border, issue-first sort, tile tier.
  *

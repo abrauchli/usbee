@@ -26,8 +26,8 @@ import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateIt
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
-import {deriveAltMode, deriveHubInfo, deriveLinkInfo, isBuiltInDevice, propsOf,
-    resolveHeadline} from './link-verdict.js';
+import {deriveAltMode, deriveHubInfo, deriveLinkInfo, isBuiltInDevice,
+    maxPdoIndex, propsOf, resolveHeadline, usbIdRowText} from './link-verdict.js';
 import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
 
 /**
@@ -390,6 +390,25 @@ function buildDeviceRow(device, showTech) {
     if (device.subtitle) {
         detailBox.add_child(buildPropertyRow(
             _('Summary'), device.subtitle, device.category));
+    }
+
+    // Exact vendor:product ID (quick task 260915-ikd). Placed between the
+    // Summary and the Link block so the panel reads what it is → its exact
+    // ID → how it is connected; identity belongs beside identity.
+    //
+    // Rendered ALWAYS, not merely as a name fallback: the daemon already
+    // substitutes the formatted ID for a missing product name itself, so the
+    // gap this closes is the opposite one — a device whose name resolves
+    // ("Intel Wireless") leaves the googleable part number nowhere on
+    // screen. usbIdRowText() owns every suppression case (headline already
+    // carries it, the 0000:0000 port rows, malformed values).
+    const usbIdText = usbIdRowText(device, props);
+    if (usbIdText !== '') {
+        // Translators: label for a device's USB vendor:product identifier,
+        // e.g. "1d6b:0003". Matches the wording `lsusb` prints ("ID
+        // 1d6b:0003"), which is where a user meets the term elsewhere.
+        detailBox.add_child(buildPropertyRow(
+            _('USB ID'), usbIdText, device.category));
     }
 
     // Link speed + BOS verdict (quick task 260905-b0s §D-1/D-3/D-4).
@@ -782,6 +801,14 @@ function buildTransportPillStrip(device, props) {
  * PDO is marked with a leading ◀ and a bolder key label (belt-and-braces:
  * either `is_active` true or `index === active_pdo_index` flips it).
  *
+ * The CEILING PDO — the highest power this charger and cable advertise — is
+ * marked too (quick task 260915-ikd), because "what it is using versus the
+ * most it could use" is the direct answer to why a laptop charges slowly.
+ * The two markers compose across COLUMNS rather than competing in one: the
+ * active marker owns the key (◀ plus bold), the ceiling appends "(max)" to
+ * the key and bolds the VALUE, whose numbers are what the reader came for.
+ * A PDO that is both therefore renders as one coherent row.
+ *
  * Voltage rendering:
  *   - PPS PDOs (kind === 'PPS') and PDOs that advertise a max_voltage
  *     greater than voltage render as a range "5–11 V".
@@ -801,9 +828,16 @@ function buildPdoListBlock(detailBox, device) {
     detailBox.add_child(buildPropertyRow(
         _('Charger PDOs'), '', device.category));
 
+    // Derived client-side from `pdo_list[].power_mw`, which is already on the
+    // wire — no daemon change. null when the list has one entry (the ceiling
+    // would be itself), when the maximum is tied, or when nothing advertises
+    // real power; the marker is then simply not rendered.
+    const maxIdx = maxPdoIndex(pdos);
+
     for (const pdo of pdos) {
         const isActive = pdo.is_active === true
             || pdo.index === device.active_pdo_index;
+        const isMax = maxIdx !== null && pdo.index === maxIdx;
 
         const isRange = pdo.kind === 'PPS'
             || (pdo.max_voltage_mv > pdo.voltage_mv);
@@ -819,13 +853,23 @@ function buildPdoListBlock(detailBox, device) {
         if (pdo.kind && pdo.kind !== 'Fixed')
             valueText += ` (${pdo.kind})`;
 
-        const keyText = isActive
+        let keyText = isActive
             ? `${_('◀')} ${pdo.index}`
             : `${pdo.index}`;
+        if (isMax) {
+            // Translators: %s is the PDO's number, already carrying the ◀
+            // active marker when this is also the one in use. "max" means
+            // the highest power this charger and cable ADVERTISE — not the
+            // power being drawn. Keep it an annotation; the parentheses are
+            // what let it sit beside a number in any locale.
+            keyText = _('%s (max)').format(keyText);
+        }
 
         const pdoRow = buildPropertyRow(keyText, valueText, device.category);
         if (isActive)
             pdoRow.add_style_class_name('usbee-pdo-active');
+        if (isMax)
+            pdoRow.add_style_class_name('usbee-pdo-max');
         detailBox.add_child(pdoRow);
     }
 }

@@ -160,6 +160,16 @@
     font-weight: bold;
 }
 
+/* Charger ceiling marker (quick task 260915-ikd). The two PDO markers
+ * compose across COLUMNS instead of competing in one: active owns the KEY
+ * (◀ plus the bold above), the ceiling bolds the VALUE — the numbers are
+ * what the reader came to see — so the frequent case of a PDO that is both
+ * the active one and the highest advertised renders as one coherent row
+ * rather than two badges fighting over the same column. */
+.usbee-pdo-max .usbee-detail-value {
+    font-weight: bold;
+}
+
 /* Trailing link-rate caption on a collapsed device row (quick task
  * 260905-b0s). Dim and width-capped so it can never crowd out the
  * headline — the headline ellipsizes, the rate must not. */
