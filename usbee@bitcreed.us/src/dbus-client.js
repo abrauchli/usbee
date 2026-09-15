@@ -45,6 +45,15 @@ const INTERFACE_NAME = 'org.usbeehive.Devices5';
 // path; Diagnose is reserved for the preferences "Diagnose now" per-port
 // button. Both remain unused at call sites in v2.0 — do not strip as dead
 // code.
+//
+// SnapshotJson was removed here in quick task 260915-ib9, and the difference
+// from those two is the whole point: Refresh and Diagnose are declared
+// against a planned call site, whereas SnapshotJson had none and no feature
+// stood on it. The daemon still exports the method — this dropped only
+// USBee's client-side declaration, so `busctl` and the usbeehive CLI reach
+// it exactly as before. That is what the tier comments in
+// src/property-policy.js still mean by "reachable through the daemon's
+// SnapshotJson".
 const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
@@ -58,9 +67,6 @@ const IFACE_XML = `<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Intro
     <method name="Diagnose">
       <arg type="i" direction="in" name="port_number"/>
       <arg type="(bsssb)" direction="out" name="diagnostic"/>
-    </method>
-    <method name="SnapshotJson">
-      <arg type="s" direction="out" name="json"/>
     </method>
     <method name="Refresh">
       <arg type="u" direction="out" name="device_count"/>

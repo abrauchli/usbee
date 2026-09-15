@@ -12,9 +12,6 @@
       <arg type="i" direction="in" name="port_number"/>
       <arg type="(bsssb)" direction="out" name="diagnostic"/>
     </method>
-    <method name="SnapshotJson">
-      <arg type="s" direction="out" name="json"/>
-    </method>
     <method name="Refresh">
       <arg type="u" direction="out" name="device_count"/>
     </method>

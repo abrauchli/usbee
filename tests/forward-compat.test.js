@@ -737,6 +737,22 @@ print('# dbus-client.js carries both new signals');
     check('the interface name is still Devices5',
         src.includes("INTERFACE_NAME = 'org.usbeehive.Devices5'"));
 
+    // Quick task 260915-ib9 — SnapshotJson had no call site in USBee and no
+    // feature behind it, so the client-side declaration went. The daemon
+    // still exports it; this asserts only that USBee stopped declaring it.
+    // Both sides must drop it together, or the byte-equality check below
+    // fails — which is exactly the guard that makes this safe.
+    check('IFACE_XML no longer declares SnapshotJson',
+        !src.includes('<method name="SnapshotJson">'));
+    check('dbus-iface.xml no longer declares SnapshotJson',
+        !xml.includes('<method name="SnapshotJson">'));
+    check('no SnapshotJson call site survives in dbus-client.js',
+        !/SnapshotJson\w*\s*\(/.test(src));
+    // The two methods that ARE declared against a planned call site stay —
+    // this removal must not be read as licence to strip them as well.
+    check('Refresh is still declared', src.includes('<method name="Refresh">'));
+    check('Diagnose is still declared', src.includes('<method name="Diagnose">'));
+
     // Byte-equality invariant between the literal and the on-disk XML,
     // less the doctype (Plan 04-02 Task 13).
     const literal = src.split('const IFACE_XML = `')[1]?.split('`;')[0] ?? '';

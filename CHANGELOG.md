@@ -32,6 +32,13 @@ unrelated.
   instead of "No USB devices attached", which was simply untrue in that
   case.
 
+### Removed
+
+- USBee no longer declares the daemon's `SnapshotJson` method in its own copy
+  of the D-Bus interface. Nothing in USBee ever called it and no feature
+  stood on it. The daemon still provides it, so capturing a JSON snapshot for
+  a bug report with `busctl` or the usbeehive CLI works exactly as before.
+
 ## [2.8.0] — 2026-09-10
 
 ### Added
