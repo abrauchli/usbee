@@ -24,6 +24,17 @@ unrelated.
   guessing: a device the kernel says nothing about is treated as unknown and
   stays visible. A built-in device that currently has a problem also stays
   visible, so the tile can never count an issue the list will not show.
+- **The exact USB ID of a device** now appears in its detail panel, written
+  the way `lsusb` prints it — `1d6b:0003`. A product name tells you what a
+  device is called; the ID tells you which part it actually is, and it is
+  what a search engine, a driver page or a bug report wants. It is left out
+  wherever it would say nothing: USB-C port rows, which have no ID of their
+  own, and devices whose displayed name is already the ID.
+- **The most a charger can offer is now marked** in the Charger PDOs list,
+  alongside the existing marker for the one in use. Reading the two together
+  is the whole question USBee exists to answer — whether a slow charge is
+  the charger's own ceiling or something below it giving way. The marker
+  appears only when there is a single clear highest entry to point at.
 
 ### Changed
 
