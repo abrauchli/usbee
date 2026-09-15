@@ -8,6 +8,30 @@ unrelated.
 
 ## [Unreleased]
 
+### Added
+
+- **The filter switches now live in the popover too**, under a collapsible
+  **Options** row, so changing what the device list shows no longer costs a
+  trip out to the preferences window. The same switches appear in both
+  places and stay in step in both directions — flip one in the popover and
+  the preferences window follows it, and the other way round.
+- A new **Hide built-in devices** filter, in both the popover and the
+  preferences window. It leaves out hardware soldered into the machine — the
+  webcam, the fingerprint reader, the Bluetooth radio — which cannot be
+  unplugged and so rarely belongs in a list of what is attached. It is off
+  by default, so nothing disappears from anyone's list on upgrade. It uses
+  the daemon's own report of whether a device is removable rather than
+  guessing: a device the kernel says nothing about is treated as unknown and
+  stays visible. A built-in device that currently has a problem also stays
+  visible, so the tile can never count an issue the list will not show.
+
+### Changed
+
+- When the filters rather than the hardware are what emptied the device
+  list, the popover now says **"All devices hidden by the current filters"**
+  instead of "No USB devices attached", which was simply untrue in that
+  case.
+
 ## [2.8.0] — 2026-09-10
 
 ### Added

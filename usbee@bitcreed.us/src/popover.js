@@ -26,8 +26,8 @@ import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateIt
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
-import {deriveAltMode, deriveHubInfo, deriveLinkInfo, propsOf, resolveHeadline}
-    from './link-verdict.js';
+import {deriveAltMode, deriveHubInfo, deriveLinkInfo, isBuiltInDevice, propsOf,
+    resolveHeadline} from './link-verdict.js';
 import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
 
 /**
@@ -75,6 +75,8 @@ export function populateDeviceRows(section, store, extension) {
     // the technical tier of src/property-policy.js inside buildDeviceRow's
     // property-bag loop.
     const showTech  = settings.get_boolean('show-technical-details');
+    // Quick task 260915-i4w — same live-read discipline as the three above.
+    const hideBuiltin = settings.get_boolean('hide-builtin-devices');
     let devices = store.devices;
     if (hideEmpty)
         devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
@@ -87,10 +89,30 @@ export function populateDeviceRows(section, store, extension) {
     // benign case) stays hidden.
     if (!showHubs)
         devices = devices.filter(d => d.category !== 'Hub' || hasIssue(d));
+    // Quick task 260915-i4w — hide hardware soldered into the machine. The
+    // test is the daemon's own `mount == 'fixed'` (see isBuiltInDevice); an
+    // absent mount is never treated as built-in. The `|| hasIssue(d)` escape
+    // hatch is the one the hub filter above already carries, for the same
+    // reason (260905-b0s): the header subtitle counts issues, so hiding an
+    // issue-carrying row would report a fault with no row to open it.
+    //
+    // The three filters are independent predicates over the same list, so
+    // they compose in any order rather than conflicting — and they do not
+    // overlap: hide-empty-ports only ever matches TypeCPort rows, which
+    // carry no `mount` and so are never built-in.
+    if (hideBuiltin)
+        devices = devices.filter(d => !isBuiltInDevice(d) || hasIssue(d));
 
     if (devices.length === 0) {
+        // An empty list after filtering is a different fact from an empty
+        // bus. Saying "No USB devices attached" when the user's own filters
+        // are what emptied the list is simply false, and the Options
+        // switches that caused it are one row below — so name the cause.
+        const emptiedByFilters = store.devices.length > 0;
         section.addMenuItem(new PopupMenu.PopupMenuItem(
-            _('No USB devices attached'),
+            emptiedByFilters
+                ? _('All devices hidden by the current filters')
+                : _('No USB devices attached'),
             {reactive: false, can_focus: false},
         ));
         return {count: 0, issues: 0};
@@ -130,6 +152,71 @@ export function populateDeviceRows(section, store, extension) {
         count:  devices.length,
         issues: devices.filter(hasIssue).length,
     };
+}
+
+/**
+ * Build the popover's collapsible "Options" submenu — the same filter
+ * switches the preferences window carries, one click from the device list
+ * instead of a window launch away (quick task 260915-i4w).
+ *
+ * Each switch is two-way bound to its GSettings key: toggling the row writes
+ * the key, and an external write — the preferences window, `gsettings set`,
+ * dconf-editor — moves the row. PopupSwitchMenuItem.setToggleState() sets the
+ * underlying switch without emitting 'toggled' (only toggle()/activate do),
+ * so the settings->row direction should not feed back into the row->settings
+ * one. The `syncing` latch below makes that independent of the Shell keeping
+ * that behaviour: if a future release ever did emit, two bound surfaces would
+ * write to each other in a loop, and that is too expensive a bet to leave
+ * resting on an undocumented internal.
+ *
+ * Every handler is registered with the SignalRegistry, so disable() releases
+ * both the per-row 'toggled' connections and the GSettings 'changed::' ones
+ * (D-14). `settings` is also kept alive by those closures.
+ *
+ * @param {Gio.Settings} settings    The extension's GSettings.
+ * @param {SignalRegistry} registry  Lifecycle registry for the handlers.
+ * @returns {PopupMenu.PopupSubMenuMenuItem}  The collapsed Options submenu.
+ */
+export function buildOptionsSection(settings, registry) {
+    const item = new PopupMenu.PopupSubMenuMenuItem(_('Options'), true);
+    item.icon.icon_name = 'view-list-symbolic';
+
+    // The `hide-*` keys are shown with their own polarity rather than
+    // inverted into a "Show ..." phrasing, so each switch reads word for
+    // word like its preferences-window twin — two names for one setting is
+    // how a user ends up believing there are two settings.
+    const toggles = [
+        ['hide-empty-ports',       _('Hide empty USB-C ports')],
+        ['hide-builtin-devices',   _('Hide built-in devices')],
+        ['show-hubs',              _('Show USB hubs')],
+        ['show-technical-details', _('Show technical details')],
+    ];
+
+    for (const [key, label] of toggles) {
+        const row = new PopupMenu.PopupSwitchMenuItem(
+            label, settings.get_boolean(key));
+
+        let syncing = false;
+
+        const toggledId = row.connect('toggled', (_row, state) => {
+            if (syncing) return;
+            settings.set_boolean(key, state);
+        });
+        registry.addSignal(row, toggledId);
+
+        const changedId = settings.connect(`changed::${key}`, () => {
+            const value = settings.get_boolean(key);
+            if (row.state === value) return;
+            syncing = true;
+            row.setToggleState(value);
+            syncing = false;
+        });
+        registry.addSignal(settings, changedId);
+
+        item.menu.addMenuItem(row);
+    }
+
+    return item;
 }
 
 /**

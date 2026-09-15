@@ -83,6 +83,32 @@ export function propsOf(device) {
 }
 
 /**
+ * Is this device physically built into the machine — soldered down, or
+ * otherwise not removable by the user?
+ *
+ * The daemon answers this directly and USBee does not infer it. usbeehive
+ * emits the `mount` property from the kernel's sysfs `removable` attribute,
+ * and only ever as the literal token `fixed` or `removable` — the match arm
+ * that builds it drops `unknown` and the empty string rather than
+ * forwarding them (usbeehive src/summary.rs, src/usb.rs). So an ABSENT
+ * `mount` means "the kernel did not say", which is emphatically not "built
+ * in": treating absence as built-in would hide arbitrary hotplugged devices
+ * on any machine whose sysfs is quiet. Only a positive `fixed` counts.
+ *
+ * Type-C port rows carry no `mount` at all — the property is derived from a
+ * USB device's sysfs node, not from a port — so this is always false for
+ * them, and the `hide-builtin-devices` filter composes cleanly with
+ * `hide-empty-ports` (which targets exactly those port rows) instead of
+ * overlapping it.
+ *
+ * @param {object} device  Device record from src/device-store.js.
+ * @returns {boolean}  True only when the daemon positively reported `fixed`.
+ */
+export function isBuiltInDevice(device) {
+    return propsOf(device).get('mount') === 'fixed';
+}
+
+/**
  * Format a link rate for display. The daemon emits raw Mbit/s; USBee owns
  * the human form (CONTEXT D-2.0-04).
  *

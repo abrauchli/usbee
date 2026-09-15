@@ -17,9 +17,9 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {populateDeviceRows, populateEmptyState, populateNotInstalledState,
-    populateOutOfDateState, populateServiceNotSetUpState, populateTooNewState}
-    from './popover.js';
+import {buildOptionsSection, populateDeviceRows, populateEmptyState,
+    populateNotInstalledState, populateOutOfDateState,
+    populateServiceNotSetUpState, populateTooNewState} from './popover.js';
 import {InstallState, probeInstallState, refreshInstallStateAsync}
     from './service-probe.js';
 import {DaemonState} from './daemon-status.js';
@@ -126,6 +126,29 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this.title    = initTxt.title;
         this.subtitle = initTxt.subtitle;
         this.checked  = store.daemonRunning;
+
+        // Quick task 260915-i4w — the filter switches, reachable from the
+        // popover instead of only from the preferences window. Added before
+        // buildPrefsRow() so the menu reads: devices → Options → separator →
+        // Preferences…. One Gio.Settings instance is shared with the Options
+        // rows; getSettings() mints a fresh object per call, and two of them
+        // watching the same keys would be pure waste.
+        this._settings = extension.getSettings();
+        this._optionsItem = buildOptionsSection(this._settings, registry);
+        this.menu.addMenuItem(this._optionsItem);
+
+        // A filter change has to repaint the list that filter governs.
+        // populateDeviceRows() re-reads every key on rebuild, so this only
+        // needs to trigger the rebuild, not carry the new value. Rebuilding
+        // only while the popover is open follows D-11 — a closed popover
+        // repopulates on its next open anyway.
+        for (const key of ['hide-empty-ports', 'hide-builtin-devices',
+            'show-hubs', 'show-technical-details']) {
+            const filterId = this._settings.connect(`changed::${key}`, () => {
+                if (this.menu.isOpen) this._rebuildPopover();
+            });
+            registry.addSignal(this._settings, filterId);
+        }
 
         // STATE-04 — Preferences… menu row with lock-screen gating.
         // We physically destroy/recreate the row on sessionMode 'updated'

@@ -30,7 +30,7 @@ import GLib from 'gi://GLib';
 
 import {
     deriveAltMode, deriveHubInfo, deriveLinkInfo, formatRate, hasLinkIssue,
-    propsOf, resolveHeadline,
+    isBuiltInDevice, propsOf, resolveHeadline,
 } from '../usbee@bitcreed.us/src/link-verdict.js';
 import {
     GATED_KEYS, HIDDEN_KEYS, KNOWN_KEYS, isTechnicalKey, propertyTier,
@@ -617,6 +617,97 @@ print('# notify-policy — connect/disconnect toast discipline');
     // Forward-compat: an unrecognised scope value default-allows, matching
     // the GSettings <choices> guard.
     check('unknown scope default-allows', shouldToastDeviceChange('someday', usb) === true);
+}
+
+// --- Built-in device filter (quick task 260915-i4w) -------------------------
+
+print('# isBuiltInDevice — only a positive "fixed" counts');
+{
+    check('mount=fixed is built in',
+        isBuiltInDevice(device({properties: [['mount', 'fixed']]})) === true);
+    check('mount=removable is not built in',
+        isBuiltInDevice(device({properties: [['mount', 'removable']]})) === false);
+    // usbeehive drops "unknown" and "" rather than forwarding them, so an
+    // absent mount is the ordinary case on a quiet sysfs. It must never read
+    // as built-in — that would hide arbitrary hotplugged hardware.
+    check('an absent mount is NOT built in',
+        isBuiltInDevice(device({properties: []})) === false);
+    check('a device with no properties at all is NOT built in',
+        isBuiltInDevice(device({})) === false);
+    check('undefined is NOT built in', isBuiltInDevice(undefined) === false);
+    // Match the token exactly: a future daemon emitting "Fixed" must not
+    // silently start hiding hardware on a case-insensitive compare.
+    check('the token is matched exactly, not case-insensitively',
+        isBuiltInDevice(device({properties: [['mount', 'Fixed']]})) === false);
+    // Type-C port rows carry no mount at all — which is what lets
+    // hide-builtin-devices and hide-empty-ports compose instead of overlap.
+    check('a Type-C port row is never built in',
+        isBuiltInDevice(device({category: 'TypeCPort', properties: []})) === false);
+}
+
+print('# popover.js composes the built-in filter with the existing ones');
+{
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    check('popover.js reads hide-builtin-devices',
+        src.includes("get_boolean('hide-builtin-devices')"));
+    check('popover.js delegates the test to link-verdict.js',
+        src.includes('isBuiltInDevice(d)'));
+    // The escape hatch that keeps the header's issue count honest — the same
+    // one the hub filter carries (260905-b0s).
+    check('a built-in device with an issue is still shown',
+        src.includes('!isBuiltInDevice(d) || hasIssue(d)'));
+    check('popover.js distinguishes filtered-empty from bus-empty',
+        src.includes("_('All devices hidden by the current filters')"));
+    check('popover.js keeps the bus-empty string for a genuinely empty bus',
+        src.includes("_('No USB devices attached')"));
+}
+
+print('# the popover Options section is wired in both directions');
+{
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    check('popover.js exports buildOptionsSection',
+        src.includes('export function buildOptionsSection'));
+    check('the Options rows are PopupSwitchMenuItems',
+        src.includes('new PopupMenu.PopupSwitchMenuItem'));
+    check('row -> settings direction writes the key',
+        src.includes('settings.set_boolean(key, state)'));
+    check('settings -> row direction moves the switch',
+        src.includes('row.setToggleState(value)'));
+    // The latch that keeps the two bound surfaces from writing to each other
+    // in a loop if setToggleState() ever starts emitting 'toggled'.
+    check('the two-way binding cannot storm between the surfaces',
+        src.includes('let syncing = false')
+        && src.includes('if (syncing) return;'));
+    check('every Options handler is tracked for disable()',
+        src.includes('registry.addSignal(row, toggledId)')
+        && src.includes('registry.addSignal(settings, changedId)'));
+
+    // Every key the Options section offers must be a real schema key. A typo
+    // is silent until runtime, where GSettings aborts the process on get/set
+    // of an unknown key — inside gnome-shell that is the whole session.
+    const schema = readSource(
+        'usbee@bitcreed.us/schemas/org.gnome.shell.extensions.usbee.gschema.xml');
+    for (const key of ['hide-empty-ports', 'hide-builtin-devices',
+        'show-hubs', 'show-technical-details']) {
+        check(`the Options section offers ${key}`, src.includes(`'${key}'`));
+        check(`${key} is declared in the schema`,
+            schema.includes(`<key name="${key}" type="b">`));
+    }
+
+    const tile = readSource('usbee@bitcreed.us/src/tile.js');
+    check('tile.js mounts the Options section',
+        tile.includes('buildOptionsSection('));
+    check('tile.js repaints the list when a filter changes',
+        tile.includes('if (this.menu.isOpen) this._rebuildPopover();'));
+}
+
+print('# prefs.js carries the built-in filter too');
+{
+    const src = readSource('usbee@bitcreed.us/prefs.js');
+    check('prefs.js binds hide-builtin-devices',
+        src.includes("settings.bind('hide-builtin-devices'"));
+    check('prefs.js and the popover use the same words for it',
+        src.includes("_('Hide built-in devices')"));
 }
 
 // --- Structural guards over the Shell-only modules --------------------------

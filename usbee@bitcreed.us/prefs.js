@@ -169,8 +169,11 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
     }
 
-    // ── Group 2: General (hide-empty-ports, show-hubs, show-technical-details,
-    //              device-change-notify-scope) ──────────────────────────
+    // ── Group 2: General (hide-empty-ports, hide-builtin-devices, show-hubs,
+    //              show-technical-details, device-change-notify-scope) ─────
+    // Every switch here is also reachable from the popover's Options section
+    // (src/popover.js buildOptionsSection); both surfaces bind the same keys,
+    // so a change on either side shows up live on the other.
     _buildGeneralGroup(page, settings, window) {
         const generalGroup = new Adw.PreferencesGroup({title: _('General')});
         page.add(generalGroup);
@@ -181,6 +184,19 @@ export default class USBeePreferences extends ExtensionPreferences {
         });
         generalGroup.add(hideRow);
         settings.bind('hide-empty-ports', hideRow, 'active',
+                      Gio.SettingsBindFlags.DEFAULT);
+
+        // Quick task 260915-i4w — usbeehive already reports which devices are
+        // soldered into the machine (`mount == 'fixed'`); this turns that into
+        // a filter. Placed next to "Hide empty USB-C ports" because both
+        // remove things the user cannot act on, and kept separate from "Show
+        // USB Hubs" because a built-in device is a real device, not topology.
+        const builtinRow = new Adw.SwitchRow({
+            title: _('Hide built-in devices'),
+            subtitle: _('Leave out hardware soldered into this machine, like the webcam or fingerprint reader'),
+        });
+        generalGroup.add(builtinRow);
+        settings.bind('hide-builtin-devices', builtinRow, 'active',
                       Gio.SettingsBindFlags.DEFAULT);
 
         const hubRow = new Adw.SwitchRow({

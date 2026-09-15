@@ -54,6 +54,29 @@
       </description>
     </key>
 
+    <key name="hide-builtin-devices" type="b">
+      <default>false</default>
+      <summary>Hide built-in (non-removable) USB devices from the popover</summary>
+      <description>
+        When true, USB devices the daemon reports as physically built into
+        the machine are not rendered in the tile popover — the soldered-down
+        webcam, fingerprint reader and Bluetooth radio are the usual
+        members. The test is the daemon's "mount" property being the literal
+        token "fixed", which usbeehive reads from the kernel's sysfs
+        "removable" attribute and only ever emits as "fixed" or "removable".
+        A device whose mount the kernel did not report is therefore never
+        hidden: absence means "unknown", not "built in". A built-in device
+        that currently carries an issue stays visible regardless, so the
+        header's issue count can never name a row the user cannot reach —
+        the same escape hatch show-hubs uses. Default false: hiding devices
+        by default would silently omit hardware on first run, and this
+        filter is additive to show-hubs rather than a replacement for it.
+        Toggled from the "Hide built-in devices" switch in the preferences
+        window and from the Options section of the popover. Read once per
+        popover rebuild by src/popover.js populateDeviceRows.
+      </description>
+    </key>
+
     <key name="show-technical-details" type="b">
       <default>false</default>
       <summary>Show technical detail rows in the device popover</summary>
