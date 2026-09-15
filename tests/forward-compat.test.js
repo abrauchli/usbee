@@ -29,8 +29,9 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {
-    deriveAltMode, deriveHubInfo, deriveLinkInfo, formatRate, hasLinkIssue,
-    isBuiltInDevice, propsOf, resolveHeadline,
+    deriveAltMode, deriveHubInfo, deriveLinkInfo, formatRate, formatUsbId,
+    hasLinkIssue, isBuiltInDevice, maxPdoIndex, propsOf, resolveHeadline,
+    usbIdRowText,
 } from '../usbee@bitcreed.us/src/link-verdict.js';
 import {
     GATED_KEYS, HIDDEN_KEYS, KNOWN_KEYS, isTechnicalKey, propertyTier,
@@ -708,6 +709,209 @@ print('# prefs.js carries the built-in filter too');
         src.includes("settings.bind('hide-builtin-devices'"));
     check('prefs.js and the popover use the same words for it',
         src.includes("_('Hide built-in devices')"));
+}
+
+// --- USB ID row + PDO ceiling marker (quick task 260915-ikd) ----------------
+
+print('# formatUsbId prints the lsusb form, or nothing at all');
+{
+    check('a resolved pair formats lowercase and colon separated',
+        formatUsbId(device({vendor_id: 0x1d6b, product_id: 0x0003})) === '1d6b:0003');
+    check('both sides zero-pad to four hex digits',
+        formatUsbId(device({vendor_id: 0x5, product_id: 0x29})) === '0005:0029');
+    check('0xffff on both sides is still in range',
+        formatUsbId(device({vendor_id: 0xffff, product_id: 0xffff})) === 'ffff:ffff');
+    // Lowercase is not cosmetic: the daemon formats its own fallback as
+    // {:04x}:{:04x}, and usbIdRowText() compares against that.
+    check('hex digits are lowercase',
+        formatUsbId(device({vendor_id: 0x8087, product_id: 0xABCD})) === '8087:abcd');
+    // Type-C port entries hardcode the pair to zero, so 0000:0000 would
+    // otherwise render on every port row and say nothing.
+    check('0/0 says nothing (the Type-C port row case)',
+        formatUsbId(device({vendor_id: 0, product_id: 0})) === '');
+    // ...but a lone zero is a legal half of a real ID, not a sentinel.
+    check('a zero vendor beside a real product still renders',
+        formatUsbId(device({vendor_id: 0, product_id: 0x1234})) === '0000:1234');
+    check('a real vendor beside a zero product still renders',
+        formatUsbId(device({vendor_id: 0x1234, product_id: 0})) === '1234:0000');
+    // The descriptor fields are 16-bit, so anything wider is a malformed
+    // wire — and inventing a five-digit ID would be worse than silence.
+    check('a vendor above 0xffff says nothing',
+        formatUsbId(device({vendor_id: 0x10000, product_id: 1})) === '');
+    check('a product above 0xffff says nothing',
+        formatUsbId(device({vendor_id: 1, product_id: 0x10000})) === '');
+    check('a negative value says nothing',
+        formatUsbId(device({vendor_id: -1, product_id: 1})) === '');
+    check('a non-integer says nothing',
+        formatUsbId(device({vendor_id: 1.5, product_id: 1})) === '');
+    check('a numeric string says nothing',
+        formatUsbId(device({vendor_id: '1d6b', product_id: '0003'})) === '');
+    check('an absent field says nothing',
+        formatUsbId(device({vendor_id: undefined, product_id: 3})) === '');
+    check('NaN says nothing',
+        formatUsbId(device({vendor_id: NaN, product_id: 3})) === '');
+    // Total function: an exception here would be thrown inside gnome-shell's
+    // own process, not inside a sandbox.
+    check('undefined in, empty string out — never a throw',
+        formatUsbId(undefined) === '');
+    check('an empty object says nothing', formatUsbId({}) === '');
+}
+
+print('# usbIdRowText suppresses only when the ID is already on screen');
+{
+    // The case the daemon already covers by itself: it substitutes the
+    // formatted ID for a missing product name, and pins that with its own
+    // test (headline == "dead:beef"). Repeating it as a row says the same
+    // thing twice.
+    check('a daemon-fallback headline suppresses the row',
+        usbIdRowText(device({
+            headline: 'dead:beef', product: '',
+            vendor_id: 0xdead, product_id: 0xbeef,
+        })) === '');
+    // The gap this actually closes: the name resolved, so the exact part
+    // number is nowhere on screen.
+    check('a resolved name renders the row',
+        usbIdRowText(device({
+            headline: 'Intel Wireless', product: 'Intel Wireless',
+            vendor_id: 0x8087, product_id: 0x0029,
+        })) === '8087:0029');
+    check('a headline that merely embeds the ID also suppresses it',
+        usbIdRowText(device({
+            headline: 'Linux Foundation 3.0 root hub (1d6b:0003)',
+            product: 'root hub', vendor_id: 0x1d6b, product_id: 0x0003,
+        })) === '');
+    // Case-insensitive, so a future daemon emitting uppercase still
+    // suppresses even though both sides lowercase today.
+    check('an uppercase headline ID still suppresses',
+        usbIdRowText(device({
+            headline: 'DEAD:BEEF', product: '',
+            vendor_id: 0xdead, product_id: 0xbeef,
+        })) === '');
+    check('surrounding whitespace does not defeat the match',
+        usbIdRowText(device({
+            headline: '  dead:beef  ', product: '',
+            vendor_id: 0xdead, product_id: 0xbeef,
+        })) === '');
+    // A near miss is not a match — 1d6b:0003 is not inside 1d6b:0002.
+    check('a DIFFERENT ID in the headline does not suppress',
+        usbIdRowText(device({
+            headline: '1d6b:0002', product: '',
+            vendor_id: 0x1d6b, product_id: 0x0003,
+        })) === '1d6b:0003');
+    // The comparison must run against what is DISPLAYED, which is
+    // resolveHeadline()'s answer — here the id field, not the empty headline.
+    check('the comparison runs against the displayed headline',
+        usbIdRowText(device({
+            headline: '', id: '0bda:8153', product: '',
+            vendor_id: 0x0bda, product_id: 0x8153,
+        })) === '');
+    check('the 0/0 port row stays suppressed here too',
+        usbIdRowText(device({headline: 'USB-C port'})) === '');
+    check('undefined in, empty string out', usbIdRowText(undefined) === '');
+}
+
+print('# maxPdoIndex marks a ceiling only when it is unambiguous');
+{
+    const pdo = (index, powerMw) => ({
+        index, kind: 'Fixed', voltage_mv: 5000, max_voltage_mv: 5000,
+        current_ma: 3000, power_mw: powerMw, is_active: false,
+    });
+
+    check('the unique highest power wins',
+        maxPdoIndex([pdo(0, 15000), pdo(1, 27000), pdo(2, 100000)]) === 2);
+    check('the ceiling need not be last in the list',
+        maxPdoIndex([pdo(0, 100000), pdo(1, 27000), pdo(2, 15000)]) === 0);
+    check('the daemon index is returned, not the array position',
+        maxPdoIndex([pdo(7, 15000), pdo(9, 60000)]) === 9);
+    // Marking several rows "max" is noise, not guidance.
+    check('a tied maximum says nothing',
+        maxPdoIndex([pdo(0, 15000), pdo(1, 60000), pdo(2, 60000)]) === null);
+    // ...but a tie that is later beaten is not a tie at the top.
+    check('a tie BELOW the maximum does not suppress it',
+        maxPdoIndex([pdo(0, 15000), pdo(1, 15000), pdo(2, 60000)]) === 2);
+    // With one PDO the ceiling is trivially itself: zero information.
+    check('a single PDO says nothing', maxPdoIndex([pdo(0, 15000)]) === null);
+    check('an empty list says nothing', maxPdoIndex([]) === null);
+    check('a list that advertises no power says nothing',
+        maxPdoIndex([pdo(0, 0), pdo(1, 0)]) === null);
+    check('negative power is not a ceiling',
+        maxPdoIndex([pdo(0, -1), pdo(1, -2)]) === null);
+    check('a zero-power entry cannot outrank a real one',
+        maxPdoIndex([pdo(0, 0), pdo(1, 15000)]) === 1);
+    check('a non-finite power is ignored',
+        maxPdoIndex([pdo(0, NaN), pdo(1, 15000)]) === 1);
+    check('a missing power_mw is ignored',
+        maxPdoIndex([{index: 0}, pdo(1, 15000)]) === 1);
+    // A malformed index on the WINNER yields no marker at all, rather than a
+    // marker that would match every indexless row back in the popover loop.
+    check('a winner with no usable index says nothing',
+        maxPdoIndex([pdo(0, 15000), {power_mw: 60000}]) === null);
+    check('undefined in, null out', maxPdoIndex(undefined) === null);
+    check('a non-array says nothing', maxPdoIndex('not a list') === null);
+    check('a list of holes never throws',
+        maxPdoIndex([null, undefined]) === null);
+}
+
+print('# popover.js renders the USB ID row above the link block');
+{
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    check('popover.js renders a USB ID row', src.includes("_('USB ID')"));
+    check('popover.js delegates every suppression rule to link-verdict.js',
+        src.includes('usbIdRowText(device, props)'));
+    check('popover.js imports both new helpers',
+        src.includes('maxPdoIndex') && src.includes('usbIdRowText'));
+    // D-2 ordering — what it is → its exact ID → how it is connected. Assert
+    // the ORDER, not merely the presence, or a later refactor can bury
+    // identity below the link verdict without failing anything here.
+    const idAt = src.indexOf("_('USB ID')");
+    const linkAt = src.indexOf('buildLinkBlock(detailBox');
+    check('the USB ID row is built before the link block',
+        idAt > 0 && linkAt > 0 && idAt < linkAt);
+    // T-01-02 holds by construction: buildPropertyRow assigns .text, so
+    // reusing it is what keeps a markup API out of this path.
+    check('the USB ID row reuses buildPropertyRow',
+        /buildPropertyRow\(\s*\n?\s*_\('USB ID'\)/.test(src));
+}
+
+print('# popover.js marks the ceiling PDO without disturbing the active one');
+{
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    check('popover.js delegates the ceiling to link-verdict.js',
+        src.includes('maxPdoIndex(pdos)'));
+    // D-12 — a format string, never concatenation, so a translator can move
+    // the marker relative to the index.
+    check('the marker is composed with a format string, not concatenated',
+        src.includes("_('%s (max)').format(keyText)"));
+    check('popover.js tags the ceiling row for the stylesheet',
+        src.includes("pdoRow.add_style_class_name('usbee-pdo-max')"));
+    check('the active marker is left exactly as it was',
+        src.includes("`${_('◀')} ${pdo.index}`")
+        && src.includes("pdoRow.add_style_class_name('usbee-pdo-active')"));
+    // A null ceiling must never match a PDO whose index is absent.
+    check('no marker is rendered when there is no unambiguous ceiling',
+        src.includes('maxIdx !== null && pdo.index === maxIdx'));
+    const literals = [...src.matchAll(/_\('((?:[^'\\]|\\.)*)'\)/g)]
+        .map(m => m[1]);
+    check('both new strings are translatable',
+        literals.includes('USB ID') && literals.includes('%s (max)'));
+    // The two standing wording guards further down this file reject a
+    // careless rewording; neither new string may drift into tripping them.
+    check('neither new string tells the user to go get hardware',
+        !['USB ID', '%s (max)'].some(s => /\buse a\b/i.test(s)));
+}
+
+print('# the stylesheet bolds the ceiling VALUE, not its key');
+{
+    const css = readSource('usbee@bitcreed.us/stylesheet.css');
+    check('stylesheet.css is readable', css.length > 0);
+    check('the ceiling marker bolds the value column',
+        css.includes('.usbee-pdo-max .usbee-detail-value'));
+    // D-11 orthogonality: bolding the key for max as well would erase the
+    // active row's belt-and-braces signal, so the columns stay separate.
+    check('the ceiling marker leaves the key column to the active marker',
+        !css.includes('.usbee-pdo-max .usbee-detail-key'));
+    check('the active PDO rule survives',
+        css.includes('.usbee-pdo-active .usbee-detail-key'));
 }
 
 // --- Structural guards over the Shell-only modules --------------------------
