@@ -8,6 +8,8 @@ unrelated.
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-09-15
+
 ### Added
 
 - **The filter switches now live in the popover too**, under a collapsible
@@ -707,6 +709,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.9.0]: https://github.com/abrauchli/usbee/releases/tag/v2.9.0
 [2.8.0]: https://github.com/abrauchli/usbee/releases/tag/v2.8.0
 [2.7.1]: https://github.com/abrauchli/usbee/releases/tag/v2.7.1
 [2.7.0]: https://github.com/abrauchli/usbee/releases/tag/v2.7.0
