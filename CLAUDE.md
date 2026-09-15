@@ -74,7 +74,7 @@ the [`usbeehive`](https://github.com/) daemon (sibling project at
 |------|---------|-------|
 | **`gnome-extensions`** CLI | Scaffold, pack, install, enable, disable | Ships with `gnome-shell`. `gnome-extensions create --template`, `gnome-extensions pack`, `gnome-extensions install --force`. Auto-compiles schemas on install (since GNOME 44). |
 | **`glib-compile-schemas`** | Compile `schemas/*.gschema.xml` → `schemas/gschemas.compiled` | Needed for local dev when not installing via the CLI. Auto-handled in `pack`. |
-| **`xgettext`** + **`msgfmt`** | Extract `.pot`, compile `.mo` files | Standard gettext toolchain. `xgettext --from-code=UTF-8 -o po/usbee@bitcreed.us.pot *.js`. |
+| **`xgettext`** + **`msgfmt`** | Extract `.pot`, compile `.mo` files | Standard gettext toolchain. Do **not** improvise the invocation — use the exact one in **Release Process → Regenerating the translation template**: the input order is load-bearing and the command deliberately passes no `--package-version`. |
 | **`dbus-monitor`** / **`busctl`** | Debug `org.usbeehive.Devices1` signals during dev | `busctl --user monitor org.usbeehive.Devices1`. |
 | **Looking Glass** (`Alt+F2` → `lg`) | Inspect live extension state, eval JS in the Shell | Indispensable for debugging. |
 | **`journalctl --user -f /usr/bin/gnome-shell`** | Live extension logs | `console.log()` and stack traces from extensions land here. |
@@ -303,6 +303,36 @@ the popover needs a Shell restart (quick task 260910-myu).
 in-process metadata, not the disk. A stale version there right after an
 install is expected, not a failed install. Restart the Shell to pick up
 the new code (Xorg: `Alt+F2` → `r`; Wayland: full re-login).
+
+### Regenerating the translation template
+
+`po/usbee@bitcreed.us.pot` is regenerated whenever user-visible strings
+change, not on a release schedule. The invocation is exact:
+
+```sh
+xgettext --from-code=UTF-8 --package-name=USBee \
+  -o po/usbee@bitcreed.us.pot \
+  usbee@bitcreed.us/prefs.js usbee@bitcreed.us/src/*.js
+```
+
+- **Input order is load-bearing.** `prefs.js` must come first. Listing
+  `src/*.js` first reorders every msgid block and fabricates a
+  several-hundred-line diff (verified in quick task 260910-nge).
+- **There is deliberately no `--package-version`.** The header therefore
+  reads `Project-Id-Version: USBee`, with no version number, and *that
+  is the intended state — do not "fix" it by adding one back.*
+  `Project-Id-Version` is free-form metadata that `msgfmt` and the
+  gettext runtime never read; it exists so translation platforms
+  (Weblate, Transifex, Damned Lies) can label an upload. USBee is
+  English-only, is on no translation platform, and is not submitted to
+  EGO, so nothing in this repo or its CI consumes the field. Carrying a
+  version there only creates a value that every release must remember to
+  bump — and it already drifted once, sitting at `2.7.1` while
+  `metadata.json` said `2.8.0` (corrected in quick task 260915-mk0).
+  Releases bump `metadata.json` and nothing else version-shaped.
+- Do not hand-edit the template. Regenerate it and inspect the diff: a
+  string-churn regeneration should change `POT-Creation-Date`, line
+  references, and the msgids you actually touched — nothing else.
 
 ### Steps for a new release
 
