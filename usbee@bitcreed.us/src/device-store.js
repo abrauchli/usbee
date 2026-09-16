@@ -402,6 +402,28 @@ export const DeviceStore = GObject.registerClass({
     }
 
     /**
+     * The ListDevices call failed (src/dbus-client.js `_snapshotImmediate`'s
+     * catch). Concludes the awaiting state WITHOUT asserting anything about
+     * what is attached: `_devices` is deliberately left untouched, preserving
+     * that method's "keep prior store state, let the next signal retry"
+     * contract.
+     *
+     * Without this hand-off the store would sit in awaitingFirstSnapshot
+     * indefinitely and both surfaces would read "Loading…" forever — a worse
+     * lie than the one the loading state was added to fix (quick task
+     * 260915-ung D-02). They instead fall back to exactly the previous
+     * behaviour, which is at least honest about having nothing to show.
+     *
+     * Emits only on the false→true edge, so a daemon failing every retry
+     * cannot storm the tile with redundant repaints.
+     */
+    noteSnapshotFailed() {
+        if (this._snapshotReceived) return;
+        this._snapshotReceived = true;
+        this.emit('changed');
+    }
+
+    /**
      * Single write path for the daemon tri-state. No-ops (and stays silent)
      * when neither the state nor the reported version changed, preserving
      * the previous setDaemonRunning idempotency contract.

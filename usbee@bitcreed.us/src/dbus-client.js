@@ -528,6 +528,14 @@ export const DBusClient = GObject.registerClass({
         } catch (e) {
             // Per PITFALLS §7 — catch only because we have a recovery strategy:
             // keep prior store state, log once, let next signal retry.
+            //
+            // Conclude the loading state first (quick task 260915-ung D-02):
+            // the store keeps its prior devices, but a surface that is still
+            // waiting on this very call must not be left reading "Loading…"
+            // until some future signal happens to arrive. Optional-call
+            // because the unit-test doubles implement only the store surface
+            // the paths under test touch.
+            this._store.noteSnapshotFailed?.();
             logError(e, 'USBee: ListDevices failed');
         }
     }

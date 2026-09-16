@@ -39,6 +39,10 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._dbusClient = dbusClient;
         this._prefsItem = null;
         this._prefsSeparator = null;
+        // Whether the last _rebuildPopover() rendered the loading row. Drives
+        // the one-shot loading→loaded repaint in the store 'changed' handler
+        // below (quick task 260915-ung).
+        this._renderedLoading = false;
 
         // Popover header — matches Wi-Fi / BT pattern (UI-SPEC #component-inventory).
         this.menu.setHeader('drive-harddisk-usb-symbolic', _('USB devices'), '');
@@ -88,6 +92,20 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             this.title    = txt.title;
             this.subtitle = txt.subtitle;
             this.checked  = this._store.daemonRunning;
+            // Loading→loaded repaint (quick task 260915-ung D-03). A popover
+            // left open across the first snapshot would otherwise keep showing
+            // the Loading… row until the user closed and reopened it — the
+            // 'ready' handler below cannot serve here, because it is emitted
+            // one line AFTER the un-awaited _snapshotImmediate() call, while
+            // the store is still empty.
+            //
+            // Narrow by design: _rebuildPopover clears the latch on its way
+            // out, so this fires at most once per loading episode. A blanket
+            // rebuild-on-changed would tear the menu down on every snapshot,
+            // collapsing any open device submenu (D-11 lazy rebuild).
+            if (this.menu.isOpen && this._renderedLoading
+                && !this._store.awaitingFirstSnapshot)
+                this._rebuildPopover();
         });
         registry.addSignal(store, changedId);
 
@@ -203,6 +221,10 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         //                   c. INSTALLED       → a Start button
         let n = -1;
         let issues = 0;
+        // What this pass actually rendered, for the repaint latch in the store
+        // 'changed' handler. Assigned from the same condition the routing
+        // switch uses, so the two cannot drift apart.
+        let renderedLoading = false;
         switch (this._store.daemonState) {
         case DaemonState.OUT_OF_DATE:
             populateOutOfDateState(this._rowsSection, this._store.daemonVersion);
@@ -222,6 +244,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             // claiming a measured zero — no new header string is needed.
             if (this._store.awaitingFirstSnapshot) {
                 populateLoadingState(this._rowsSection);
+                renderedLoading = true;
                 break;
             }
             const result = populateDeviceRows(
@@ -253,6 +276,10 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             refreshInstallStateAsync();
             break;
         }
+        // Clear (or re-arm) the latch on the way out — every branch other than
+        // the loading one leaves it false, so a loaded popover never rebuilds
+        // itself on a routine re-snapshot.
+        this._renderedLoading = renderedLoading;
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
         // The header's subtitle slot was always set to ''. It is the free
