@@ -57,6 +57,32 @@ function importSpecifiers(src) {
         .map(m => m[1]);
 }
 
+// Slice one function out of a module: from its declaration line to the next
+// JSDoc block (or end of file). Generalises the hand-rolled slice the
+// TOO_NEW guard below does, because several assertions here are about WHICH
+// function renders something — a file-wide substring test would be satisfied
+// by any other function in the same file and would not notice a widget
+// moving between two of them (quick task 260915-unf).
+//
+// `decl` is the literal declaration text, e.g. 'function buildStartRow()' or
+// 'export function buildEmptyStateItem()'.
+function functionBody(src, decl) {
+    const start = src.indexOf(decl);
+    if (start === -1) return '';
+    const rest = src.slice(start);
+    const end = rest.indexOf('\n/**');
+    return end === -1 ? rest : rest.slice(0, end);
+}
+
+// CSS with every /* ... */ block removed. Every negative assertion about the
+// stylesheet runs through this: the comment that replaced a deleted rule
+// deliberately NAMES the declarations it retired, so that nobody re-adds
+// them, and a plain substring test would fail on the very prose that records
+// the decision (quick task 260915-unf).
+function cssCode(src) {
+    return src.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
 // --- isVersionAtLeast -------------------------------------------------------
 
 print('# isVersionAtLeast — fail-closed semver compare');
@@ -301,6 +327,56 @@ print('# stylesheet.css styles the copy affordance');
         src.includes('.usbee-copy-button'));
     check('stylesheet.css gives the copy button a hover state',
         src.includes('.usbee-copy-button:hover'));
+}
+
+print('# the Start button borrows the shell theme button classes');
+{
+    const src = readSource('usbee@bitcreed.us/src/empty-state.js');
+    const css = readSource('usbee@bitcreed.us/stylesheet.css');
+    const code = cssCode(css);
+
+    // Quick task 260915-unf. The button worked when clicked but rendered at
+    // the Shell's 50% disabled dim, so it read as deactivated. Cause: its
+    // ancestor is a `reactive: false` PopupMenuItem, St maps that onto the
+    // `:insensitive` pseudo-class, the theme's `.popup-menu-item:insensitive`
+    // sets a dimmed `color`, and `color` INHERITS. The cure is a class that
+    // carries an explicit `color` of its own — which the theme's own `.button`
+    // does, per-theme, and `.button.default` additionally fills with the
+    // user's accent colour. Pin the class string: "simplifying" it back to
+    // the lone project class reintroduces the bug invisibly.
+    check('empty-state.js gives the Start button the theme button classes',
+        src.includes("style_class: 'button default usbee-start-button'"));
+
+    const startRow = functionBody(src, 'function buildStartRow()');
+    check('buildStartRow is sliceable', startRow.length > 0);
+    // The JS was never the problem — the button is genuinely live. Guard that
+    // it stays so, or a future reader "fixing" the dim by touching reactive
+    // would break the click instead.
+    check('the Start button is genuinely focusable and reactive',
+        startRow.includes('can_focus: true') && startRow.includes('reactive: true'));
+    // ...and that the in-flight state is still expressed by dropping reactive,
+    // which is exactly what the theme's `.button.default:insensitive` rule
+    // keys off to render the dimmer "Starting…" treatment.
+    check('the in-flight state still disables via reactive = false',
+        startRow.includes('button.reactive = false'));
+
+    check('stylesheet.css declares no .usbee-start-button rule at all',
+        !code.includes('.usbee-start-button'));
+    // The retired declarations were white overlays: on the light theme, where
+    // the popover background is near #fafafb, a 12%-white chip is invisible,
+    // so the button lost its shape entirely in light mode.
+    check('stylesheet.css keeps neither retired white overlay',
+        !code.includes('rgba(255, 255, 255, 0.12)') &&
+        !code.includes('rgba(255, 255, 255, 0.2)'));
+    check('stylesheet.css records which theme rule owns the button now',
+        css.includes('.button.default'));
+
+    // The two surrounding rules are USBee's own layout and must survive the
+    // colour deletion untouched.
+    check('stylesheet.css keeps .usbee-empty-state-start',
+        code.includes('.usbee-empty-state-start'));
+    check('stylesheet.css keeps .usbee-empty-state-status',
+        code.includes('.usbee-empty-state-status'));
 }
 
 print('# prefs.js gates the detected version (separate process, C5)');

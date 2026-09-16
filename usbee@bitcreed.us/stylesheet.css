@@ -40,21 +40,30 @@
     margin-bottom: 4px;
 }
 
-.usbee-start-button {
-    padding: 6px 16px;
-    border-radius: 6px;
-    background-color: rgba(255, 255, 255, 0.12);
-}
+/* The Start button is deliberately COLOUR-FREE here. `.usbee-start-button`
+ * survives only as a named hook for tests and future layout; the shell
+ * theme's own `.button` and `.button.default` classes — which
+ * src/empty-state.js buildStartRow() puts on the actor — own its colour,
+ * background, hover, focus ring and disabled state (quick task 260915-unf).
+ *
+ * Do not re-add a colour, a background or an :insensitive override here. The
+ * three rules that used to sit in this spot each caused a bug:
+ *
+ *   - No `color` at all. The button's ancestor is a `reactive: false`
+ *     PopupMenuItem, St maps that onto `:insensitive`, the theme dims
+ *     `.popup-menu-item:insensitive`, and `color` inherits — so the label
+ *     rendered at the Shell's 50% disabled dim and the button read as
+ *     deactivated. An explicit `color`, which `.button` carries per-theme, is
+ *     the whole cure.
+ *   - `background-color: rgba(255, 255, 255, 0.12)` plus a 0.2 white hover.
+ *     White overlays: against the light theme's near-#fafafb popover the chip
+ *     was invisible and the button lost its shape entirely.
+ *   - `:insensitive { color: rgba(255, 255, 255, 0.5) }` — the SAME 50% dim
+ *     the enabled state was already inheriting, so the real "Starting…" state
+ *     was indistinguishable from the idle one. The theme's
+ *     `.button.default:insensitive` is what makes it visibly dimmer now. */
 
-.usbee-start-button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
 
-/* Pressed-but-not-yet-answered ("Starting…") and every failure message use
- * the same row; insensitive styling is what marks the in-flight state. */
-.usbee-start-button:insensitive {
-    color: rgba(255, 255, 255, 0.5);
-}
 
 /* Outcome line under the Start button. Amber because every message it can
  * carry is a failure — the success path destroys the whole empty state. */

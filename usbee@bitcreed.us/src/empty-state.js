@@ -212,6 +212,53 @@ function buildWrappedLabel(text, styleClass = '') {
  * item — button, status line, watchdog and all — is destroyed and replaced
  * by the device list.
  *
+ * STYLING — why the class list reads `button default usbee-start-button`,
+ * and why shortening it back to the project class alone reintroduces a bug
+ * (quick task 260915-unf). Selector positions below are from Shell 50.1's
+ * gnome-shell-{dark,light}.css, read out of
+ * /usr/share/gnome-shell/gnome-shell-theme.gresource.
+ *
+ * The bug: this button's ancestor is the `reactive: false` PopupMenuItem
+ * built by buildEmptyStateItem. St maps `reactive === false` onto the
+ * `:insensitive` pseudo-class, so that ancestor matches the theme's
+ * `.popup-menu-item:insensitive` (:967), which sets a dimmed foreground —
+ * `st-transparentize(#ffffff, 0.5)` dark, `st-transparentize(#222226, 0.6)`
+ * light. `color` INHERITS, and the project class declared none, so the label
+ * rendered at the Shell's own 50% disabled dim. The button was always
+ * genuinely live (`reactive: true` below) — it worked when clicked and read
+ * as deactivated, which is the worst of both.
+ *
+ * The cure is a class that carries an explicit `color` of its own. The theme
+ * has two, and they are the theme's so they are correct in light, dark and
+ * high-contrast without USBee naming a single colour:
+ *   - `.button` (:60) — `color: #ffffff` dark / `#222226` light, plus a real
+ *     background, hover and focus ring. This alone defeats the inheritance,
+ *     which is also why the fix degrades safely: on an older theme lacking
+ *     the accent rule below, the worst case is an ordinary-looking button,
+ *     never a dim one. Nothing here depends on `.default` existing.
+ *   - `.button.default` (:148) — `color: -st-accent-fg-color;
+ *     background-color: -st-accent-color`: the accent-filled
+ *     suggested-action treatment, following the user's chosen GNOME accent.
+ *     That declaration lives in the THEME, so USBee never names
+ *     `-st-accent-color` itself and does not rely on St resolving an accent
+ *     token inside an extension stylesheet.
+ *
+ * `.button.default:insensitive` (:166) — NOT `.button:insensitive` — is the
+ * rule that now marks the in-flight state, once the click handler below
+ * drops `reactive`: `st-transparentize(-st-accent-fg-color, 0.5)` over a
+ * darkened accent ground in dark, 0.6 over a lightened one in light. The
+ * retired local `:insensitive` override used the very same 50% dim the
+ * enabled state was already inheriting, so the "Starting…" state it claimed
+ * to mark was indistinguishable from idle.
+ *
+ * Shape is the theme's too (`.button` :43 — 8px radius, bold text), with one
+ * wrinkle worth knowing: `.quick-settings .button` (:2061) is more specific
+ * and overrides padding to 10.5px. That is the padding the Shell's own Quick
+ * Settings buttons carry, so inheriting it is right here.
+ *
+ * Consequently stylesheet.css declares NO colour, background or hover for
+ * this button — see the comment block standing where its three rules were.
+ *
  * @returns {St.BoxLayout}
  */
 function buildStartRow() {
@@ -222,7 +269,12 @@ function buildStartRow() {
     });
 
     const button = new St.Button({
-        style_class: 'usbee-start-button',
+        // `button default` are the SHELL THEME's classes — they carry the
+        // explicit `color` that stops this button inheriting the insensitive
+        // dim from its non-reactive ancestor, and the accent fill. See the
+        // STYLING section above before shortening this string.
+        // `usbee-start-button` stays as a named project hook.
+        style_class: 'button default usbee-start-button',
         can_focus: true,
         reactive: true,
         x_align: Clutter.ActorAlign.START,
