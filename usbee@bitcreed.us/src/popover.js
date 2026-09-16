@@ -21,7 +21,8 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {buildEmptyStateItem, buildDaemonNotInstalledItem, buildDaemonOutOfDateItem,
+import {buildEmptyStateItem, buildEmptyStateDetailsItem,
+    buildDaemonNotInstalledItem, buildDaemonOutOfDateItem,
     buildDaemonTooNewItem, buildServiceNotSetUpItem} from './empty-state.js';
 import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js';
 import {iconForDevice} from './device-icon.js';
@@ -221,13 +222,20 @@ export function buildOptionsSection(settings, registry) {
 
 /**
  * Render the "installed but stopped" empty state — the one that carries the
- * Start button (quick task 260910-myu). Delegates to buildEmptyStateItem.
+ * Start button (quick task 260910-myu).
+ *
+ * TWO items, not one (quick task 260915-unf): the state item, then the
+ * collapsed "Show details" disclosure holding the manual systemctl fallback.
+ * The disclosure is a sibling in this section rather than a child of the
+ * state item — a PopupSubMenuMenuItem belongs in a section, which is exactly
+ * how the device rows already carry theirs.
  *
  * @param {PopupMenuSection} section
  */
 export function populateEmptyState(section) {
     section.removeAll();
     section.addMenuItem(buildEmptyStateItem());
+    section.addMenuItem(buildEmptyStateDetailsItem());
 }
 
 /**

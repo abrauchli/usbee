@@ -4,8 +4,18 @@
 // Daemon empty-state widgets — five distinct flavours:
 //   - buildEmptyStateItem()          — unit installed but stopped. Carries
 //                                      the Start button (quick task
-//                                      260910-myu); the command row is the
-//                                      manual fallback.
+//                                      260910-myu) and no command line; the
+//                                      manual fallback moved out into the
+//                                      sibling disclosure below.
+//   - buildEmptyStateDetailsItem()   — the collapsed "Show details" row that
+//                                      accompanies the state above as a
+//                                      SIBLING in the same section, holding
+//                                      the systemctl fallback (quick task
+//                                      260915-unf). The stopped state is the
+//                                      ONLY one that hides its command,
+//                                      because it is the only one where the
+//                                      command is a fallback rather than the
+//                                      sole action available.
 //   - buildServiceNotSetUpItem()     — `usbeehived` is on PATH but no unit
 //                                      file exists: `cargo install` ran,
 //                                      `--install-service` did not. Needs
@@ -24,9 +34,11 @@
 //                                      user does in the Extensions app
 //                                      (quick task 260905-b0s)
 //
-// Each one is a PopupMenuItem containing a title label, a hint label, and
-// usually a command row (buildCommandRow): a selectable, WRAPPING St.Label
-// carrying the command plus a copy-to-clipboard button.
+// Each state item is a PopupMenuItem containing a title label, a hint label,
+// and usually a command row (buildCommandRow): a selectable, WRAPPING
+// St.Label carrying the command plus a copy-to-clipboard button. The stopped
+// state is the exception — its command row sits in the separate disclosure
+// item instead, which is a PopupSubMenuMenuItem rather than a PopupMenuItem.
 //
 // Which of the first three applies is decided by src/service-probe.js
 // probeInstallState(), not by this file — see tile.js _rebuildPopover().
@@ -341,10 +353,13 @@ function buildStartRow() {
  *
  * Reached when a usbeehived.service unit file exists but nothing owns
  * org.usbeehive.Devices. Since the unit is there, starting it is a button
- * press rather than a trip to a terminal (quick task 260910-myu) — the
- * copy-pasteable command stays as the fallback for anyone who would rather
- * enable it permanently, which is what `enable --now` does and the button
- * does not.
+ * press rather than a trip to a terminal (quick task 260910-myu).
+ *
+ * Quick task 260915-unf: this item is now title + body + Start button only.
+ * The manual shell fallback it used to print in full lives in the sibling
+ * buildEmptyStateDetailsItem disclosure — a panel that leads with a terminal
+ * command undersells the one-click button sitting right above it. Both items
+ * are added by populateEmptyState in src/popover.js.
  */
 export function buildEmptyStateItem() {
     const item = new PopupMenu.PopupMenuItem('', {
@@ -366,10 +381,68 @@ export function buildEmptyStateItem() {
         _('usbeehive is installed. Start it and this list will populate '
           + 'automatically.')));
     box.add_child(buildStartRow());
+    item.add_child(box);
+
+    return item;
+}
+
+/**
+ * Build the "Show details" disclosure that accompanies the daemon-stopped
+ * state above. Returns a collapsed PopupMenu.PopupSubMenuMenuItem.
+ *
+ * A SIBLING item in the same section, never a child of the state item —
+ * populateEmptyState in src/popover.js adds the state item first and this
+ * one second.
+ *
+ * Quick task 260915-unf. The systemctl line used to be printed in full in
+ * the default view, immediately below a Start button that does the same job
+ * in one click; leading with a raw terminal command is what made the button
+ * look like the afterthought. The command is NOT gone, because it is not
+ * redundant: `enable --now` also makes the daemon start with every session,
+ * which the button deliberately does not do. So it stays reachable, one
+ * click away instead of zero.
+ *
+ * Implemented as a PopupSubMenuMenuItem rather than a hand-rolled St.Button
+ * expander: that inherits the standard expander triangle, `.popup-sub-menu`
+ * theming and keyboard navigation for free, and this repo already proves the
+ * pattern twice (buildOptionsSection and buildDeviceRow in src/popover.js).
+ *
+ * Constructed with wantIcon false, so no icon slot exists and `.icon` must
+ * never be touched on this item — contrast buildOptionsSection, which passes
+ * true and then sets one.
+ *
+ * @returns {PopupMenu.PopupSubMenuMenuItem}
+ */
+export function buildEmptyStateDetailsItem() {
+    // Translators: label on a collapsed row that reveals the manual shell
+    // command for starting the daemon. This is a disclosure control — it
+    // names what expanding the row shows, and is not an instruction.
+    const item = new PopupMenu.PopupSubMenuMenuItem(_('Show details'), false);
+
+    // buildCommandRow returns a bare St.BoxLayout, which a sub-menu cannot
+    // hold directly — wrap it in a non-reactive menu item, the same shape the
+    // detail panel uses in popover.js buildDeviceRow. The copy button inside
+    // stays focusable and clickable: a reactive child inside a
+    // `reactive: false` item works.
+    const wrapper = new PopupMenu.PopupBaseMenuItem({
+        reactive: false,
+        can_focus: false,
+    });
+
+    const box = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+        style_class: 'usbee-empty-state-body',
+    });
+
+    // The hint travels with the command it introduces — it says nothing on
+    // its own.
     box.add_child(buildWrappedLabel(
         _('Or start it yourself, and have it start with every session:')));
     box.add_child(buildCommandRow(SYSTEMCTL_CMD));
-    item.add_child(box);
+
+    wrapper.add_child(box);
+    item.menu.addMenuItem(wrapper);
 
     return item;
 }

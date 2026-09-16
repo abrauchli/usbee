@@ -317,6 +317,80 @@ print('# empty-state.js command rows are copyable');
         /import\s*\{[^}]*UPDATE_CMD[^}]*\}\s*from\s*'\.\/daemon-status\.js'/.test(src));
 }
 
+print('# the stopped state keeps its command behind a "Show details" row');
+{
+    const src = readSource('usbee@bitcreed.us/src/empty-state.js');
+    const pop = readSource('usbee@bitcreed.us/src/popover.js');
+
+    // Quick task 260915-unf. The raw `systemctl --user enable --now
+    // usbeehived` line was printed in full in the default view, above a
+    // one-click Start button that does the same job — so the panel led with
+    // a terminal command instead of the action. It moved into a collapsed
+    // disclosure; it was not deleted, because `enable --now` also makes the
+    // daemon start with every session, which the button does not.
+    check('empty-state.js exports the disclosure builder',
+        src.includes('export function buildEmptyStateDetailsItem('));
+    check('the disclosure label goes through gettext',
+        src.includes("_('Show details')"));
+
+    const disc = functionBody(src, 'export function buildEmptyStateDetailsItem(');
+    const stopped = functionBody(src, 'export function buildEmptyStateItem(');
+    check('both builders are sliceable', disc.length > 0 && stopped.length > 0);
+
+    // A PopupSubMenuMenuItem, not a hand-rolled St.Button expander: it brings
+    // the standard expander triangle, .popup-sub-menu theming and keyboard
+    // navigation for free, and this repo already proves the pattern twice
+    // (popover.js buildOptionsSection and buildDeviceRow).
+    check('the disclosure is a PopupSubMenuMenuItem',
+        disc.includes('new PopupMenu.PopupSubMenuMenuItem('));
+    // buildCommandRow returns a bare St.BoxLayout, so it needs a menu-item
+    // wrapper to live inside a submenu. Same shape as the detail panel in
+    // popover.js buildDeviceRow.
+    check('the submenu content is a non-reactive PopupBaseMenuItem wrapper',
+        disc.includes('new PopupMenu.PopupBaseMenuItem(') &&
+        /reactive:\s*false/.test(disc) && /can_focus:\s*false/.test(disc));
+    check('the disclosure adds its content to the submenu',
+        disc.includes('item.menu.addMenuItem('));
+
+    // The command and its hint travel together — the hint is meaningless
+    // without the command beside it.
+    check('the disclosure renders the command row',
+        disc.includes('buildCommandRow('));
+    check('the disclosure carries the hint line',
+        disc.includes('Or start it yourself'));
+
+    // ...and are gone from the default view, which now leads with the button.
+    check('the default stopped view no longer prints the command',
+        !stopped.includes('buildCommandRow('));
+    check('the default stopped view no longer carries the hint line',
+        !stopped.includes('Or start it yourself'));
+    check('the default stopped view still offers the Start button',
+        stopped.includes('buildStartRow('));
+
+    // D-C: only the stopped state hides its command. In the other three the
+    // command is the ONLY action offered, so hiding it would be a regression
+    // rather than a tidy-up. (The count-of-5 assertion above independently
+    // pins that the call MOVED rather than being added or removed.)
+    for (const name of ['buildServiceNotSetUpItem', 'buildDaemonNotInstalledItem',
+        'buildDaemonOutOfDateItem']) {
+        check(`${name} still shows its command in the default view`,
+            functionBody(src, `export function ${name}(`).includes('buildCommandRow('));
+    }
+
+    const populate = functionBody(pop, 'export function populateEmptyState(');
+    check('popover.js populateEmptyState is sliceable', populate.length > 0);
+    check('popover.js imports the disclosure builder',
+        pop.includes('buildEmptyStateDetailsItem'));
+    // The disclosure is a SIBLING in the section, not a child of the state
+    // item — and it follows the state item. removeAll() stays first
+    // (Pitfall C: never mutate while iterating).
+    const iRemove = populate.indexOf('section.removeAll()');
+    const iState  = populate.indexOf('buildEmptyStateItem(');
+    const iDisc   = populate.indexOf('buildEmptyStateDetailsItem(');
+    check('populateEmptyState adds state item then disclosure, after removeAll',
+        iRemove !== -1 && iState > iRemove && iDisc > iState);
+}
+
 print('# stylesheet.css styles the copy affordance');
 {
     const src = readSource('usbee@bitcreed.us/stylesheet.css');
