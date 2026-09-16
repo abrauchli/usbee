@@ -28,6 +28,14 @@ unrelated.
   empty. Both now say **Loading…** until the first answer arrives, which means
   an empty list can be trusted to mean an empty machine. If that answer never
   comes, they fall back to the previous wording rather than waiting forever.
+- **Changing a setting from inside the popover no longer closes it.** The
+  switches under **Options** used to dismiss the whole Quick Settings panel the
+  moment one was clicked, so every change meant reopening the panel to see what
+  it had done.
+- **Changing a filter no longer collapses the device list.** The list now
+  updates in place: a device whose details were open stays open, the list stays
+  where it was scrolled to, and only the rows the filter actually affects
+  appear or disappear.
 
 ## [2.9.0] — 2026-09-15
 

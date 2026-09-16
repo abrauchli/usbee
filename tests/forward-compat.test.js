@@ -732,6 +732,74 @@ print('# the popover Options section is wired in both directions');
         tile.includes('this._setHeader('));
 }
 
+print('# a settings toggle keeps the popover open and the list expanded (260915-unh)');
+{
+    // Provenance for the neighbouring syncing-latch guards: upstream source
+    // says setToggleState() EMITS 'toggled' on Shell 50 (popupMenu.js 50:571
+    // -> the state setter 50:564 -> the switch's notify::state wired at
+    // 50:505 -> _onToggled 50:575), while on 46 it does not (46:486). So
+    // those latch guards are load-bearing on the Shell this machine runs,
+    // not precautionary. That was read from upstream and is NOT verifiable
+    // here — the Shell's JS is absent from this machine's disk and from every
+    // installed .gresource — which is exactly why _usbeeOnActivate exists
+    // (D-8): the GSettings write does not rest on any single emission.
+    //
+    // Positive `includes` assertions ONLY in this block. A negative grep
+    // asserting the absence of a chained-activation call or of the old
+    // rebuild line would be invalidated by the very doc comments that keep
+    // these decisions from being forgotten — the failure mode quick task
+    // 260910-p91 hit and solved by inspecting extracted literals.
+    const src = readSource('usbee@bitcreed.us/src/popover.js');
+    const tile = readSource('usbee@bitcreed.us/src/tile.js');
+
+    // Cause 1 — the switch toggles without dismissing the popover.
+    check('the switch subclass overrides activation',
+        src.includes('activate(_event)'));
+    check('the override toggles the switch itself',
+        src.includes('this.toggle();'));
+    check('the GSettings write does not depend on the toggled signal',
+        src.includes('_usbeeOnActivate'));
+
+    // Cause 2 — the list is updated in place rather than torn down.
+    check('popover.js exports the in-place update',
+        src.includes('export function updateDeviceRowsInPlace'));
+    check('popover.js can refill one row submenu on its own',
+        src.includes('function populateDeviceRowMenu'));
+    check('rows are keyed on the daemon own device identity',
+        src.includes('_usbeeDeviceId') && src.includes('device.id'));
+    check('the section keeps a live row inventory',
+        src.includes('section._usbeeRows'));
+    check('the accordion handler iterates the live inventory',
+        src.includes('for (const other of (section._usbeeRows || []))'));
+    check('a newly visible row is inserted at its sorted index',
+        src.includes('addMenuItem(row, index)'));
+
+    // D-7 — the section contents are proved live before any mutation.
+    check('the in-place path proves ownership before mutating',
+        src.includes('_usbeeOwnedItems'));
+    check('every teardown routes through the one chokepoint',
+        src.includes('clearSection(section)'));
+
+    // T-unh-02 / D-9 — a removed row cannot leave a dangling reference.
+    check('a removed row is closed before it is destroyed',
+        src.includes('row.menu.close(false)'));
+    check('popover.js forgets the shim-owned submenu field',
+        src.includes('_usbeeForgetSubMenu'));
+    check('tile.js installs the companion forget shim',
+        tile.includes('_usbeeForgetSubMenu'));
+
+    // D-6 — a filter toggle cannot disturb 260915-ung's loading row.
+    check('a filter toggle returns during the awaiting-snapshot window',
+        tile.includes('awaitingFirstSnapshot === true'));
+    check('tile.js still routes every other daemon state through the rebuild',
+        tile.includes('DaemonState.RUNNING'));
+
+    // The filter composition survived the extraction into visibleDevices()
+    // character for character.
+    check('the built-in filter keeps its issue escape hatch verbatim',
+        src.includes('!isBuiltInDevice(d) || hasIssue(d)'));
+}
+
 print('# prefs.js carries the built-in filter too');
 {
     const src = readSource('usbee@bitcreed.us/prefs.js');
