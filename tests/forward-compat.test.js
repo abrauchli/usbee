@@ -682,8 +682,14 @@ print('# the popover Options section is wired in both directions');
     const src = readSource('usbee@bitcreed.us/src/popover.js');
     check('popover.js exports buildOptionsSection',
         src.includes('export function buildOptionsSection'));
-    check('the Options rows are PopupSwitchMenuItems',
-        src.includes('new PopupMenu.PopupSwitchMenuItem'));
+    // Quick task 260915-unh: the rows are now a USBee subclass whose
+    // activate() override keeps the popover open on a pointer click. The
+    // stock widget is still the BASE — the Shell's own switch behaviour and
+    // a11y role are inherited, not reimplemented — so both halves are pinned.
+    check('the Options rows keep the stock switch widget as their base',
+        src.includes('extends PopupMenu.PopupSwitchMenuItem'));
+    check('the Options rows are the non-dismissing USBee subclass',
+        src.includes('new USBeeSwitchMenuItem('));
     check('row -> settings direction writes the key',
         src.includes('settings.set_boolean(key, state)'));
     check('settings -> row direction moves the switch',

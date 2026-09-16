@@ -16,6 +16,7 @@
 //   - section.removeAll() is the FIRST call (Pitfall C: never mutate while iterating).
 
 import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -156,19 +157,77 @@ export function populateDeviceRows(section, store, extension) {
 }
 
 /**
+ * A PopupSwitchMenuItem that does NOT dismiss the popover when it is clicked
+ * (quick task 260915-unh, D-1).
+ *
+ * Nothing in USBee asked for the dismissal; it is the Shell's default for an
+ * activated menu item and USBee merely inherited it. The inherited
+ * PopupSwitchMenuItem.activate() toggles the switch and then chains to
+ * super.activate() for every event EXCEPT a KEY_PRESS of Clutter.KEY_space.
+ * That chain runs: PopupBaseMenuItem.activate() emits 'activate' ->
+ * PopupMenuBase._connectItemSignals() connected it with
+ * GObject.ConnectFlags.AFTER to itemActivated() -> _getTopMenu().close().
+ * The Options rows live in the toggle's own menu, so _getTopMenu() walks up
+ * to the Quick Settings menu and closes the entire panel: one click on a
+ * filter switch and the surface the user was reading is gone.
+ *
+ * Upstream already exempts one case, with the comment "we allow pressing
+ * space to toggle the switch without closing the menu". The intent is
+ * therefore not in dispute — it simply was never extended to the pointer,
+ * and a mouse click is never that exception. This override extends the same
+ * intent by toggling and stopping; it deliberately does NOT chain to
+ * super.activate().
+ *
+ * Upstream source says the toggle alone is enough to keep the GSettings
+ * write working, because toggle() emits 'toggled' on both versions in the
+ * declared range (46 emits directly from toggle(); 50 delegates to
+ * this._switch.toggle() and wires the switch's notify::state to _onToggled,
+ * which emits). This code deliberately does NOT depend on that. The Shell's
+ * JavaScript is absent from this machine's disk and from every installed
+ * .gresource, so the claim was read from upstream rather than verified here,
+ * and the behaviour is unobservable without a Shell restart — resting all
+ * four filter switches on it would be an unforced bet. The override
+ * therefore also calls USBee's own _usbeeOnActivate hook, which performs the
+ * write itself (D-8). Whichever path runs first does the write; the other
+ * finds the key already at that value and returns. Exactly one write either
+ * way, and the switches keep working whichever is true.
+ *
+ * D-2: upstream guards its toggle with `if (this._switch.mapped)`. That is
+ * not reproduced here. `_switch` is a private field, and the only thing that
+ * unmaps it is setStatus(), which USBee never calls — so an unconditional
+ * toggle() is correct for this codebase and touches no internal.
+ */
+const USBeeSwitchMenuItem = GObject.registerClass(
+class USBeeSwitchMenuItem extends PopupMenu.PopupSwitchMenuItem {
+    activate(_event) {
+        this.toggle();
+        // `state` is the public read side, and the same one the `changed::`
+        // handler below already compares against.
+        this._usbeeOnActivate?.(this.state);
+    }
+});
+
+/**
  * Build the popover's collapsible "Options" submenu — the same filter
  * switches the preferences window carries, one click from the device list
  * instead of a window launch away (quick task 260915-i4w).
  *
  * Each switch is two-way bound to its GSettings key: toggling the row writes
  * the key, and an external write — the preferences window, `gsettings set`,
- * dconf-editor — moves the row. PopupSwitchMenuItem.setToggleState() sets the
- * underlying switch without emitting 'toggled' (only toggle()/activate do),
- * so the settings->row direction should not feed back into the row->settings
- * one. The `syncing` latch below makes that independent of the Shell keeping
- * that behaviour: if a future release ever did emit, two bound surfaces would
- * write to each other in a loop, and that is too expensive a bet to leave
- * resting on an undocumented internal.
+ * dconf-editor — moves the row. The `syncing` latch below is what keeps the
+ * settings->row direction from feeding back into the row->settings one.
+ *
+ * That latch is LOAD-BEARING on the Shell this machine runs, not a
+ * precaution (quick task 260915-unh). The earlier revision of this comment
+ * speculated that setToggleState() sets the underlying switch without
+ * emitting 'toggled'; that speculation is now settled and it is FALSE on
+ * Shell 50, where setToggleState() is `this.set({state})` -> the item's
+ * `state` setter -> `this._switch.set({state})` -> notify::state ->
+ * _onToggled() -> emits 'toggled'. (On 46 it genuinely does not emit.) So
+ * without the latch two bound surfaces would write to each other in a loop —
+ * a dconf write storm — on the current Shell, today. Read from upstream
+ * source rather than verified here, which is why the write path below does
+ * not depend on any single emission (D-8).
  *
  * Every handler is registered with the SignalRegistry, so disable() releases
  * both the per-row 'toggled' connections and the GSettings 'changed::' ones
@@ -194,16 +253,32 @@ export function buildOptionsSection(settings, registry) {
     ];
 
     for (const [key, label] of toggles) {
-        const row = new PopupMenu.PopupSwitchMenuItem(
+        const row = new USBeeSwitchMenuItem(
             label, settings.get_boolean(key));
 
         let syncing = false;
 
-        const toggledId = row.connect('toggled', (_row, state) => {
+        // The row->settings write, reachable from BOTH directions (D-8).
+        // The 'toggled' signal below is the normal path, and also carries an
+        // external setToggleState() write; the activate() override's
+        // _usbeeOnActivate hook is the fallback that keeps the switches
+        // working if toggle() does not emit on some Shell in the declared
+        // range. The idempotence check is what makes running both harmless —
+        // whichever fires first performs the write, and the second sees the
+        // key already at `state` and returns. The `syncing` latch guards
+        // BOTH entry points, so the settings->row direction can never feed
+        // back into this one.
+        const writeKey = (state) => {
             if (syncing) return;
+            if (settings.get_boolean(key) === state) return;
             settings.set_boolean(key, state);
-        });
+        };
+
+        const toggledId = row.connect('toggled', (_row, state) => writeKey(state));
         registry.addSignal(row, toggledId);
+
+        // Second entry point, invoked by the USBeeSwitchMenuItem override.
+        row._usbeeOnActivate = writeKey;
 
         const changedId = settings.connect(`changed::${key}`, () => {
             const value = settings.get_boolean(key);
