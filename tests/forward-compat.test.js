@@ -671,8 +671,12 @@ print('# popover.js composes the built-in filter with the existing ones');
         src.includes("_('Loading…')")
         && src.includes("_('No USB devices attached')")
         && src.includes("_('All devices hidden by the current filters')"));
+    // Quick task 260915-unh routed every teardown in this file through the
+    // clearSection() chokepoint, so the accepted first statement is either
+    // form. The Pitfall-C intent is unchanged and still pinned: emptying the
+    // section is the FIRST thing the function does.
     check('populateLoadingState clears the section first (Pitfall C)',
-        /export function populateLoadingState\(section\) \{\s*(\/\/[^\n]*\n\s*)*section\.removeAll\(\);/.test(src));
+        /export function populateLoadingState\(section\) \{\s*(\/\/[^\n]*\n\s*)*(clearSection\(section\)|section\.removeAll\(\));/.test(src));
     check('the loading row is non-interactive',
         /populateLoadingState[\s\S]*?reactive: false, can_focus: false/.test(src));
 }
@@ -718,8 +722,14 @@ print('# the popover Options section is wired in both directions');
     const tile = readSource('usbee@bitcreed.us/src/tile.js');
     check('tile.js mounts the Options section',
         tile.includes('buildOptionsSection('));
+    // Quick task 260915-unh replaced the one-line rebuild with an in-place
+    // update, so a filter change no longer collapses the list. The repaint
+    // itself is still pinned — via the call that performs it and the header
+    // it has to keep in step.
     check('tile.js repaints the list when a filter changes',
-        tile.includes('if (this.menu.isOpen) this._rebuildPopover();'));
+        tile.includes('updateDeviceRowsInPlace('));
+    check('tile.js keeps the header in step with the rows now visible',
+        tile.includes('this._setHeader('));
 }
 
 print('# prefs.js carries the built-in filter too');

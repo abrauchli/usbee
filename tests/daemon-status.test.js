@@ -447,7 +447,10 @@ print('# the stopped state keeps its command behind a "Show details" row');
     // The disclosure is a SIBLING in the section, not a child of the state
     // item — and it follows the state item. removeAll() stays first
     // (Pitfall C: never mutate while iterating).
-    const iRemove = populate.indexOf('section.removeAll()');
+    // Quick task 260915-unh routed every teardown in popover.js through the
+    // clearSection() chokepoint. The ordering intent is unchanged: the
+    // section is emptied FIRST, then the state item, then the disclosure.
+    const iRemove = populate.indexOf('clearSection(section)');
     const iState  = populate.indexOf('buildEmptyStateItem(');
     const iDisc   = populate.indexOf('buildEmptyStateDetailsItem(');
     check('populateEmptyState adds state item then disclosure, after removeAll',

@@ -33,6 +33,141 @@ import {deriveAltMode, deriveHubInfo, deriveLinkInfo, isBuiltInDevice,
 import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
 
 /**
+ * Empty a section AND forget everything USBee recorded about its contents
+ * (quick task 260915-unh, D-7).
+ *
+ * Every section.removeAll() in this file goes through here, which is the
+ * point. removeAll() calls destroy() on every item, so any inventory USBee
+ * stashed on the section (_usbeeRows, _usbeeOwnedItems) describes finalised
+ * objects the moment it returns. A stale inventory is exactly what would let
+ * a later in-place update call isOpen / close() / destroy() on destroyed rows
+ * — the "instance is invalid" class of session-level fault. Clearing it at
+ * the one chokepoint makes that physically impossible rather than merely
+ * unlikely: an inventory cannot outlive its rows when the only way to empty a
+ * section also drops the inventory.
+ *
+ * @param {PopupMenuSection} section
+ */
+function clearSection(section) {
+    section.removeAll();
+    section._usbeeRows = [];
+    section._usbeeOwnedItems = null;
+}
+
+/**
+ * Live read of the four filter keys (quick task 260915-unh).
+ *
+ * Extracted so the full-rebuild path and the in-place update path cannot
+ * drift apart on what "the current filters" means. Still a live read on every
+ * call — the D-11 lazy-rebuild discipline is unchanged.
+ *
+ * @param {Gio.Settings} settings
+ * @returns {{hideEmpty: boolean, showHubs: boolean, showTech: boolean,
+ *   hideBuiltin: boolean}}
+ */
+function readFilterFlags(settings) {
+    return {
+        // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
+        // Filter predicate uses daemon-emitted tokens 'TypeCPort' / 'Empty'
+        // (same strings src/device-store.js Tier-1 filter consumes).
+        hideEmpty:   settings.get_boolean('hide-empty-ports'),
+        showHubs:    settings.get_boolean('show-hubs'),
+        // Quick task 260526-c6p — live read parallel to the two above. Gates
+        // the technical tier of src/property-policy.js inside buildDeviceRow's
+        // property-bag loop.
+        showTech:    settings.get_boolean('show-technical-details'),
+        // Quick task 260915-i4w — same live-read discipline as the three above.
+        hideBuiltin: settings.get_boolean('hide-builtin-devices'),
+    };
+}
+
+/**
+ * Compose the three filters and the issue-first sort (quick task 260915-unh).
+ *
+ * Extracted from populateDeviceRows verbatim so both render paths agree on
+ * which devices are visible and in what order.
+ *
+ * @param {DeviceStore} store
+ * @param {object} flags  readFilterFlags() result.
+ * @returns {object[]}  Filtered, sorted copy — never the store's own array.
+ */
+function visibleDevices(store, flags) {
+    let devices = store.devices;
+    if (flags.hideEmpty)
+        devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
+    // Quick task 260905-b0s: a hub with an issue is shown even when hubs are
+    // hidden. `port.peer_state` — the key that gates the "SuperSpeed did not
+    // come up" explanation — exists only on root-hub ports, so the
+    // explanation lives on the hub row. Hiding it would leave a
+    // default-config user with a warning and no reachable detail. Only
+    // Degraded / over-budget hubs surface; a BelowCapability hub (the common,
+    // benign case) stays hidden.
+    if (!flags.showHubs)
+        devices = devices.filter(d => d.category !== 'Hub' || hasIssue(d));
+    // Quick task 260915-i4w — hide hardware soldered into the machine. The
+    // test is the daemon's own `mount == 'fixed'` (see isBuiltInDevice); an
+    // absent mount is never treated as built-in. The `|| hasIssue(d)` escape
+    // hatch is the one the hub filter above already carries, for the same
+    // reason (260905-b0s): the header subtitle counts issues, so hiding an
+    // issue-carrying row would report a fault with no row to open it.
+    //
+    // The three filters are independent predicates over the same list, so
+    // they compose in any order rather than conflicting — and they do not
+    // overlap: hide-empty-ports only ever matches TypeCPort rows, which
+    // carry no `mount` and so are never built-in.
+    if (flags.hideBuiltin)
+        devices = devices.filter(d => !isBuiltInDevice(d) || hasIssue(d));
+
+    // UI-03 — Issue-first stable sort. hasIssue(b) - hasIssue(a) floats
+    // issue devices to the top; equal keys preserve insertion order.
+    return [...devices].sort((a, b) =>
+        Number(hasIssue(b)) - Number(hasIssue(a)));
+}
+
+/**
+ * Wire the single-row accordion constraint on one row (UI-02).
+ *
+ * The handler iterates `section._usbeeRows` — the LIVE inventory — rather
+ * than a captured array (quick task 260915-unh). A captured array would hold
+ * references to rows the in-place update has since destroyed, which is the
+ * same "instance is invalid" fault CR-02 / T-03-04 guard on the rebuild path.
+ *
+ * The signal id is stashed on the row so detachAccordionHandler() can
+ * disconnect it before the row's menu actor is destroyed (CR-02 mitigation,
+ * T-03-04 mitigation).
+ *
+ * @param {PopupMenuSection} section
+ * @param {PopupMenu.PopupSubMenuMenuItem} row
+ */
+function attachAccordionHandler(section, row) {
+    const sigId = row.menu.connect('open-state-changed', (_menu, open) => {
+        if (!open) return;
+        for (const other of (section._usbeeRows || [])) {
+            // Defensive: other.menu may have been destroyed by a
+            // concurrent rebuild before this handler ran.
+            if (other !== row && other.menu && other.menu.isOpen)
+                other.menu.close(/* animate */ true);
+        }
+    });
+    row._usbeeAccordionSigId = sigId;
+}
+
+/**
+ * Disconnect a row's accordion handler, if it still has one (CR-02).
+ *
+ * Safe to call on any menu item, including ones that never carried a handler
+ * — the rebuild cleanup loop runs over whatever the section happens to hold.
+ *
+ * @param {PopupMenu.PopupBaseMenuItem} row
+ */
+function detachAccordionHandler(row) {
+    if (row._usbeeAccordionSigId && row.menu) {
+        row.menu.disconnect(row._usbeeAccordionSigId);
+        row._usbeeAccordionSigId = 0;
+    }
+}
+
+/**
  * Render the device list as an accordion of PopupSubMenuMenuItem rows.
  *
  * Called from tile.js every time the popover opens (D-11 lazy-rebuild).
@@ -53,57 +188,27 @@ import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
  */
 export function populateDeviceRows(section, store, extension) {
     // CR-02: disconnect any per-row accordion handlers from the prior
-    // populate() before removeAll() destroys the menu actors. Without this,
+    // populate() before the teardown destroys the menu actors. Without this,
     // a stale 'open-state-changed' fired mid-rebuild (e.g. user double-clicks
     // the tile while a row is mid-animation) can call .isOpen / .close() on
     // a destroyed PopupSubMenu, triggering a "instance is invalid" gobject
     // finalize error.
     for (const item of section._getMenuItems()) {
-        if (item._usbeeAccordionSigId && item.menu) {
-            item.menu.disconnect(item._usbeeAccordionSigId);
-            item._usbeeAccordionSigId = 0;
-        }
+        detachAccordionHandler(item);
+        // Quick task 260915-unh (D-9). `_openedSubMenu` is created and
+        // written ONLY by USBee's own _setOpenedSubMenu shim (tile.js), so
+        // USBee is also responsible for forgetting a submenu it is about to
+        // destroy. Without this the shim keeps a reference to a finalised
+        // PopupSubMenu and the next row the user opens calls close() on it.
+        // The rebuild path has always carried that hazard too; one optional
+        // call closes it for every populate path at once.
+        section._usbeeForgetSubMenu?.(item.menu);
     }
     // Must be first (after handler cleanup) — never mutate while iterating (Pitfall C).
-    section.removeAll();
+    clearSection(section);
 
-    // PREFS-04 consumer — live read on every popover open (D-11 lazy-rebuild).
-    // Filter predicate uses daemon-emitted tokens 'TypeCPort' / 'Empty'
-    // (same strings src/device-store.js Tier-1 filter consumes).
-    const settings = extension.getSettings();
-    const hideEmpty = settings.get_boolean('hide-empty-ports');
-    const showHubs  = settings.get_boolean('show-hubs');
-    // Quick task 260526-c6p — live read parallel to the two above. Gates
-    // the technical tier of src/property-policy.js inside buildDeviceRow's
-    // property-bag loop.
-    const showTech  = settings.get_boolean('show-technical-details');
-    // Quick task 260915-i4w — same live-read discipline as the three above.
-    const hideBuiltin = settings.get_boolean('hide-builtin-devices');
-    let devices = store.devices;
-    if (hideEmpty)
-        devices = devices.filter(d => !(d.category === 'TypeCPort' && d.status === 'Empty'));
-    // Quick task 260905-b0s: a hub with an issue is shown even when hubs are
-    // hidden. `port.peer_state` — the key that gates the "SuperSpeed did not
-    // come up" explanation — exists only on root-hub ports, so the
-    // explanation lives on the hub row. Hiding it would leave a
-    // default-config user with a warning and no reachable detail. Only
-    // Degraded / over-budget hubs surface; a BelowCapability hub (the common,
-    // benign case) stays hidden.
-    if (!showHubs)
-        devices = devices.filter(d => d.category !== 'Hub' || hasIssue(d));
-    // Quick task 260915-i4w — hide hardware soldered into the machine. The
-    // test is the daemon's own `mount == 'fixed'` (see isBuiltInDevice); an
-    // absent mount is never treated as built-in. The `|| hasIssue(d)` escape
-    // hatch is the one the hub filter above already carries, for the same
-    // reason (260905-b0s): the header subtitle counts issues, so hiding an
-    // issue-carrying row would report a fault with no row to open it.
-    //
-    // The three filters are independent predicates over the same list, so
-    // they compose in any order rather than conflicting — and they do not
-    // overlap: hide-empty-ports only ever matches TypeCPort rows, which
-    // carry no `mount` and so are never built-in.
-    if (hideBuiltin)
-        devices = devices.filter(d => !isBuiltInDevice(d) || hasIssue(d));
+    const flags = readFilterFlags(extension.getSettings());
+    const devices = visibleDevices(store, flags);
 
     if (devices.length === 0) {
         // An empty list after filtering is a different fact from an empty
@@ -111,45 +216,167 @@ export function populateDeviceRows(section, store, extension) {
         // are what emptied the list is simply false, and the Options
         // switches that caused it are one row below — so name the cause.
         const emptiedByFilters = store.devices.length > 0;
-        section.addMenuItem(new PopupMenu.PopupMenuItem(
+        const placeholder = new PopupMenu.PopupMenuItem(
             emptiedByFilters
                 ? _('All devices hidden by the current filters')
                 : _('No USB devices attached'),
             {reactive: false, can_focus: false},
-        ));
+        );
+        section.addMenuItem(placeholder);
+        // Record the placeholder as OURS (D-7). The asymmetry with the rows
+        // path below is deliberate and load-bearing: it is what lets
+        // updateDeviceRowsInPlace tell "our own placeholder is on screen, so
+        // a filter change may legitimately bring rows back" apart from
+        // "something that is not ours is on screen — do not touch it", which
+        // is quick task 260915-ung's Loading… row and any future single-item
+        // state. _usbeeShowTech is recorded on BOTH branches because
+        // clearSection() does not reset it.
+        section._usbeeShowTech = flags.showTech;
+        section._usbeeRows = [];
+        section._usbeeOwnedItems = [placeholder];
         return {count: 0, issues: 0};
     }
-
-    // UI-03 — Issue-first stable sort. hasIssue(b) - hasIssue(a) floats
-    // issue devices to the top; equal keys preserve insertion order.
-    devices = [...devices].sort((a, b) =>
-        Number(hasIssue(b)) - Number(hasIssue(a)));
 
     // Build one accordion row per device and wire the single-open constraint.
     const rows = [];
     for (const device of devices) {
-        const row = buildDeviceRow(device, showTech);
+        const row = buildDeviceRow(device, flags.showTech);
         section.addMenuItem(row);
         rows.push(row);
     }
 
     // UI-02 — Single-row accordion: when a row opens, close all others.
-    // Each connection's signal id is stashed on the row so the next
-    // populateDeviceRows() invocation can disconnect it before
-    // section.removeAll() destroys the menu actors (CR-02 mitigation,
-    // T-03-04 mitigation).
-    for (const row of rows) {
-        const sigId = row.menu.connect('open-state-changed', (_menu, open) => {
-            if (!open) return;
-            for (const other of rows) {
-                // Defensive: other.menu may have been destroyed by a
-                // concurrent rebuild before this handler ran.
-                if (other !== row && other.menu && other.menu.isOpen)
-                    other.menu.close(/* animate */ true);
-            }
-        });
-        row._usbeeAccordionSigId = sigId;
+    for (const row of rows)
+        attachAccordionHandler(section, row);
+
+    // USBee-owned bookkeeping on the section — the same `_usbee*` convention
+    // row._usbeeAccordionSigId already follows, NOT Shell internals.
+    // _usbeeRows and _usbeeOwnedItems are deliberately the SAME array object,
+    // so the splices the in-place path performs keep the ownership token
+    // accurate with no extra write.
+    section._usbeeShowTech = flags.showTech;
+    section._usbeeRows = rows;
+    section._usbeeOwnedItems = rows;
+    return {
+        count:  devices.length,
+        issues: devices.filter(hasIssue).length,
+    };
+}
+
+/**
+ * Update the device list IN PLACE instead of rebuilding it (quick task
+ * 260915-unh).
+ *
+ * The rebuild path destroys every row, and destroying a PopupSubMenuMenuItem
+ * destroys its submenu with it (its _init connects 'destroy' to
+ * this.menu.destroy()), so an expanded detail panel collapses and the
+ * St.ScrollView loses its offset. A filter change must not collapse what the
+ * user is reading.
+ *
+ * @param {PopupMenuSection} section
+ * @param {DeviceStore} store
+ * @param {Extension} extension
+ * @returns {?{count: number, issues: number}}  Rows now visible and how many
+ *   carry an issue — or **null**, meaning "the section is not showing the
+ *   device-row branch: nothing was read and nothing was changed". A null
+ *   tells the caller to leave the header alone, because the surface the
+ *   header describes is not on screen.
+ */
+export function updateDeviceRowsInPlace(section, store, extension) {
+    const flags = readFilterFlags(extension.getSettings());
+
+    // Ownership gate (D-7) — before anything else, and before any read of
+    // _usbeeRows. The section's live items must be identity-equal, IN ORDER,
+    // to the inventory populateDeviceRows recorded. Identity is the point: a
+    // length check would pass for a same-sized set of DIFFERENT (already
+    // finalised) objects, and only identity proves the recorded rows are the
+    // live ones.
+    //
+    // clearSection() nulls the token at every teardown site, so a section
+    // holding quick task 260915-ung's Loading… row fails this check and is
+    // left strictly alone. That row is why the gate exists: ung renders it
+    // from INSIDE case DaemonState.RUNNING, so daemonState alone cannot
+    // distinguish it. Any future single-item state is covered with no change
+    // here. `_getMenuItems()` is already used for exactly this purpose at the
+    // top of populateDeviceRows, so this adds no new private surface.
+    const owned = section._usbeeOwnedItems;
+    const live = section._getMenuItems();
+    if (!Array.isArray(owned) || owned.length !== live.length)
+        return null;
+    for (let i = 0; i < owned.length; i++) {
+        if (owned[i] !== live[i])
+            return null;
     }
+
+    const rows = section._usbeeRows || [];
+    if (rows.length === 0) {
+        // The gate above has proved OUR placeholder is what is on screen, and
+        // a filter change must be able to bring rows back. Without that gate
+        // this single line is exactly how 260915-ung's Loading… row would get
+        // replaced by _('No USB devices attached') — the flash that task
+        // exists to remove.
+        return populateDeviceRows(section, store, extension);
+    }
+
+    const devices = visibleDevices(store, flags);
+    if (devices.length === 0) {
+        // Delegate so the "hidden by the current filters" placeholder and its
+        // wording live in exactly one place.
+        return populateDeviceRows(section, store, extension);
+    }
+
+    const wanted = new Map(devices.map(d => [d.id, d]));
+
+    // Remove rows whose device is no longer visible. The order is the
+    // mitigation (D-9, T-unh-02): detach first so nothing can fire
+    // mid-teardown; then forget the shim-owned _openedSubMenu reference,
+    // because leaving it pointing at a submenu about to be finalised is what
+    // makes the NEXT row the user opens call close() on a dead object — the
+    // dangling reference the old teardown left behind; then close; then
+    // destroy. close() is called as well, but the mitigation deliberately
+    // does NOT depend on upstream close() notifying the top menu, which
+    // cannot be verified on this machine.
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        if (wanted.has(row._usbeeDeviceId)) continue;
+        detachAccordionHandler(row);
+        section._usbeeForgetSubMenu?.(row.menu);
+        if (row.menu?.isOpen)
+            row.menu.close(false);
+        rows.splice(i, 1);
+        row.destroy();
+    }
+
+    // Insert rows for newly visible devices, walking `devices` in ascending
+    // index order so each insert lands at its sorted position.
+    // _getMenuItems() maps box children to _delegate and keeps only
+    // PopupBaseMenuItem / PopupMenuSection — a submenu's delegate is a
+    // PopupSubMenu (a PopupMenuBase), so it is filtered out and the array
+    // index equals the section position (46:827 / 50:933). addMenuItem
+    // inserts the row actor and menuItem.menu.actor below the same
+    // beforeItem, preserving row-then-submenu order (46:765 / 50:865).
+    const present = new Set(rows.map(r => r._usbeeDeviceId));
+    for (let index = 0; index < devices.length; index++) {
+        const device = devices[index];
+        if (present.has(device.id)) continue;
+        const row = buildDeviceRow(device, flags.showTech);
+        section.addMenuItem(row, index);
+        rows.splice(index, 0, row);
+        attachAccordionHandler(section, row);
+    }
+
+    // D-5 — only show-technical-details changes what a SURVIVING row says.
+    // The other three keys change which rows exist, never what a row
+    // contains, so they must not touch the row the user is reading.
+    if (section._usbeeShowTech !== flags.showTech) {
+        for (const row of rows) {
+            const device = wanted.get(row._usbeeDeviceId);
+            if (device)
+                populateDeviceRowMenu(row, device, flags.showTech);
+        }
+        section._usbeeShowTech = flags.showTech;
+    }
+
     return {
         count:  devices.length,
         issues: devices.filter(hasIssue).length,
@@ -308,7 +535,7 @@ export function buildOptionsSection(settings, registry) {
  * @param {PopupMenuSection} section
  */
 export function populateEmptyState(section) {
-    section.removeAll();
+    clearSection(section);
     section.addMenuItem(buildEmptyStateItem());
     section.addMenuItem(buildEmptyStateDetailsItem());
 }
@@ -327,8 +554,10 @@ export function populateEmptyState(section) {
  * @param {PopupMenuSection} section
  */
 export function populateLoadingState(section) {
-    // Must be first — never mutate while iterating (Pitfall C).
-    section.removeAll();
+    // Must be first — never mutate while iterating (Pitfall C). Routed
+    // through the chokepoint so this row can never leave a stale row
+    // inventory behind it (quick task 260915-unh, D-7).
+    clearSection(section);
     section.addMenuItem(new PopupMenu.PopupMenuItem(
         _('Loading…'), // U+2026
         {reactive: false, can_focus: false},
@@ -344,7 +573,7 @@ export function populateLoadingState(section) {
  * @param {PopupMenuSection} section
  */
 export function populateNotInstalledState(section) {
-    section.removeAll();
+    clearSection(section);
     section.addMenuItem(buildDaemonNotInstalledItem());
 }
 
@@ -357,7 +586,7 @@ export function populateNotInstalledState(section) {
  * @param {PopupMenuSection} section
  */
 export function populateServiceNotSetUpState(section) {
-    section.removeAll();
+    clearSection(section);
     section.addMenuItem(buildServiceNotSetUpItem());
 }
 
@@ -372,7 +601,7 @@ export function populateServiceNotSetUpState(section) {
  *   could not be read (the item then renders "detected unknown").
  */
 export function populateOutOfDateState(section, detectedVersion = '') {
-    section.removeAll();
+    clearSection(section);
     section.addMenuItem(buildDaemonOutOfDateItem(detectedVersion));
 }
 
@@ -389,7 +618,7 @@ export function populateOutOfDateState(section, detectedVersion = '') {
  * @param {PopupMenuSection} section
  */
 export function populateTooNewState(section) {
-    section.removeAll();
+    clearSection(section);
     section.addMenuItem(buildDaemonTooNewItem());
 }
 
@@ -467,6 +696,40 @@ function buildDeviceRow(device, showTech) {
             row.add_child(rateLabel);
         }
     }
+
+    // Keyed on the daemon's own device identity (D-3) — the same `id` that
+    // src/dbus-client.js already resolves DeviceAdded / DeviceRemoved /
+    // DeviceChanged by, so the in-place update invents no new identity.
+    row._usbeeDeviceId = device.id;
+    populateDeviceRowMenu(row, device, showTech);
+    return row;
+}
+
+/**
+ * Fill (or REfill) one device row's submenu — the pill strip and the whole
+ * labelled-property detail panel (quick task 260915-unh).
+ *
+ * Extracted from buildDeviceRow so the show-technical-details path can swap a
+ * surviving row's contents without destroying the row (D-5). removeAll()
+ * empties a submenu without touching its `isOpen`, so a panel the user has
+ * open stays open across the swap (read from upstream popupMenu.js at plan
+ * time, 46:1053ff / 50:1166ff — the Shell's JS is on neither this machine's
+ * disk nor in any installed .gresource, so that is provenance for a claim,
+ * not a file reference).
+ *
+ * `row.menu.removeAll()` here is the submenu's OWN content, not the device
+ * section, so it deliberately does NOT go through clearSection() — there is
+ * no USBee inventory recorded on a row's menu.
+ *
+ * @param {PopupMenu.PopupSubMenuMenuItem} row
+ * @param {object} device     Unpacked DeviceEntry from the store.
+ * @param {boolean} showTech  Live read of show-technical-details GSettings.
+ */
+function populateDeviceRowMenu(row, device, showTech) {
+    row.menu.removeAll();
+
+    const props = propsOf(device);
+    const link = deriveLinkInfo(device, props);
 
     // --- Transport pill strip (CONTEXT 260526-dmj §C) ---
     // First child of the expanded menu, ABOVE the detailItem. Renders only
@@ -628,7 +891,6 @@ function buildDeviceRow(device, showTech) {
     }
 
     row.menu.addMenuItem(detailItem);
-    return row;
 }
 
 /**

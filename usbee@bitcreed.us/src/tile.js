@@ -19,7 +19,8 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import {buildOptionsSection, populateDeviceRows, populateEmptyState,
     populateLoadingState, populateNotInstalledState, populateOutOfDateState,
-    populateServiceNotSetUpState, populateTooNewState} from './popover.js';
+    populateServiceNotSetUpState, populateTooNewState,
+    updateDeviceRowsInPlace} from './popover.js';
 import {InstallState, probeInstallState, refreshInstallStateAsync}
     from './service-probe.js';
 import {DaemonState} from './daemon-status.js';
@@ -72,6 +73,24 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         };
         this._rowsSection._setOpenedSubMenu = setOpenedSubMenuShim;
         this.menu._setOpenedSubMenu        = setOpenedSubMenuShim;
+
+        // Companion to the shim above (quick task 260915-unh, D-9).
+        // `_openedSubMenu` is created and written ONLY by that shim — it is
+        // USBee's data, not the Shell's — so USBee is also responsible for
+        // forgetting a submenu it is about to destroy, rather than betting on
+        // upstream PopupSubMenu.close() calling _setOpenedSubMenu(null), an
+        // implementation detail that cannot be read on this machine. Without
+        // it, destroying an OPEN row leaves the field dangling and the next
+        // row the user opens calls close() on a finalised PopupSubMenu.
+        // Installed for both hosts for the same reason the shim above is:
+        // _getTopMenu() can stop at either.
+        const forgetSubMenuShim = (submenu) => {
+            for (const host of [this._rowsSection, this.menu]) {
+                if (host && host._openedSubMenu === submenu)
+                    host._openedSubMenu = null;
+            }
+        };
+        this._rowsSection._usbeeForgetSubMenu = forgetSubMenuShim;
         this._rowsScroll = new St.ScrollView({
             style_class: 'usbee-popover-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -155,15 +174,47 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this._optionsItem = buildOptionsSection(this._settings, registry);
         this.menu.addMenuItem(this._optionsItem);
 
-        // A filter change has to repaint the list that filter governs.
-        // populateDeviceRows() re-reads every key on rebuild, so this only
-        // needs to trigger the rebuild, not carry the new value. Rebuilding
-        // only while the popover is open follows D-11 — a closed popover
+        // A filter change has to repaint the list that filter governs — but
+        // it must NOT collapse what the user is reading (quick task
+        // 260915-unh). The list is updated IN PLACE: a device whose details
+        // are open keeps them open and the scroll position holds, where the
+        // old _rebuildPopover() destroyed every row and its submenu with it.
+        // The header must still agree with the rows now visible, so it is
+        // rewritten from the same counts the update returns. Acting only
+        // while the popover is open follows D-11 — a closed popover
         // repopulates on its next open anyway.
         for (const key of ['hide-empty-ports', 'hide-builtin-devices',
             'show-hubs', 'show-technical-details']) {
             const filterId = this._settings.connect(`changed::${key}`, () => {
-                if (this.menu.isOpen) this._rebuildPopover();
+                if (!this.menu.isOpen) return;
+                // Loading-window guard (D-6). While quick task 260915-ung's
+                // Loading… row is on screen there is nothing to filter and
+                // nothing a filter could change, and ung's loading→loaded
+                // latch repaints with the live filter values when the
+                // snapshot lands — so doing nothing is both the safest and
+                // the sufficient action, strictly better than churning
+                // actors for no visible gain. Tested `=== true` so a build
+                // without that getter reads as "not awaiting" and behaves
+                // exactly as before.
+                //
+                // daemonState cannot carry this: ung renders its row from
+                // INSIDE case DaemonState.RUNNING, so the daemon state IS
+                // RUNNING while the Loading… row is visible and a
+                // daemonState-only gate would never fire.
+                if (this._store.awaitingFirstSnapshot === true) return;
+                // Every other daemon state renders one non-expandable item,
+                // so a full rebuild there costs the user nothing.
+                if (this._store.daemonState !== DaemonState.RUNNING) {
+                    this._rebuildPopover();
+                    return;
+                }
+                const result = updateDeviceRowsInPlace(
+                    this._rowsSection, this._store, this._extension);
+                // null means nothing was repainted — the section is not
+                // showing the device-row branch — so the header describes a
+                // surface that is not on screen and must be left alone.
+                if (result)
+                    this._setHeader(result.count, result.issues);
             });
             registry.addSignal(this._settings, filterId);
         }
@@ -280,6 +331,23 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         // the loading one leaves it false, so a loaded popover never rebuilds
         // itself on a routine re-snapshot.
         this._renderedLoading = renderedLoading;
+        this._setHeader(n, issues);
+    }
+
+    /**
+     * Write the popover header from a device count and an issue count.
+     *
+     * Extracted to one copy (quick task 260915-unh) because the in-place
+     * filter update below also has to keep the header agreeing with the rows
+     * actually visible — and two copies of this derivation is exactly how it
+     * would stop agreeing.
+     *
+     * @param {number} n  Devices rendered, or -1 for "not counted" (the
+     *   loading row and every daemon-missing state), which renders the
+     *   count-free title rather than claiming a measured zero.
+     * @param {number} issues  How many of them carry an issue.
+     */
+    _setHeader(n, issues) {
         const hdrTitle = n === 1 ? _('1 USB device')
             : n >= 0 ? _('%d USB devices').format(n) : _('USB devices');
         // The header's subtitle slot was always set to ''. It is the free
