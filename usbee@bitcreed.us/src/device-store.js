@@ -22,7 +22,7 @@
 import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {DaemonState} from './daemon-status.js';
+import {DaemonState, isAwaitingFirstSnapshot} from './daemon-status.js';
 import {formatRate, hasLinkIssue} from './link-verdict.js';
 
 // DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
@@ -321,6 +321,11 @@ export const DeviceStore = GObject.registerClass({
         // Version string the daemon reported when it failed the gate.
         // Empty when unknown / not applicable.
         this._daemonVersion = '';
+        // Has a device snapshot landed since the last daemon lifecycle
+        // transition? Distinguishes "the daemon has not answered yet" from
+        // "the daemon answered, and the answer was nothing" — see
+        // isAwaitingFirstSnapshot (quick task 260915-ung).
+        this._snapshotReceived = false;
     }
 
     get devices()        { return this._devices; }
@@ -335,6 +340,15 @@ export const DeviceStore = GObject.registerClass({
     get daemonRunning()  { return this._daemonState === DaemonState.RUNNING; }
 
     /**
+     * The third, derived state: daemon present, first snapshot not yet in.
+     * Both surfaces read it from here, so the pill and the popover cannot
+     * disagree about whether the list is empty or merely unmeasured.
+     */
+    get awaitingFirstSnapshot() {
+        return isAwaitingFirstSnapshot(this._daemonState, this._snapshotReceived);
+    }
+
+    /**
      * Two-line D-09 tile text {title, subtitle}. Returns a state-specific
      * sentinel when the daemon is unusable (UI-SPEC #copywriting Tile/empty
      * state); otherwise delegates to deriveTileText() for the 4-tier algorithm.
@@ -342,6 +356,13 @@ export const DeviceStore = GObject.registerClass({
     get tileText() {
         switch (this._daemonState) {
         case DaemonState.RUNNING:
+            // Nothing has been counted yet: setDaemonRunning(true) lands one
+            // line before the un-awaited _snapshotImmediate() call
+            // (src/dbus-client.js), so without this branch deriveTileText
+            // falls all the way through to its Tier-4 "Nothing connected" and
+            // the pill asserts an absence nobody has measured.
+            if (this.awaitingFirstSnapshot)
+                return {title: _('USB'), subtitle: _('Loading…')}; // U+2026
             return deriveTileText(this._devices);
         case DaemonState.OUT_OF_DATE:
             return {title: _('USB'), subtitle: _('Daemon out of date')};
@@ -372,6 +393,11 @@ export const DeviceStore = GObject.registerClass({
      */
     setDevices(rawEntries) {
         this._devices = (rawEntries || []).map(unpackDeviceEntry);
+        // The only place the awaiting state is concluded by real data. An
+        // empty rawEntries here is a measured zero and renders as "Nothing
+        // connected"; an empty _devices with this flag still false is an
+        // unmeasured zero and renders as "Loading…".
+        this._snapshotReceived = true;
         this.emit('changed');
     }
 
@@ -388,6 +414,12 @@ export const DeviceStore = GObject.registerClass({
             return;
         this._daemonState = state;
         this._daemonVersion = version;
+        // Re-arm the loading state on every REAL lifecycle transition. The
+        // guard above already swallows no-op re-asserts, so an idempotent
+        // setDaemonRunning(true) cannot wrongly re-arm it, while a genuine
+        // STOPPED→RUNNING on daemon restart always does — which is what makes
+        // the loading state survive a restart with no extra bookkeeping.
+        this._snapshotReceived = false;
         this.emit('changed');
     }
 

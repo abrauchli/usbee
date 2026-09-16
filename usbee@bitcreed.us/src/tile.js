@@ -18,7 +18,7 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buildOptionsSection, populateDeviceRows, populateEmptyState,
-    populateNotInstalledState, populateOutOfDateState,
+    populateLoadingState, populateNotInstalledState, populateOutOfDateState,
     populateServiceNotSetUpState, populateTooNewState} from './popover.js';
 import {InstallState, probeInstallState, refreshInstallStateAsync}
     from './service-probe.js';
@@ -214,6 +214,16 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             populateTooNewState(this._rowsSection);
             break;
         case DaemonState.RUNNING: {
+            // Daemon on the bus, first snapshot not back yet (quick task
+            // 260915-ung). The device list is empty because nothing has been
+            // counted, not because nothing is attached. `n` stays at its
+            // initialised -1 and `issues` at 0, so the header expression below
+            // renders the count-free _('USB devices') title rather than
+            // claiming a measured zero — no new header string is needed.
+            if (this._store.awaitingFirstSnapshot) {
+                populateLoadingState(this._rowsSection);
+                break;
+            }
             const result = populateDeviceRows(
                 this._rowsSection, this._store, this._extension);
             n = result.count;

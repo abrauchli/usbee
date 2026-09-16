@@ -86,6 +86,36 @@ export const DaemonState = Object.freeze({
 });
 
 /**
+ * True iff the daemon is present but its first device snapshot has not landed
+ * yet — the transient window between `setDaemonRunning(true)` and the
+ * `ListDevices` reply (src/dbus-client.js `_snapshotImmediate`, deliberately
+ * not awaited). Without this distinction the store looks identical to a
+ * genuinely empty bus and the tile asserts "Nothing connected" about devices
+ * nobody has counted (quick task 260915-ung).
+ *
+ * Deliberately NOT a fifth DaemonState value. DaemonState answers "what is
+ * the daemon's liveness/version status"; "have we heard back yet" is a
+ * different question, and one that is only meaningful while RUNNING. A fifth
+ * value would also read as not-running in DeviceStore.daemonRunning, which
+ * DBusClient._onProxyOwnerAcquired guards on to stay idempotent — a STARTING
+ * state there would re-drive a second snapshot.
+ *
+ * Fails closed the way the rest of this module does: any state other than
+ * RUNNING is never awaiting, so an unknown future state cannot strand a
+ * surface in the loading copy. `snapshotReceived !== true` rather than
+ * `!snapshotReceived` so an undefined field on an older store double reads as
+ * "not yet", not as an error.
+ *
+ * @param {string} daemonState        A DaemonState value.
+ * @param {boolean} snapshotReceived  Whether a snapshot has landed since the
+ *   last daemon lifecycle transition.
+ * @returns {boolean}
+ */
+export function isAwaitingFirstSnapshot(daemonState, snapshotReceived) {
+    return daemonState === DaemonState.RUNNING && snapshotReceived !== true;
+}
+
+/**
  * Fail-closed lexical-tuple semver compare. Returns true iff
  * `actual >= minimum`.
  *

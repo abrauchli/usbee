@@ -239,6 +239,28 @@ export function populateEmptyState(section) {
 }
 
 /**
+ * Render the transient "daemon is up, first snapshot not back yet" row (quick
+ * task 260915-ung). Reached from tile.js while store.awaitingFirstSnapshot is
+ * true — otherwise the list would read "No USB devices attached" about devices
+ * nobody has counted.
+ *
+ * Deliberately NOT an empty-state item: this is a passing moment, not one of
+ * the daemon-missing states, so it carries no command row and no button.
+ * Shares its msgid with the tile pill (src/device-store.js tileText) — two
+ * names for one state is how a user comes to believe there are two states.
+ *
+ * @param {PopupMenuSection} section
+ */
+export function populateLoadingState(section) {
+    // Must be first — never mutate while iterating (Pitfall C).
+    section.removeAll();
+    section.addMenuItem(new PopupMenu.PopupMenuItem(
+        _('Loading…'), // U+2026
+        {reactive: false, can_focus: false},
+    ));
+}
+
+/**
  * Render the "daemon not installed" empty state (quick task 260526-i7q).
  * Wired from tile.js _rebuildPopover() when the daemon is not running and
  * probeInstallState() returns InstallState.NOT_INSTALLED — no unit file
