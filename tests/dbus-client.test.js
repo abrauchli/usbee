@@ -23,7 +23,8 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {DBusClient} from '../usbee@bitcreed.us/src/dbus-client.js';
-import {DaemonState} from '../usbee@bitcreed.us/src/daemon-status.js';
+import {DaemonState, isAwaitingFirstSnapshot}
+    from '../usbee@bitcreed.us/src/daemon-status.js';
 
 let failures = 0;
 function check(name, cond) {
@@ -57,12 +58,24 @@ function makeStore() {
         daemonRunning: false,
         daemonState: DaemonState.STOPPED,
         daemonVersion: '',
+        // Quick task 260915-ung — the third, derived state. Mirrored here (via
+        // the real predicate, not a reimplementation) so the ordering that
+        // causes the "0 devices" flash is observable in these tests:
+        // setDaemonRunning(true) always lands before any snapshot.
+        snapshotReceived: false,
+        get awaitingFirstSnapshot() {
+            return isAwaitingFirstSnapshot(this.daemonState, this.snapshotReceived);
+        },
         devices: [],
         calls: [],
         setDaemonRunning(v) {
             this.daemonRunning = v;
             this.daemonState = v ? DaemonState.RUNNING : DaemonState.STOPPED;
             this.daemonVersion = '';
+            // Mirrors the real _setDaemonState, which re-arms the wait on every
+            // genuine lifecycle transition. The other two state writers below
+            // route to non-RUNNING states, where the flag cannot be read.
+            this.snapshotReceived = false;
             this.calls.push(['setDaemonRunning', v]);
         },
         setDaemonOutOfDate(version) {
@@ -79,7 +92,17 @@ function makeStore() {
             this.daemonVersion = '';
             this.calls.push(['setDaemonTooNew']);
         },
-        setDevices(d) { this.devices = d; this.calls.push(['setDevices', d.length]); },
+        // Quick task 260915-ung D-02 — the failure hand-off. Concludes the
+        // wait without touching `devices`, exactly as the real store does.
+        noteSnapshotFailed() {
+            this.snapshotReceived = true;
+            this.calls.push(['noteSnapshotFailed']);
+        },
+        setDevices(d) {
+            this.devices = d;
+            this.snapshotReceived = true;
+            this.calls.push(['setDevices', d.length]);
+        },
     };
 }
 
@@ -461,6 +484,62 @@ print('# out-of-date daemon that exits — returns to STOPPED (the ke2 regressio
     client._onVanished(); // bus-watch vanish + notify::g-name-owner both fire
     check('idempotent from STOPPED: lost not re-emitted', lost === 1);
     check('idempotent from STOPPED: notifier not re-fired', notifier.vanished === 1);
+}
+
+print('# a failed ListDevices concludes the wait instead of stranding it');
+{
+    // Quick task 260915-ung D-02. Without the hand-off the store sits in
+    // awaitingFirstSnapshot forever and both surfaces read "Loading…"
+    // indefinitely — a worse lie than the "Nothing connected" the loading
+    // state was added to replace.
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.8');
+    client._proxy.ListDevicesRemote = cb => cb(null, new Error('ListDevices exploded'));
+    store.setDaemonRunning(true);
+    store.calls.length = 0;
+    check('precondition: the store is awaiting a first snapshot',
+        store.awaitingFirstSnapshot === true);
+
+    await client._snapshotImmediate();
+
+    check('the failure concludes the awaiting state',
+        store.calls.some(c => c[0] === 'noteSnapshotFailed'));
+    check('the surfaces leave the loading state',
+        store.awaitingFirstSnapshot === false);
+    // The "keep prior store state, let the next signal retry" contract: a
+    // failed call must never fabricate a device list.
+    check('a failed snapshot never calls setDevices',
+        !store.calls.some(c => c[0] === 'setDevices'));
+}
+
+print('# the daemon reads RUNNING before any snapshot — the flash root cause');
+{
+    // setDaemonRunning(true) lands one line before the deliberately un-awaited
+    // _snapshotImmediate(), so there is always a window where the store is
+    // RUNNING with an empty device list. Pinning the ordering means a future
+    // reordering cannot silently reintroduce the "0 devices" flash.
+    const store = makeStore();
+    const client = newClient(store);
+    client._proxy = makeProxy(':1.42');
+
+    client._onProxyOwnerAcquired();
+    check('the store is RUNNING but still awaiting its first snapshot',
+        store.daemonState === DaemonState.RUNNING
+        && store.awaitingFirstSnapshot === true);
+
+    // The caller does not await _snapshotImmediate(); drain the microtask
+    // queue so its setDevices lands before we inspect the recorded order.
+    for (let i = 0; i < 5; i++)
+        await Promise.resolve();
+
+    const runIdx = store.calls.findIndex(
+        c => c[0] === 'setDaemonRunning' && c[1] === true);
+    const devIdx = store.calls.findIndex(c => c[0] === 'setDevices');
+    check('setDaemonRunning(true) is recorded', runIdx >= 0);
+    check('the snapshot is recorded only after it', devIdx > runIdx);
+    check('the snapshot clears the awaiting state',
+        store.awaitingFirstSnapshot === false);
 }
 
 // --- Summary ----------------------------------------------------------------

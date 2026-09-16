@@ -661,6 +661,20 @@ print('# popover.js composes the built-in filter with the existing ones');
         src.includes("_('All devices hidden by the current filters')"));
     check('popover.js keeps the bus-empty string for a genuinely empty bus',
         src.includes("_('No USB devices attached')"));
+
+    // Quick task 260915-ung — the loading row is a THIRD thing, distinct from
+    // both empty-list strings above. Matched on the export statement rather
+    // than the bare literal so a mention in a comment cannot satisfy it.
+    check('popover.js exports populateLoadingState',
+        src.includes('export function populateLoadingState(section)'));
+    check('the loading row is distinct from both empty-list strings',
+        src.includes("_('Loading…')")
+        && src.includes("_('No USB devices attached')")
+        && src.includes("_('All devices hidden by the current filters')"));
+    check('populateLoadingState clears the section first (Pitfall C)',
+        /export function populateLoadingState\(section\) \{\s*(\/\/[^\n]*\n\s*)*section\.removeAll\(\);/.test(src));
+    check('the loading row is non-interactive',
+        /populateLoadingState[\s\S]*?reactive: false, can_focus: false/.test(src));
 }
 
 print('# the popover Options section is wired in both directions');
@@ -1069,6 +1083,22 @@ print('# device-store.js has a Tier-0 issue tier');
     check('device-store.js shares formatRate with the popover',
         src.includes('formatRate(top.link_speed_mbps)'));
     check('device-store.js exposes setDaemonTooNew', src.includes('setDaemonTooNew()'));
+
+    // Quick task 260915-ung — the pill must not report a measured zero while
+    // the very first snapshot is still in flight.
+    check('device-store.js has a loading branch in tileText',
+        /case DaemonState\.RUNNING:[\s\S]*?if \(this\.awaitingFirstSnapshot\)[\s\S]*?_\('Loading…'\)/.test(src));
+    check('the loading branch is guarded by the store getter',
+        src.includes('if (this.awaitingFirstSnapshot)'));
+    // deriveTileText is a pure function over a device array and must stay
+    // ignorant of daemon lifecycle — several tiers above depend on that.
+    // Slice the body out by hand: a lazy regex would run past the function
+    // and match the getter further down the file.
+    const deriveStart = src.indexOf('export function deriveTileText');
+    const deriveBody = deriveStart < 0 ? ''
+        : src.slice(deriveStart, src.indexOf('\n/**', deriveStart));
+    check('deriveTileText stays unaware of the daemon lifecycle',
+        deriveBody !== '' && !deriveBody.includes('awaitingFirstSnapshot'));
 }
 
 print('# notifier.js tiers the new signals correctly');

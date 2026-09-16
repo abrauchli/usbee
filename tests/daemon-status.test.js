@@ -29,7 +29,7 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {DaemonState, IFACE_GENERATION, INSTALL_CMD, MIN_USBEEHIVE_VERSION,
-    SETUP_CMD, UPDATE_CMD, isVersionAtLeast}
+    SETUP_CMD, UPDATE_CMD, isAwaitingFirstSnapshot, isVersionAtLeast}
     from '../usbee@bitcreed.us/src/daemon-status.js';
 
 let failures = 0;
@@ -156,6 +156,38 @@ print('# DaemonState');
     check("TOO_NEW is 'too-new'", DaemonState.TOO_NEW === 'too-new');
 }
 
+print('# isAwaitingFirstSnapshot — the third, derived state');
+{
+    // The window this predicate exists for (quick task 260915-ung): the
+    // daemon is on the bus but the un-awaited _snapshotImmediate() has not
+    // come back, so an empty device list means "not counted yet" rather than
+    // "nothing attached".
+    check('RUNNING with no snapshot yet is awaiting',
+        isAwaitingFirstSnapshot(DaemonState.RUNNING, false) === true);
+    check('RUNNING after a snapshot is not awaiting',
+        isAwaitingFirstSnapshot(DaemonState.RUNNING, true) === false);
+    // The other three states own their own copy; the loading row must never
+    // override an empty state that is already saying something truer.
+    check('STOPPED is never awaiting',
+        isAwaitingFirstSnapshot(DaemonState.STOPPED, false) === false);
+    check('STOPPED with a stale flag is still never awaiting',
+        isAwaitingFirstSnapshot(DaemonState.STOPPED, true) === false);
+    check('OUT_OF_DATE is never awaiting',
+        isAwaitingFirstSnapshot(DaemonState.OUT_OF_DATE, false) === false);
+    check('TOO_NEW is never awaiting',
+        isAwaitingFirstSnapshot(DaemonState.TOO_NEW, false) === false);
+    // Fails closed like the rest of this module: an unknown future state
+    // cannot strand a surface in "Loading…" forever.
+    check('an unknown future state is never awaiting',
+        isAwaitingFirstSnapshot('some-future-state', false) === false);
+    check('an undefined state is never awaiting',
+        isAwaitingFirstSnapshot(undefined, false) === false);
+    // A store double predating the field reads as "not yet" rather than
+    // reporting loaded — hence `!== true` in the predicate, not `!flag`.
+    check('a missing snapshot flag reads as not-yet',
+        isAwaitingFirstSnapshot(DaemonState.RUNNING, undefined) === true);
+}
+
 print('# the TOO_NEW state reaches every surface');
 {
     const store = readSource('usbee@bitcreed.us/src/device-store.js');
@@ -247,6 +279,37 @@ print('# device-store.js owns the tri-state');
         src.includes("_('Daemon not running')"));
     check('device-store.js no longer keeps a private _daemonRunning boolean',
         !src.includes('this._daemonRunning'));
+
+    // Quick task 260915-ung — the third, derived state. Every guard matches
+    // code-shaped text rather than a bare translated literal, so a mention in
+    // a comment cannot satisfy it (the trap 260910-p91 documented).
+    check('device-store.js imports the predicate from ./daemon-status.js',
+        /import\s*\{[^}]*isAwaitingFirstSnapshot[^}]*\}\s*from\s*'\.\/daemon-status\.js'/.test(src));
+    check('device-store.js exposes an awaitingFirstSnapshot getter',
+        src.includes('get awaitingFirstSnapshot()'));
+    check('device-store.js delegates it to the shared predicate',
+        src.includes('isAwaitingFirstSnapshot(this._daemonState, this._snapshotReceived)'));
+    check('device-store.js keeps a _snapshotReceived field',
+        src.includes('this._snapshotReceived = false;'));
+    check('device-store.js has a Loading… tile branch',
+        src.includes("_('Loading…')"));
+    // setDevices is the one path where real data concludes the wait.
+    check('setDevices concludes the awaiting state',
+        functionBody(src, 'setDevices(rawEntries)')
+            .includes('this._snapshotReceived = true;'));
+    // The reset lives inside _setDaemonState, AFTER its no-op guard. That
+    // placement is what returns both surfaces to loading on a daemon restart
+    // while leaving an idempotent setDaemonRunning(true) alone — so it is
+    // pinned explicitly rather than left implicit.
+    check('_setDaemonState re-arms the awaiting state',
+        functionBody(src, '_setDaemonState(state, version)')
+            .includes('this._snapshotReceived = false;'));
+    // A failed snapshot must conclude the wait without inventing a device
+    // list — the "keep prior store state" contract (D-02).
+    check('device-store.js exposes noteSnapshotFailed()',
+        src.includes('noteSnapshotFailed()'));
+    check('noteSnapshotFailed does not fabricate a device list',
+        !functionBody(src, 'noteSnapshotFailed()').includes('this._devices'));
 }
 
 print('# tile.js routes the popover from the store');

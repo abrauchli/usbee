@@ -21,6 +21,13 @@ unrelated.
   `systemctl` line it used to print in full now sits one click away behind a
   **Show details** row, copy button and all. It is still there because it does
   something the button does not: have the daemon start with every session.
+- **The list no longer says nothing is connected while it is still counting.**
+  For the first seconds after the daemon starts, the tile read "Nothing
+  connected" and the popover "No USB devices attached" — before anything had
+  been looked at — and then filled in, so a full machine briefly appeared
+  empty. Both now say **Loading…** until the first answer arrives, which means
+  an empty list can be trusted to mean an empty machine. If that answer never
+  comes, they fall back to the previous wording rather than waiting forever.
 
 ## [2.9.0] — 2026-09-15
 
