@@ -8,6 +8,20 @@ unrelated.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The button that starts the daemon now looks like the action it is.** It
+  always worked when clicked, but it was drawn in the same grey the desktop
+  uses for controls that are switched off, so it read as unavailable and
+  invited nobody to press it. It now follows the accent colour of the desktop
+  theme — in the light appearance as well as the dark one, where before it had
+  no visible button shape at all — and it dims properly while the daemon is
+  starting, which it previously failed to do.
+- **The panel leads with that button instead of a terminal command.** The
+  `systemctl` line it used to print in full now sits one click away behind a
+  **Show details** row, copy button and all. It is still there because it does
+  something the button does not: have the daemon start with every session.
+
 ## [2.9.0] — 2026-09-15
 
 ### Added
