@@ -8,35 +8,6 @@ unrelated.
 
 ## [Unreleased]
 
-### Fixed
-
-- **The button that starts the daemon now looks like the action it is.** It
-  always worked when clicked, but it was drawn in the same grey the desktop
-  uses for controls that are switched off, so it read as unavailable and
-  invited nobody to press it. It now follows the accent colour of the desktop
-  theme — in the light appearance as well as the dark one, where before it had
-  no visible button shape at all — and it dims properly while the daemon is
-  starting, which it previously failed to do.
-- **The panel leads with that button instead of a terminal command.** The
-  `systemctl` line it used to print in full now sits one click away behind a
-  **Show details** row, copy button and all. It is still there because it does
-  something the button does not: have the daemon start with every session.
-- **The list no longer says nothing is connected while it is still counting.**
-  For the first seconds after the daemon starts, the tile read "Nothing
-  connected" and the popover "No USB devices attached" — before anything had
-  been looked at — and then filled in, so a full machine briefly appeared
-  empty. Both now say **Loading…** until the first answer arrives, which means
-  an empty list can be trusted to mean an empty machine. If that answer never
-  comes, they fall back to the previous wording rather than waiting forever.
-- **Changing a setting from inside the popover no longer closes it.** The
-  switches under **Options** used to dismiss the whole Quick Settings panel the
-  moment one was clicked, so every change meant reopening the panel to see what
-  it had done.
-- **Changing a filter no longer collapses the device list.** The list now
-  updates in place: a device whose details were open stays open, the list stays
-  where it was scrolled to, and only the rows the filter actually affects
-  appear or disappear.
-
 ## [2.9.0] — 2026-09-15
 
 ### Added
@@ -80,6 +51,35 @@ unrelated.
   of the D-Bus interface. Nothing in USBee ever called it and no feature
   stood on it. The daemon still provides it, so capturing a JSON snapshot for
   a bug report with `busctl` or the usbeehive CLI works exactly as before.
+
+### Fixed
+
+- **The button that starts the daemon now looks like the action it is.** It
+  always worked when clicked, but it was drawn in the same grey the desktop
+  uses for controls that are switched off, so it read as unavailable and
+  invited nobody to press it. It now follows the accent colour of the desktop
+  theme — in the light appearance as well as the dark one, where before it had
+  no visible button shape at all — and it dims properly while the daemon is
+  starting, which it previously failed to do.
+- **The panel leads with that button instead of a terminal command.** The
+  `systemctl` line it used to print in full now sits one click away behind a
+  **Show details** row, copy button and all. It is still there because it does
+  something the button does not: have the daemon start with every session.
+- **The list no longer says nothing is connected while it is still counting.**
+  For the first seconds after the daemon starts, the tile read "Nothing
+  connected" and the popover "No USB devices attached" — before anything had
+  been looked at — and then filled in, so a full machine briefly appeared
+  empty. Both now say **Loading…** until the first answer arrives, which means
+  an empty list can be trusted to mean an empty machine. If that answer never
+  comes, they fall back to the previous wording rather than waiting forever.
+- **Changing a setting from inside the popover no longer closes it.** The
+  switches under **Options** used to dismiss the whole Quick Settings panel the
+  moment one was clicked, so every change meant reopening the panel to see what
+  it had done.
+- **Changing a filter no longer collapses the device list.** The list now
+  updates in place: a device whose details were open stays open, the list stays
+  where it was scrolled to, and only the rows the filter actually affects
+  appear or disappear.
 
 ## [2.8.0] — 2026-09-10
 
