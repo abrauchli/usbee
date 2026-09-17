@@ -23,8 +23,7 @@ with `usbeehived` is considered stable, but UI details may still change.
 
 ## Requirements
 
-- GNOME Shell **46, 47, 48, 49, or 50** (48-50 untested, only
-  API-checked. Happy to take bug reports or success stories)
+- GNOME Shell **46-50**
 - The [`usbeehive`](https://github.com/abrauchli/usbeehive) daemon
   `usbeehived` running on the session bus
 
