@@ -23,7 +23,7 @@ import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {DaemonState, isAwaitingFirstSnapshot} from './daemon-status.js';
-import {formatRate, hasLinkIssue} from './link-verdict.js';
+import {deriveCapabilityTile, formatRate, hasLinkIssue} from './link-verdict.js';
 
 // DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
 //   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)
@@ -129,11 +129,13 @@ export function formatAmps(ma) {
  * Derive the tile title + subtitle (two-line pill) from the current device list.
  * Implements CONTEXT.md D-09 / UI-SPEC #copywriting Tier 1-4 in the post-04-02
  * polish shape where the top line carries the *kind* of fact ("Charging",
- * "USB 2.0", …) and the bottom line carries the *value* ("65 W", "480 Mb/s", …).
+ * "USB 5Gbps", …) and the bottom line carries the *value* ("65 W",
+ * "linked at 480 Mb/s", …).
  *
  *   Tier 0 — Something is wrong (quick task 260905-b0s §D-5)
  *   Tier 1 — Active USB-C charging/sourcing port → direction word + wattage
- *   Tier 2 — Fastest attached link with parseable USB version + speed
+ *   Tier 2 — Best attached link CAPABILITY brand, qualified by whether it is
+ *            actually being reached (quick task 260917-hkf)
  *   Tier 3 — Anything attached (count)
  *   Tier 4 — Nothing connected
  *
@@ -238,21 +240,48 @@ export function deriveTileText(devices) {
         };
     }
 
-    // --- Tier 2: Fastest attached link with structured speed + version ---
-    // Both link_speed_mbps and usb_version must be present for Tier 2 to
-    // activate — partial reads fall through to Tier 3. WIRE-04 forward-
-    // compat: a future canonical usb_version string the renderer doesn't
-    // know is still rendered verbatim with the 'USB ' prefix.
-    const withSpeed = devices.filter(d =>
-        d.link_speed_mbps > 0 && d.usb_version);
-    if (withSpeed.length > 0) {
-        withSpeed.sort((a, b) => b.link_speed_mbps - a.link_speed_mbps
-                              || a.id.localeCompare(b.id));
-        const top = withSpeed[0];
-        // Daemon emits raw Mbit/s; formatRate owns the UI side of the unit
-        // conversion and is shared with the per-device rows in the popover
-        // (quick task 260905-b0s) so the tile and the rows cannot disagree.
-        return {title: `USB ${top.usb_version}`, subtitle: formatRate(top.link_speed_mbps)};
+    // --- Tier 2: Maximum link capability, qualified by what it is reaching ---
+    // The ranking, the brand and the subtitle CHOICE all live in
+    // link-verdict.js (deriveCapabilityTile) — that module imports nothing,
+    // so it loads under bare gjs and is really unit-tested in CI, whereas
+    // this one imports gnome-shell's extension resource for gettext and can
+    // only be guarded at source level. This tier is therefore a pure gettext
+    // mapping over the helper's tokens and must not re-derive any of them.
+    //
+    // The title used to interpolate the canonicalised bcdUSB descriptor
+    // version the daemon publishes. That is neither a capability nor a
+    // speed, and its commonest value names no real USB specification, so the
+    // popover withdrew it (quick task 260910-n10) and this tier — its last
+    // render site anywhere in the UI — now names the capability instead.
+    const cap = deriveCapabilityTile(devices);
+    if (cap !== null) {
+        let subtitle;
+        if (cap.subtitleKind === 'full') {
+            // Translators: Tile subtitle when the fastest attached device is
+            // running at the full speed it is capable of.
+            subtitle = _('full capability');
+        } else if (cap.subtitleKind === 'unlinked') {
+            // Translators: Tile subtitle when a device's capability is known
+            // but it has negotiated no link at all.
+            subtitle = _('not linked');
+        } else {
+            // Translators: Tile subtitle when the fastest attached device is
+            // running BELOW what it is capable of — it can go faster. %s is a
+            // formatted measured rate like "480 Mb/s".
+            //
+            // Daemon emits raw Mbit/s; formatRate owns the UI side of the
+            // unit conversion and is shared with the per-device rows in the
+            // popover (quick task 260905-b0s) so the tile and the rows cannot
+            // disagree.
+            subtitle = _('linked at %s').format(formatRate(cap.negotiatedMbps));
+        }
+        return {
+            // Translators: Tile title naming the best link capability
+            // attached. %s is an untranslated technical rate brand in USB-IF
+            // form, like "5Gbps" or "480Mbps".
+            title: _('USB %s').format(cap.brand),
+            subtitle,
+        };
     }
 
     // --- Tier 3: Any attached device (no parseable speed) ---

@@ -928,7 +928,9 @@ function buildLinkBlock(detailBox, device, link) {
     // exist. All 2.10 declares is that the device carries a BOS descriptor,
     // yet beside a rate it reads like an actionable version number. The rate
     // already says the same thing, more precisely. The field is still on the
-    // wire and still renders in the tile title (src/device-store.js).
+    // wire, but as of quick task 260917-hkf it renders NOWHERE in the UI: the
+    // tile title was its last render site and now names the best attached
+    // link capability instead (src/device-store.js Tier 2).
     const base = link.rateText;
 
     let valueText = base;

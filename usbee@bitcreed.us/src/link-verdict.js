@@ -131,6 +131,51 @@ export function formatRate(mbps) {
 }
 
 /**
+ * Format a link-capability ceiling as USB-IF's rate brand.
+ *
+ * The bucket edges mirror `link_speed_tier()` in the daemon (usbeehive
+ * src/usb.rs:362-375) so the tile and the daemon can never disagree about
+ * which tier a given Mbit/s figure belongs to. Two edges diverge from the
+ * daemon as it stands today, deliberately:
+ *   - the 80 Gbps tier is AHEAD of the daemon, which tops out at its Usb4
+ *     bucket (>= 40000). USB4 v2 hardware will report 80000 and must brand
+ *     as itself rather than collapse to 40Gbps (WIRE-04: never blank, never
+ *     wrong-by-rounding-down more than a tier).
+ *   - the low-speed edge here is >= 1, where the daemon uses >= 2. Nothing
+ *     in [1, 2) is a real USB rate under either rule, so both resolve the
+ *     same brand and the difference is unobservable on real hardware.
+ *
+ * The typography is closed-up — `5Gbps`, not `5 Gb/s`. That is USB-IF brand
+ * form and it is intentionally DIFFERENT from `formatRate()`'s measured form
+ * in the sibling function above: the tile title carries a brand (what the
+ * hardware IS), the tile subtitle carries a measurement (what it is DOING).
+ * Keeping the two forms visibly distinct is what lets the two lines sit
+ * together without reading as a contradiction.
+ *
+ * This is not the daemon's `usb_capable_speed` prose ("SuperSpeed 5 Gbps"),
+ * which is English-only, nor `usb_capable_gen`; neither is consulted here.
+ *
+ * Anything below 1, and any non-finite input, returns '' — the same "nothing
+ * to say" convention `formatRate()` sets, so the caller needs no null-check
+ * discipline it does not already have.
+ *
+ * @param {number} mbps  A capability ceiling in Mbit/s.
+ * @returns {string}  '' when there is no brand to name.
+ */
+export function formatCapabilityBrand(mbps) {
+    if (!Number.isFinite(mbps)) return '';
+    if (mbps >= 80000) return '80Gbps';
+    if (mbps >= 40000) return '40Gbps';
+    if (mbps >= 20000) return '20Gbps';
+    if (mbps >= 10000) return '10Gbps';
+    if (mbps >= 5000)  return '5Gbps';
+    if (mbps >= 480)   return '480Mbps';
+    if (mbps >= 12)    return '12Mbps';
+    if (mbps >= 1)     return '1.5Mbps';
+    return '';
+}
+
+/**
  * Parse a daemon integer-in-a-string property. Every numeric value on this
  * wire is a decimal string; absence, emptiness and garbage all collapse to
  * null so callers can distinguish "unknown" from a real 0 (TRIM spec §7.3
@@ -186,8 +231,8 @@ export function deriveLinkInfo(device, propsMap) {
     const info = {
         negotiatedMbps,
         rateText:      formatRate(negotiatedMbps),
-        // Canonicalised `bcdUSB`. Kept on the token for completeness but no
-        // longer rendered beside the rate — "2.1" (from bcdUSB 2.10, which
+        // Canonicalised `bcdUSB`. Rendered NOWHERE in the UI; kept on the
+        // token because it is on the wire. "2.1" (from bcdUSB 2.10, which
         // only declares a BOS descriptor) names no real USB specification.
         usbVersion:    device?.usb_version || '',
         verdict,
@@ -514,4 +559,76 @@ export function hasLinkIssue(device) {
     const props = propsOf(device);
     return deriveLinkInfo(device, props).isWarning
         || deriveHubInfo(device, props).overBudget;
+}
+
+/**
+ * Rank the device list for the Quick Settings tile and return the winner's
+ * capability tokens, or null when no device has a renderable ceiling.
+ *
+ * "Ceiling" is what the winning device COULD do: its declared
+ * `usb_capable_speed_mbps` when the BOS descriptor gave one, else the rate
+ * it actually negotiated. Ranking on the ceiling rather than on the
+ * negotiated rate is the whole point — the tile answers "what is the best
+ * this machine can do right now", and a SuperSpeed disk sitting behind a
+ * USB-2.0 hub is still a 5Gbps device.
+ *
+ * Returns TOKENS, never translated strings: this module imports nothing (not
+ * even gettext), which is what lets it load under bare gjs in CI and be
+ * really unit-tested. The caller owns every user-visible string, including
+ * the brand prefix and the subtitle wording chosen from `subtitleKind`.
+ *
+ * @param {object[]} devices  Unpacked DeviceEntry objects from the store.
+ * @returns {?{id: string, ceiling: number, capableMbps: ?number,
+ *   negotiatedMbps: number, brand: string, subtitleKind: string}}
+ *   `subtitleKind` is 'full' (reaching the ceiling), 'linked' (below it) or
+ *   'unlinked' (capability known, nothing negotiated).
+ */
+export function deriveCapabilityTile(devices) {
+    const ranked = (Array.isArray(devices) ? devices : [])
+        .map(d => {
+            const capableMbps = intProp(propsOf(d), 'usb_capable_speed_mbps');
+            const negotiatedMbps = Number.isFinite(d?.link_speed_mbps)
+                ? d.link_speed_mbps : 0;
+            return {
+                id: typeof d?.id === 'string' ? d.id : '',
+                capableMbps,
+                negotiatedMbps,
+                ceiling: capableMbps === null ? negotiatedMbps : capableMbps,
+            };
+        })
+        // A positive ceiling is the ONLY admission test. There is deliberately
+        // no descriptor-version test here: that is what used to exclude
+        // Type-C port rows, and `ceiling > 0` excludes them anyway because a
+        // port row carries neither a negotiated speed nor a declared
+        // capability. One test, one reason.
+        .filter(e => Number.isFinite(e.ceiling) && e.ceiling > 0)
+        .sort((a, b) => b.ceiling - a.ceiling
+                     || b.negotiatedMbps - a.negotiatedMbps
+                     || a.id.localeCompare(b.id));
+
+    // The negotiated tie-break is load-bearing, not cosmetic. On the
+    // reporting machine three devices all declare usb_capable_speed_mbps
+    // 5000; with ceiling alone the id comparison decides, which arbitrarily
+    // crowns a 480 Mb/s BelowCapability hub over the disk that is genuinely
+    // linked at 5000 — and the subtitle then reads "linked at 480 Mb/s"
+    // while the faster device sits right there in the popover.
+    const top = ranked[0];
+    if (!top) return null;
+
+    const brand = formatCapabilityBrand(top.ceiling);
+    // An unbrandable ceiling lies in the open interval (0, 1), and because
+    // the sort is descending nothing further down is brandable either. Fall
+    // through to the caller's device-count tier rather than ever rendering a
+    // brand-less title.
+    if (brand === '') return null;
+
+    let subtitleKind;
+    if (top.capableMbps !== null && top.capableMbps === top.negotiatedMbps)
+        subtitleKind = 'full';
+    else if (top.negotiatedMbps <= 0)
+        subtitleKind = 'unlinked';
+    else
+        subtitleKind = 'linked';
+
+    return {...top, brand, subtitleKind};
 }
