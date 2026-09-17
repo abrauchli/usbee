@@ -8,6 +8,36 @@ unrelated.
 
 ## [Unreleased]
 
+## [2.10.0] — 2026-09-17
+
+### Changed
+
+- **The tile now names what a device's link can actually do**, instead of the
+  version number printed in its descriptor. Where it used to read `USB 2.1` —
+  a string that named nothing anyone could act on, and that for some devices
+  was not a real USB version at all — it now reads `USB 5Gbps`, `USB 10Gbps`
+  or `USB 480Mbps`, the plain-rate names the USB-IF itself now asks products
+  to use. Which device the tile speaks for is decided by the fastest link the
+  machine has rather than by the highest descriptor number, so the title no
+  longer flips between "USB 2.0", "USB 2.1" and "USB 3.0" as devices come and
+  go. The line underneath says what is actually happening on that link:
+  **full capability** when the device is running as fast as it can, and the
+  measured rate — **linked at 480 Mb/s** — when it is not.
+- **The speed rating is now coloured by the verdict the daemon reports** for
+  the link: green when a device is running at its full capability, orange when
+  it is linked below what it can do, red when the link is degraded. The same
+  colour appears in all three places the rating is shown — the tile, the
+  device's row in the list, and the **Link** line in its detail panel — so a
+  device can no longer read one way collapsed and another way expanded. A
+  device that says nothing about its own capability is left uncoloured rather
+  than guessed at, which today is most of them: only devices carrying a BOS
+  descriptor report a verdict at all. The colour never replaces a word —
+  every string that was there before is unchanged. One caveat: on a light
+  theme the green and the orange sit closer to the background than they
+  should, and on a dark theme the red does, because USBee's styling does not
+  yet vary its colours by light or dark appearance. Until it does, the words
+  beside the colour remain the thing to trust.
+
 ## [2.9.0] — 2026-09-15
 
 ### Added
@@ -738,6 +768,7 @@ Initial public release.
   fallback (keyboard, mouse, storage, audio, phone, etc.).
 - GNOME Shell 46, 47, 48, 49, and 50 support.
 
+[2.10.0]: https://github.com/abrauchli/usbee/releases/tag/v2.10.0
 [2.9.0]: https://github.com/abrauchli/usbee/releases/tag/v2.9.0
 [2.8.0]: https://github.com/abrauchli/usbee/releases/tag/v2.8.0
 [2.7.1]: https://github.com/abrauchli/usbee/releases/tag/v2.7.1
