@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: USBee\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-15 23:09-0600\n"
+"POT-Creation-Date: 2026-09-17 12:53-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -58,7 +58,7 @@ msgstr ""
 msgid "Unmute this port"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:182 usbee@bitcreed.us/src/popover.js:190
+#: usbee@bitcreed.us/prefs.js:182 usbee@bitcreed.us/src/popover.js:476
 msgid "Hide empty USB-C ports"
 msgstr ""
 
@@ -66,7 +66,7 @@ msgstr ""
 msgid "Don't list ports with nothing attached"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:195 usbee@bitcreed.us/src/popover.js:191
+#: usbee@bitcreed.us/prefs.js:195 usbee@bitcreed.us/src/popover.js:477
 msgid "Hide built-in devices"
 msgstr ""
 
@@ -84,7 +84,7 @@ msgstr ""
 msgid "Include USB hub devices in the device list"
 msgstr ""
 
-#: usbee@bitcreed.us/prefs.js:217 usbee@bitcreed.us/src/popover.js:193
+#: usbee@bitcreed.us/prefs.js:217 usbee@bitcreed.us/src/popover.js:479
 msgid "Show technical details"
 msgstr ""
 
@@ -192,80 +192,98 @@ msgstr ""
 msgid "—"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:161
-#: usbee@bitcreed.us/src/device-store.js:223
-#: usbee@bitcreed.us/src/popover.js:453
+#: usbee@bitcreed.us/src/device-store.js:163
+#: usbee@bitcreed.us/src/device-store.js:225
+#: usbee@bitcreed.us/src/popover.js:791
 msgid "Charging"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:165
+#: usbee@bitcreed.us/src/device-store.js:167
 #, javascript-format
 msgid "%s — limited"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:167
-#: usbee@bitcreed.us/src/device-store.js:262
-#: usbee@bitcreed.us/src/device-store.js:270
-#: usbee@bitcreed.us/src/device-store.js:365
-#: usbee@bitcreed.us/src/device-store.js:368
-#: usbee@bitcreed.us/src/device-store.js:373
-#: usbee@bitcreed.us/src/device-store.js:377
+#: usbee@bitcreed.us/src/device-store.js:169
+#: usbee@bitcreed.us/src/device-store.js:291
+#: usbee@bitcreed.us/src/device-store.js:299
+#: usbee@bitcreed.us/src/device-store.js:394
+#: usbee@bitcreed.us/src/device-store.js:397
+#: usbee@bitcreed.us/src/device-store.js:402
+#: usbee@bitcreed.us/src/device-store.js:406
 msgid "USB"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:167
-#: usbee@bitcreed.us/src/popover.js:453
+#: usbee@bitcreed.us/src/device-store.js:169
+#: usbee@bitcreed.us/src/popover.js:791
 msgid "Charging issue"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:172
+#: usbee@bitcreed.us/src/device-store.js:174
 msgid "Slow USB link"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:228
+#: usbee@bitcreed.us/src/device-store.js:230
 #, javascript-format
 msgid "up to %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:233
+#: usbee@bitcreed.us/src/device-store.js:235
 msgid "Powering"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:236
+#: usbee@bitcreed.us/src/device-store.js:238
 msgid "USB-C"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:237
+#: usbee@bitcreed.us/src/device-store.js:239
 msgid "charging"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:264
+#: usbee@bitcreed.us/src/device-store.js:262
+msgid "full capability"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:266
+msgid "not linked"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:276
+#, javascript-format
+msgid "linked at %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:282
+#, javascript-format
+msgid "USB %s"
+msgstr ""
+
+#: usbee@bitcreed.us/src/device-store.js:293
 msgid "1 device"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:265
+#: usbee@bitcreed.us/src/device-store.js:294
 #, javascript-format
 msgid "%d devices"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:270
+#: usbee@bitcreed.us/src/device-store.js:299
 msgid "Nothing connected"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:365
-#: usbee@bitcreed.us/src/popover.js:258
+#: usbee@bitcreed.us/src/device-store.js:394
+#: usbee@bitcreed.us/src/popover.js:562
 msgid "Loading…"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:368
+#: usbee@bitcreed.us/src/device-store.js:397
 msgid "Daemon out of date"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:373
+#: usbee@bitcreed.us/src/device-store.js:402
 msgid "Extension out of date"
 msgstr ""
 
-#: usbee@bitcreed.us/src/device-store.js:377
+#: usbee@bitcreed.us/src/device-store.js:406
 msgid "Daemon not running"
 msgstr ""
 
@@ -430,11 +448,12 @@ msgstr ""
 msgid "Needs at least"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:635
+#: usbee@bitcreed.us/src/label-table.js:68 usbee@bitcreed.us/src/popover.js:974
 msgid "Capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/label-table.js:69 usbee@bitcreed.us/src/popover.js:754
+#: usbee@bitcreed.us/src/label-table.js:69
+#: usbee@bitcreed.us/src/popover.js:1093
 msgid "Alt mode"
 msgstr ""
 
@@ -546,179 +565,179 @@ msgstr ""
 msgid "Don't notify for this port again"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:115
+#: usbee@bitcreed.us/src/popover.js:221
 msgid "All devices hidden by the current filters"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:116
+#: usbee@bitcreed.us/src/popover.js:222
 msgid "No USB devices attached"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:182
+#: usbee@bitcreed.us/src/popover.js:468
 msgid "Options"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:192
+#: usbee@bitcreed.us/src/popover.js:478
 msgid "Show USB hubs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:422
+#: usbee@bitcreed.us/src/popover.js:760
 msgid "Summary"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:441
+#: usbee@bitcreed.us/src/popover.js:779
 msgid "USB ID"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:461 usbee@bitcreed.us/src/popover.js:643
+#: usbee@bitcreed.us/src/popover.js:799 usbee@bitcreed.us/src/popover.js:982
 msgid "Detail"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:475
+#: usbee@bitcreed.us/src/popover.js:813
 msgid "vendor ID is zero"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:477
+#: usbee@bitcreed.us/src/popover.js:815
 msgid "vendor ID not in USB-IF list"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:479
+#: usbee@bitcreed.us/src/popover.js:817
 msgid "reserved bits set in Cable VDO"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:481
+#: usbee@bitcreed.us/src/popover.js:819
 #, javascript-format
 msgid "This cable looks unusual: %s"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:482
+#: usbee@bitcreed.us/src/popover.js:820
 msgid ", "
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:484
+#: usbee@bitcreed.us/src/popover.js:822
 msgid "Cable trust"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:507
+#: usbee@bitcreed.us/src/popover.js:845
 msgid "Driver"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:507
+#: usbee@bitcreed.us/src/popover.js:845
 msgid "not bound"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:517
+#: usbee@bitcreed.us/src/popover.js:855
 msgid "Subclass"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:547
+#: usbee@bitcreed.us/src/popover.js:885
 msgid "Technical details"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:602
+#: usbee@bitcreed.us/src/popover.js:941
 #, javascript-format
 msgid "%s — full capability"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:608
+#: usbee@bitcreed.us/src/popover.js:947
 #, javascript-format
 msgid "%s — below the %s this device needs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:612
+#: usbee@bitcreed.us/src/popover.js:951
 msgid "Link"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:675
+#: usbee@bitcreed.us/src/popover.js:1014
 msgid ""
 "SuperSpeed did not come up on this link — the cause could be the cable, the "
 "port, or a hub in between"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:701
+#: usbee@bitcreed.us/src/popover.js:1040
 msgid "Ports"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:703
+#: usbee@bitcreed.us/src/popover.js:1042
 #, javascript-format
 msgid "%d of %d in use"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:712
+#: usbee@bitcreed.us/src/popover.js:1051
 #, javascript-format
 msgid "%d of %d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:713
+#: usbee@bitcreed.us/src/popover.js:1052
 #, javascript-format
 msgid "%d mA committed"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:715
+#: usbee@bitcreed.us/src/popover.js:1054
 msgid "Bus power"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:755 usbee@bitcreed.us/src/popover.js:802
+#: usbee@bitcreed.us/src/popover.js:1094 usbee@bitcreed.us/src/popover.js:1141
 msgid "DisplayPort"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:756 usbee@bitcreed.us/src/popover.js:803
+#: usbee@bitcreed.us/src/popover.js:1095 usbee@bitcreed.us/src/popover.js:1142
 msgid "Thunderbolt"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:765
+#: usbee@bitcreed.us/src/popover.js:1104
 msgid ""
 "Alt mode did not start — this connection does not provide USB Power "
 "Delivery, which needs both a port and a cable that support it"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:799
+#: usbee@bitcreed.us/src/popover.js:1138
 msgid "USB 2"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:800
+#: usbee@bitcreed.us/src/popover.js:1139
 msgid "USB 3"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:801
+#: usbee@bitcreed.us/src/popover.js:1140
 msgid "USB 4"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:859
+#: usbee@bitcreed.us/src/popover.js:1198
 msgid "Charger PDOs"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:887
+#: usbee@bitcreed.us/src/popover.js:1226
 msgid "◀"
 msgstr ""
 
-#: usbee@bitcreed.us/src/popover.js:895
+#: usbee@bitcreed.us/src/popover.js:1234
 #, javascript-format
 msgid "%s (max)"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:48 usbee@bitcreed.us/src/tile.js:284
+#: usbee@bitcreed.us/src/tile.js:49 usbee@bitcreed.us/src/tile.js:352
 msgid "USB devices"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:179
+#: usbee@bitcreed.us/src/tile.js:230
 msgid "Preferences…"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:283
+#: usbee@bitcreed.us/src/tile.js:351
 msgid "1 USB device"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:284
+#: usbee@bitcreed.us/src/tile.js:352
 #, javascript-format
 msgid "%d USB devices"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:289
+#: usbee@bitcreed.us/src/tile.js:357
 msgid "1 issue"
 msgstr ""
 
-#: usbee@bitcreed.us/src/tile.js:289
+#: usbee@bitcreed.us/src/tile.js:357
 #, javascript-format
 msgid "%d issues"
 msgstr ""
