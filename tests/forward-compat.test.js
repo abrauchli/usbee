@@ -29,9 +29,9 @@ import System from 'system';
 import GLib from 'gi://GLib';
 
 import {
-    deriveAltMode, deriveHubInfo, deriveLinkInfo, formatRate, formatUsbId,
-    hasLinkIssue, isBuiltInDevice, maxPdoIndex, propsOf, resolveHeadline,
-    usbIdRowText,
+    deriveAltMode, deriveCapabilityTile, deriveHubInfo, deriveLinkInfo,
+    formatCapabilityBrand, formatRate, formatUsbId, hasLinkIssue,
+    isBuiltInDevice, maxPdoIndex, propsOf, resolveHeadline, usbIdRowText,
 } from '../usbee@bitcreed.us/src/link-verdict.js';
 import {
     GATED_KEYS, HIDDEN_KEYS, KNOWN_KEYS, isTechnicalKey, propertyTier,
@@ -950,6 +950,172 @@ print('# maxPdoIndex marks a ceiling only when it is unambiguous');
         maxPdoIndex([null, undefined]) === null);
 }
 
+// --- Tile capability brand + ranking (quick task 260917-hkf) ----------------
+
+print('# formatCapabilityBrand buckets on the edges the daemon itself uses');
+{
+    // Each tier at its edge, and one below it, so a mis-typed comparison
+    // cannot pass by accident. The edges mirror link_speed_tier() in
+    // usbeehive src/usb.rs:362-375.
+    check('80000 is the USB4 v2 brand', formatCapabilityBrand(80000) === '80Gbps');
+    check('one below 80000 falls to the tier under it',
+        formatCapabilityBrand(79999) === '40Gbps');
+    check('40000 is the USB4 brand', formatCapabilityBrand(40000) === '40Gbps');
+    check('one below 40000 falls to the tier under it',
+        formatCapabilityBrand(39999) === '20Gbps');
+    check('20000 brands as 20Gbps', formatCapabilityBrand(20000) === '20Gbps');
+    check('one below 20000 falls to the tier under it',
+        formatCapabilityBrand(19999) === '10Gbps');
+    check('10000 brands as 10Gbps', formatCapabilityBrand(10000) === '10Gbps');
+    check('one below 10000 falls to the tier under it',
+        formatCapabilityBrand(9999) === '5Gbps');
+    check('5000 brands as 5Gbps', formatCapabilityBrand(5000) === '5Gbps');
+    check('one below 5000 falls to the tier under it',
+        formatCapabilityBrand(4999) === '480Mbps');
+    check('480 brands as 480Mbps', formatCapabilityBrand(480) === '480Mbps');
+    check('one below 480 falls to the tier under it',
+        formatCapabilityBrand(479) === '12Mbps');
+    check('12 brands as 12Mbps', formatCapabilityBrand(12) === '12Mbps');
+    check('one below 12 falls to low speed',
+        formatCapabilityBrand(11) === '1.5Mbps');
+    check('1 is still a low-speed brand', formatCapabilityBrand(1) === '1.5Mbps');
+    // Below 1 there is no brand to name. '' is formatRate()'s own "nothing to
+    // say" convention, so the two sibling formatters behave alike.
+    check('zero says nothing', formatCapabilityBrand(0) === '');
+    check('a negative ceiling says nothing', formatCapabilityBrand(-1) === '');
+    check('NaN says nothing', formatCapabilityBrand(NaN) === '');
+    check('an absent ceiling says nothing',
+        formatCapabilityBrand(undefined) === '');
+    // The wire carries decimal STRINGS; intProp is what converts them. A
+    // string arriving here means a caller skipped that step.
+    check('a numeric string says nothing', formatCapabilityBrand('5000') === '');
+    check('Infinity says nothing', formatCapabilityBrand(Infinity) === '');
+    // WIRE-04 — a future rate above every tier we know must still brand as
+    // the top tier rather than blank the tile.
+    check('a far-future rate never blanks the brand',
+        formatCapabilityBrand(200000) === '80Gbps');
+}
+
+print('# deriveCapabilityTile ranks by ceiling, tie-breaks on the negotiated link');
+{
+    // Capability is a properties pair carrying a decimal string, because
+    // that is exactly what the wire carries.
+    const capable = (mbps) => [['usb_capable_speed_mbps', String(mbps)]];
+    // A Type-C port row: no negotiated speed, no BOS capability, no
+    // descriptor version. device()'s defaults are 480 and '2.1', so all
+    // three must be overridden explicitly.
+    const port = (id) => device({
+        id, category: 'TypeCPort', status: 'Empty',
+        link_speed_mbps: 0, usb_version: '', properties: [],
+    });
+
+    // Case 1 — the reporting machine: three devices all declaring 5000,
+    // negotiated 5000 / 480 / 480, with ids ordered so that localeCompare
+    // ALONE would crown one of the 480s. The negotiated tie-break is what
+    // stops a BelowCapability hub outranking the disk doing the work.
+    {
+        const tie = deriveCapabilityTile([
+            device({id: 'usb:1-1', link_speed_mbps: 480, properties: capable(5000)}),
+            device({id: 'usb:1-2', link_speed_mbps: 480, properties: capable(5000)}),
+            device({id: 'usb:1-3', link_speed_mbps: 5000, properties: capable(5000)}),
+        ]);
+        check('a 3-way capability tie resolves to the fastest negotiated link',
+            tie.id === 'usb:1-3');
+        check('the tied winner brands at the shared ceiling',
+            tie.brand === '5Gbps');
+        check('the tied winner is reaching its ceiling',
+            tie.subtitleKind === 'full');
+    }
+
+    // Case 2 — capability known, running below it. The subtitle measures the
+    // negotiated rate through the SAME formatter the popover Link row uses.
+    {
+        const below = deriveCapabilityTile([
+            device({id: 'usb:2-1', link_speed_mbps: 480, properties: capable(5000)}),
+        ]);
+        check('a below-capability device still brands at its ceiling',
+            below.brand === '5Gbps');
+        check('a below-capability device reports the linked kind',
+            below.subtitleKind === 'linked');
+        check('the negotiated rate is what formatRate will measure',
+            formatRate(below.negotiatedMbps) === '480 Mb/s');
+    }
+
+    // Case 3 — capability reached exactly.
+    check('capability equal to the negotiated rate is full capability',
+        deriveCapabilityTile([
+            device({id: 'usb:3-1', link_speed_mbps: 5000, properties: capable(5000)}),
+        ]).subtitleKind === 'full');
+
+    // Case 4 — no BOS at all, but a faster negotiated link. It wins on the
+    // negotiated rate alone, and must NOT claim full capability: with no
+    // declared ceiling there is nothing to say it has reached one.
+    {
+        const noBosWins = deriveCapabilityTile([
+            device({id: 'usb:4-1', link_speed_mbps: 480, properties: capable(5000)}),
+            device({id: 'usb:4-2', link_speed_mbps: 10000, properties: []}),
+        ]);
+        check('a device with no declared capability ranks on its link rate',
+            noBosWins.id === 'usb:4-2');
+        check('its ceiling brands from the negotiated rate',
+            noBosWins.brand === '10Gbps');
+        check('full capability is never CLAIMED without a declared ceiling',
+            noBosWins.capableMbps === null && noBosWins.subtitleKind === 'linked');
+    }
+
+    // Case 5 — Type-C port rows only. They are excluded by the positive
+    // ceiling test, with no descriptor-version test anywhere in the helper.
+    check('port rows alone never win the tile',
+        deriveCapabilityTile([port('port:0'), port('port:1')]) === null);
+    // ...and they never outrank a real device either.
+    check('a port row cannot displace a real device',
+        deriveCapabilityTile([
+            port('port:0'),
+            device({id: 'usb:5-1', link_speed_mbps: 5000, properties: capable(5000)}),
+        ]).id === 'usb:5-1');
+
+    // Case 6 — nothing to rank.
+    check('an empty list says nothing', deriveCapabilityTile([]) === null);
+    check('a list of zero-ceiling devices says nothing',
+        deriveCapabilityTile([
+            device({id: 'usb:6-1', link_speed_mbps: 0, properties: []}),
+            device({id: 'usb:6-2', link_speed_mbps: 0, properties: []}),
+        ]) === null);
+
+    // Case 7 — capability declared, nothing linked. Distinct from case 2:
+    // there is no measured rate to print, so the subtitle must not try.
+    {
+        const idle = deriveCapabilityTile([
+            device({id: 'usb:7-1', link_speed_mbps: 0, properties: capable(5000)}),
+        ]);
+        check('a known capability with no link is unlinked, not linked-at-zero',
+            idle.subtitleKind === 'unlinked');
+        check('the unlinked winner still brands at its ceiling',
+            idle.brand === '5Gbps');
+    }
+
+    // Case 8 — a ceiling that brands empty. Returning null here is what
+    // keeps the title from ever reading "USB " with nothing after it; the
+    // caller falls through to its device-count tier instead.
+    check('an unbrandable ceiling yields no tile rather than a blank brand',
+        deriveCapabilityTile([
+            device({id: 'usb:8-1', link_speed_mbps: 0.5, properties: []}),
+        ]) === null);
+
+    // Total function: this runs inside gnome-shell's own process.
+    check('undefined in, null out', deriveCapabilityTile(undefined) === null);
+    check('a non-array says nothing', deriveCapabilityTile('not a list') === null);
+    check('a list of holes never throws',
+        deriveCapabilityTile([null, undefined]) === null);
+    // Garbage in the capability property must collapse to "unknown" through
+    // intProp, not become a ceiling of its own.
+    check('a garbage capability property falls back to the negotiated rate',
+        deriveCapabilityTile([device({
+            id: 'usb:9-1', link_speed_mbps: 480,
+            properties: [['usb_capable_speed_mbps', 'very fast']],
+        })]).brand === '480Mbps');
+}
+
 print('# popover.js renders the USB ID row above the link block');
 {
     const src = readSource('usbee@bitcreed.us/src/popover.js');
@@ -1165,8 +1331,22 @@ print('# device-store.js has a Tier-0 issue tier');
     check('device-store.js has a slow-link tile title',
         src.includes("_('Slow USB link')"));
     check('device-store.js shares formatRate with the popover',
-        src.includes('formatRate(top.link_speed_mbps)'));
+        src.includes('formatRate(cap.negotiatedMbps)'));
     check('device-store.js exposes setDaemonTooNew', src.includes('setDaemonTooNew()'));
+
+    // Quick task 260917-hkf — Tier 2 names a link CAPABILITY brand and
+    // qualifies it, and the ranking is not duplicated here: it comes from
+    // the zero-import module where it can really be unit-tested above.
+    check('device-store.js delegates the tile ranking to link-verdict.js',
+        src.includes('deriveCapabilityTile('));
+    check('the capability brand title goes through gettext',
+        src.includes("_('USB %s')"));
+    check('the below-capability subtitle goes through gettext',
+        src.includes("_('linked at %s')"));
+    check('the unlinked subtitle goes through gettext',
+        src.includes("_('not linked')"));
+    check('the full-capability subtitle goes through gettext',
+        src.includes("_('full capability')"));
 
     // Quick task 260915-ung — the pill must not report a measured zero while
     // the very first snapshot is still in flight.
@@ -1183,6 +1363,13 @@ print('# device-store.js has a Tier-0 issue tier');
         : src.slice(deriveStart, src.indexOf('\n/**', deriveStart));
     check('deriveTileText stays unaware of the daemon lifecycle',
         deriveBody !== '' && !deriveBody.includes('awaitingFirstSnapshot'));
+    // Quick task 260917-hkf — every tile title is now a gettext call, so no
+    // tier may build one by template literal. The pre-change source DID
+    // match this regex (verified before the change landed), so the guard is
+    // not vacuous; the deriveBody !== '' conjunct keeps it that way if the
+    // hand-slice above ever stops finding the function.
+    check('no tier builds a tile title by string interpolation',
+        deriveBody !== '' && !/title:\s*`/.test(deriveBody));
 }
 
 print('# notifier.js tiers the new signals correctly');
