@@ -245,3 +245,36 @@
 .usbee-link-degraded {
     color: #e01b24;
 }
+
+/* The same verdict scale on the Quick Settings tile's second line, so the
+ * tile and the popover row can never disagree about one device.
+ *
+ * Set by verdictTileStyleClass() in src/link-verdict.js via the tile text,
+ * and applied in src/tile.js with add_style_class_name() on USBee's own
+ * toggle — public St.Widget API on an object this extension owns. USBee does
+ * NOT own the subtitle label inside the toggle and never reaches for it; that
+ * would take a private Shell member, which CLAUDE.md forbids. Hence the
+ * descendant selector, and hence a separate `usbee-tile-` family: the flat
+ * `usbee-link-` rules above would be inherited by the tile's TITLE as well
+ * (the Shell's theme sets no `color` on .quick-toggle-title), painting the
+ * capability brand in the verdict's colour and saying something the verdict
+ * does not.
+ *
+ * `.quick-toggle-subtitle` is the Shell theme's OWN class for that line — a
+ * stylesheet class name, not a private JS member. Verified present on Shell
+ * 50.1 in both shipped variants (.quick-toggle .quick-toggle-subtitle),
+ * where it sets font-weight and font-size and NO color, so there is nothing
+ * here to fight. If a future Shell renames it this selector matches nothing
+ * and the line renders in its normal colour: never a crash, never a wrong
+ * colour. The wording on that line always states the condition anyway. */
+.usbee-tile-at-capability .quick-toggle-subtitle {
+    color: #2ec27e;
+}
+
+.usbee-tile-below-capability .quick-toggle-subtitle {
+    color: #e5a50a;
+}
+
+.usbee-tile-degraded .quick-toggle-subtitle {
+    color: #e01b24;
+}

@@ -24,6 +24,7 @@ import {buildOptionsSection, populateDeviceRows, populateEmptyState,
 import {InstallState, probeInstallState, refreshInstallStateAsync}
     from './service-probe.js';
 import {DaemonState} from './daemon-status.js';
+import {verdictTileStyleClasses} from './link-verdict.js';
 
 const USBeeToggle = GObject.registerClass(
 class USBeeToggle extends QuickSettings.QuickMenuToggle {
@@ -111,6 +112,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             this.title    = txt.title;
             this.subtitle = txt.subtitle;
             this.checked  = this._store.daemonRunning;
+            this._applyVerdictClass(txt);
             // Loading→loaded repaint (quick task 260915-ung D-03). A popover
             // left open across the first snapshot would otherwise keep showing
             // the Loading… row until the user closed and reopened it — the
@@ -163,6 +165,7 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
         this.title    = initTxt.title;
         this.subtitle = initTxt.subtitle;
         this.checked  = store.daemonRunning;
+        this._applyVerdictClass(initTxt);
 
         // Quick task 260915-i4w — the filter switches, reachable from the
         // popover instead of only from the preferences window. Added before
@@ -251,6 +254,42 @@ class USBeeToggle extends QuickSettings.QuickMenuToggle {
             }
         });
         registry.addSignal(Main.sessionMode, smId);
+    }
+
+    /**
+     * Colour the tile's second line by the daemon's link verdict, so the
+     * tile and the popover row agree for the same device (quick task
+     * 260917-i43).
+     *
+     * STRIP BEFORE ADDING. This toggle is a long-lived actor rebound on every
+     * snapshot, so without the removal the verdict classes ACCUMULATE: a
+     * device going below-capability → at-capability would carry both, and the
+     * cascade would silently settle it by stylesheet source order, leaving
+     * the tile showing a verdict the device no longer has. The list to strip
+     * comes from link-verdict.js rather than being restated here, so it
+     * cannot drift from the table that produces it.
+     *
+     * Only public St.Widget API is used, and only on the toggle — an object
+     * this extension owns and subclasses. The colour is narrowed to the
+     * second line by a descendant selector in stylesheet.css naming the
+     * Shell theme's own class for it; nothing here reaches inside a
+     * Shell-owned widget. Should a future Shell rename that class the
+     * selector simply matches nothing and the line renders in its normal
+     * colour — never a crash, never a wrong colour.
+     *
+     * Every daemon-state branch of `store.tileText` (Loading…, out of date,
+     * too new, not running) returns no class field at all, so absent is
+     * treated as "no verdict" and any leftover class is stripped — a stale
+     * colour must not survive the daemon going away.
+     *
+     * @param {{verdictClass?: string}} txt  A store.tileText result.
+     */
+    _applyVerdictClass(txt) {
+        for (const cls of verdictTileStyleClasses())
+            this.remove_style_class_name(cls);
+        const cls = txt?.verdictClass;
+        if (typeof cls === 'string' && cls !== '')
+            this.add_style_class_name(cls);
     }
 
     _rebuildPopover() {

@@ -23,7 +23,8 @@ import GObject from 'gi://GObject';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {DaemonState, isAwaitingFirstSnapshot} from './daemon-status.js';
-import {deriveCapabilityTile, formatRate, hasLinkIssue} from './link-verdict.js';
+import {deriveCapabilityTile, formatRate, hasLinkIssue,
+    verdictTileStyleClass} from './link-verdict.js';
 
 // DeviceEntry tuple from ListDevices on org.usbeehive.Devices5:
 //   a(ssssssssssqqsa(ss)ius(uuus)(bsssb)a(usuuuub)i)
@@ -281,6 +282,14 @@ export function deriveTileText(devices) {
             // form, like "5Gbps" or "480Mbps".
             title: _('USB %s').format(cap.brand),
             subtitle,
+            // The subtitle's verdict colour (quick task 260917-i43). Keyed on
+            // the WINNER's own usb_link_verdict and on nothing else — NOT on
+            // `subtitleKind` right above, which is derived from capable-vs-
+            // negotiated and would be the synthesised verdict BOS spec §6
+            // forbids. '' whenever the daemon asserted no verdict, which is
+            // the common case. This tier stays a pure mapping: the recognised
+            // set and the class name both belong to link-verdict.js.
+            verdictClass: verdictTileStyleClass(cap.verdict),
         };
     }
 

@@ -32,7 +32,7 @@ import {
     deriveAltMode, deriveCapabilityTile, deriveHubInfo, deriveLinkInfo,
     formatCapabilityBrand, formatRate, formatUsbId, hasLinkIssue,
     isBuiltInDevice, maxPdoIndex, propsOf, resolveHeadline, usbIdRowText,
-    verdictStyleClass,
+    verdictStyleClass, verdictTileStyleClass, verdictTileStyleClasses,
 } from '../usbee@bitcreed.us/src/link-verdict.js';
 import {
     GATED_KEYS, HIDDEN_KEYS, KNOWN_KEYS, isTechnicalKey, propertyTier,
@@ -1246,6 +1246,70 @@ print('# verdictStyleClass — one daemon verdict, one colour class');
         && hasLinkIssue(belowCapability()) === false);
 }
 
+print('# the tile carries the same verdict, in its own class family');
+{
+    // A SEPARATE family from the popover's, because the class lands on the
+    // toggle (the only object USBee owns) and the colour is then narrowed to
+    // the subtitle by a descendant selector. A flat popover-style class there
+    // would be inherited by the tile's title too.
+    check('AtCapability is the green tile class',
+        verdictTileStyleClass('AtCapability') === 'usbee-tile-at-capability');
+    check('BelowCapability is the orange tile class',
+        verdictTileStyleClass('BelowCapability')
+            === 'usbee-tile-below-capability');
+    check('Degraded is the red tile class',
+        verdictTileStyleClass('Degraded') === 'usbee-tile-degraded');
+    check('the tile helper says nothing for an absent verdict',
+        verdictTileStyleClass(null) === ''
+        && verdictTileStyleClass(undefined) === ''
+        && verdictTileStyleClass('') === '');
+    check('the tile helper says nothing for a future verdict',
+        verdictTileStyleClass('Renegotiating') === '');
+    check('the tile helper cannot throw on a non-string',
+        verdictTileStyleClass(5) === '' && verdictTileStyleClass({}) === '');
+    // The two families must never collide: a tile class matching a flat
+    // popover rule is exactly the title-bleed bug the split exists to avoid.
+    check('the two class families are disjoint',
+        !verdictTileStyleClasses().some(c => c.startsWith('usbee-link-')));
+    check('the strip list covers every class the tile helper can return',
+        verdictTileStyleClasses().length === 3
+        && ['AtCapability', 'BelowCapability', 'Degraded'].every(
+            v => verdictTileStyleClasses().includes(verdictTileStyleClass(v))));
+}
+
+print('# deriveCapabilityTile carries the WINNER\'s own verdict');
+{
+    // The tile must never wear a verdict belonging to a different device.
+    check('the winner\'s verdict rides along',
+        deriveCapabilityTile([atCapability()]).verdict === 'AtCapability');
+    check('a below-capability winner carries its own verdict',
+        deriveCapabilityTile([belowCapability()]).verdict
+            === 'BelowCapability');
+    check('a degraded winner carries its own verdict',
+        deriveCapabilityTile([degraded()]).verdict === 'Degraded');
+    check('a winner with no BOS descriptor carries no verdict',
+        deriveCapabilityTile([noBos()]).verdict === null);
+    // BOS spec §3.2 — an unrecognised token must collapse identically here
+    // and in deriveLinkInfo, or the tile could colour what the row does not.
+    const future = () => device({
+        link_speed_mbps: 5000,
+        properties: [['usb_capable_speed_mbps', '5000'],
+            ['usb_link_verdict', 'Renegotiating']],
+    });
+    check('an unrecognised verdict collapses to null on the tile too',
+        deriveCapabilityTile([future()]).verdict === null);
+    check('and therefore colours the tile with nothing',
+        verdictTileStyleClass(deriveCapabilityTile([future()]).verdict) === '');
+    // The ranked winner, not merely the sole entry: the ICY BOX outranks the
+    // 480 Mb/s hub on the negotiated tie-break, so the green must follow it.
+    const ranked = deriveCapabilityTile(
+        [hubWithDeadCompanion(), atCapability(), belowCapability()]);
+    check('the colour follows the ranked winner, not the list order',
+        ranked.verdict === 'AtCapability'
+        && verdictTileStyleClass(ranked.verdict)
+            === 'usbee-tile-at-capability');
+}
+
 print('# the live device population, as the reporting machine presents it');
 {
     // 13 entries attached at the time of the task. Three carry a verdict:
@@ -1302,6 +1366,75 @@ print('# every class the helper returns has a stylesheet rule behind it');
         check(`${cls} sits after .usbee-detail-value in source order`,
             css.indexOf(cls) > css.indexOf('.usbee-detail-value'));
     }
+
+    // The tile family, scoped to the subtitle by a DESCENDANT selector. A
+    // flat rule on the tile class would be inherited by the tile's title,
+    // which sets no colour of its own in the Shell's theme.
+    for (const cls of verdictTileStyleClasses()) {
+        check(`stylesheet.css scopes .${cls} to the tile subtitle`,
+            css.includes(`.${cls} .quick-toggle-subtitle`));
+        check(`.${cls} is never a flat colour rule`,
+            !new RegExp(`\\.${cls}\\s*\\{`).test(css));
+    }
+}
+
+print('# device-store.js delegates the tile colour and derives none of it');
+{
+    const src = readSource('usbee@bitcreed.us/src/device-store.js');
+    check('device-store.js source is readable', src.length > 0);
+    check('Tier 2 gets the tile class from the shared helper',
+        src.includes('verdictTileStyleClass(cap.verdict)'));
+    check('device-store.js imports it from the zero-import module',
+        /import\s*\{[^}]*verdictTileStyleClass[^}]*\}\s*from\s*'\.\/link-verdict\.js'/s
+            .test(src));
+    // THE constraint-1 guard for this surface: subtitleKind is computed from
+    // capable-vs-negotiated, so keying a colour off it would synthesise the
+    // verdict the daemon alone is allowed to assert.
+    check('the tile colour is never keyed off subtitleKind',
+        !/verdictTileStyleClass\(\s*cap\.subtitleKind/.test(src)
+        && !/subtitleKind\s*===?\s*'[a-z]+'\s*\?\s*'usbee-tile/.test(src));
+    check('device-store.js hardcodes no verdict class name',
+        !src.includes('usbee-tile-at-capability')
+        && !src.includes('usbee-tile-below-capability')
+        && !src.includes('usbee-tile-degraded'));
+    for (const hex of ['#2ec27e', '#e5a50a', '#e01b24']) {
+        check(`device-store.js hardcodes no ${hex}`, !src.includes(hex));
+    }
+}
+
+print('# tile.js strips the old verdict class before adding the new one');
+{
+    const src = readSource('usbee@bitcreed.us/src/tile.js');
+    check('tile.js source is readable', src.length > 0);
+    check('tile.js applies the verdict class through one shared helper',
+        src.includes('_applyVerdictClass(txt)')
+        && src.includes('_applyVerdictClass(initTxt)'));
+    // T-i43-04 — the toggle is long-lived and rebound on every snapshot, so
+    // an add without a remove accumulates classes and lets stylesheet source
+    // order decide which verdict the tile reports.
+    const removeAt = src.indexOf('remove_style_class_name');
+    const addAt = src.indexOf('add_style_class_name(cls)');
+    check('the strip happens before the add',
+        removeAt > 0 && addAt > 0 && removeAt < addAt);
+    check('the strip list comes from link-verdict.js, not a local copy',
+        src.includes('for (const cls of verdictTileStyleClasses())')
+        && /import\s*\{[^}]*verdictTileStyleClasses[^}]*\}\s*from\s*'\.\/link-verdict\.js'/s
+            .test(src));
+    check('tile.js hardcodes no verdict class name',
+        !src.includes('usbee-tile-at-capability')
+        && !src.includes('usbee-tile-below-capability')
+        && !src.includes('usbee-tile-degraded'));
+    // CLAUDE.md forbids private Shell internals. The class goes on USBee's
+    // own toggle via public St.Widget API; nothing indexes into a
+    // Shell-owned widget to find the label being coloured.
+    check('tile.js indexes into no Shell-owned child list for a label',
+        !src.includes('get_children()'));
+    check('tile.js reaches into no Main.panel private member',
+        !/Main\.panel\._/.test(src));
+    // An absent class field (every daemon-state branch of tileText) must
+    // strip rather than leave a stale colour behind.
+    check('an absent class field is treated as no verdict',
+        src.includes("typeof cls === 'string' && cls !== ''"));
 }
 
 // --- Structural guards over the Shell-only modules --------------------------

@@ -176,13 +176,16 @@ export function formatCapabilityBrand(mbps) {
 }
 
 // The verdict → style-class table (quick task 260917-i43). It supplies the
-// NAME only; the recognised-set gate below is KNOWN_VERDICTS itself, so a
+// SUFFIX only; the recognised-set gate below is KNOWN_VERDICTS itself, so a
 // token this build does not understand collapses to '' here by exactly the
 // same rule it collapses to null in deriveLinkInfo(). The two cannot drift.
-const VERDICT_STYLE_CLASSES = new Map([
-    ['AtCapability',    'usbee-link-at-capability'],
-    ['BelowCapability', 'usbee-link-below-capability'],
-    ['Degraded',        'usbee-link-degraded'],
+//
+// One table, two prefixes, because the two surfaces attach the class to
+// different KINDS of object — see verdictTileStyleClass() below.
+const VERDICT_STYLE_SUFFIXES = new Map([
+    ['AtCapability',    'at-capability'],
+    ['BelowCapability', 'below-capability'],
+    ['Degraded',        'degraded'],
 ]);
 
 /**
@@ -223,7 +226,51 @@ const VERDICT_STYLE_CLASSES = new Map([
  */
 export function verdictStyleClass(verdict) {
     if (!KNOWN_VERDICTS.has(verdict)) return '';
-    return VERDICT_STYLE_CLASSES.get(verdict) ?? '';
+    const suffix = VERDICT_STYLE_SUFFIXES.get(verdict);
+    return suffix ? `usbee-link-${suffix}` : '';
+}
+
+/**
+ * The same verdict, for the Quick Settings tile — a SEPARATE class family
+ * from verdictStyleClass() above, and deliberately so.
+ *
+ * The popover classes go straight onto the label being coloured, so they can
+ * set `color` flatly. The tile cannot: USBee owns the toggle, not the
+ * subtitle label inside it, and reaching that label would mean a private
+ * Shell member, which CLAUDE.md forbids. So the class goes on the toggle and
+ * the stylesheet scopes the colour down to the subtitle with a descendant
+ * selector. A flat `color` on the toggle would be inherited by the TITLE as
+ * well — the Shell's own theme sets no `color` on `.quick-toggle-title`
+ * (verified against the shipped theme on Shell 50.1) — which would paint the
+ * capability brand in the verdict's colour and say something the verdict
+ * does not.
+ *
+ * Same closed lookup, same KNOWN_VERDICTS gate, same '' for everything else,
+ * and the same load-bearing-string contract with `stylesheet.css`.
+ *
+ * @param {?string} verdict  `deriveCapabilityTile().verdict`, or the raw token.
+ * @returns {string}  '' when there is nothing to say.
+ */
+export function verdictTileStyleClass(verdict) {
+    if (!KNOWN_VERDICTS.has(verdict)) return '';
+    const suffix = VERDICT_STYLE_SUFFIXES.get(verdict);
+    return suffix ? `usbee-tile-${suffix}` : '';
+}
+
+/**
+ * Every tile class verdictTileStyleClass() can ever return.
+ *
+ * The toggle is a LONG-LIVED actor rebound on every snapshot, so the caller
+ * must strip the previous verdict before adding the current one. Without
+ * that, a device going orange → green carries both classes and the cascade
+ * silently picks whichever rule sits later in the stylesheet — the tile then
+ * reports a verdict the device no longer has. Exported so tile.js cannot
+ * keep its own copy of the list and let it drift from the table above.
+ *
+ * @returns {string[]}
+ */
+export function verdictTileStyleClasses() {
+    return [...VERDICT_STYLE_SUFFIXES.values()].map(s => `usbee-tile-${s}`);
 }
 
 /**
@@ -630,21 +677,35 @@ export function hasLinkIssue(device) {
  *
  * @param {object[]} devices  Unpacked DeviceEntry objects from the store.
  * @returns {?{id: string, ceiling: number, capableMbps: ?number,
- *   negotiatedMbps: number, brand: string, subtitleKind: string}}
+ *   negotiatedMbps: number, brand: string, subtitleKind: string,
+ *   verdict: ?string}}
  *   `subtitleKind` is 'full' (reaching the ceiling), 'linked' (below it) or
  *   'unlinked' (capability known, nothing negotiated).
+ *   `verdict` is the WINNER's own `usb_link_verdict`, or null when it has
+ *   none or the daemon sent a token this build does not recognise. It is the
+ *   only thing the tile's colour may be keyed on: `subtitleKind` is computed
+ *   from capable-vs-negotiated and using it to pick a colour would be
+ *   precisely the synthesised verdict BOS spec §6 forbids.
  */
 export function deriveCapabilityTile(devices) {
     const ranked = (Array.isArray(devices) ? devices : [])
         .map(d => {
-            const capableMbps = intProp(propsOf(d), 'usb_capable_speed_mbps');
+            const props = propsOf(d);
+            const capableMbps = intProp(props, 'usb_capable_speed_mbps');
             const negotiatedMbps = Number.isFinite(d?.link_speed_mbps)
                 ? d.link_speed_mbps : 0;
+            // Carried per-entry so the RANKED WINNER keeps its own verdict —
+            // the tile must never wear a verdict belonging to some other
+            // device. Gated on KNOWN_VERDICTS exactly as deriveLinkInfo()
+            // gates it, so an unrecognised token collapses to null here too
+            // and cannot colour the tile (quick task 260917-i43).
+            const rawVerdict = props.get('usb_link_verdict');
             return {
                 id: typeof d?.id === 'string' ? d.id : '',
                 capableMbps,
                 negotiatedMbps,
                 ceiling: capableMbps === null ? negotiatedMbps : capableMbps,
+                verdict: KNOWN_VERDICTS.has(rawVerdict) ? rawVerdict : null,
             };
         })
         // A positive ceiling is the ONLY admission test. There is deliberately
