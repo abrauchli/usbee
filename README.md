@@ -14,7 +14,7 @@ USB knowledge flows through `usbeehived` over D-Bus.
 
 ## Screenshot
 
-![USBee Quick Settings panel showing the device list](usbee-quick-settings-panel-device-list.png)
+![The USBee tile and its open popover in GNOME Quick Settings, listing seven attached USB devices with their link speeds](docs/quick-settings-popover-link-speeds.png)
 
 ## Status
 
