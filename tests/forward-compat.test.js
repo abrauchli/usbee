@@ -32,6 +32,7 @@ import {
     deriveAltMode, deriveCapabilityTile, deriveHubInfo, deriveLinkInfo,
     formatCapabilityBrand, formatRate, formatUsbId, hasLinkIssue,
     isBuiltInDevice, maxPdoIndex, propsOf, resolveHeadline, usbIdRowText,
+    verdictStyleClass,
 } from '../usbee@bitcreed.us/src/link-verdict.js';
 import {
     GATED_KEYS, HIDDEN_KEYS, KNOWN_KEYS, isTechnicalKey, propertyTier,
@@ -1176,6 +1177,86 @@ print('# the stylesheet bolds the ceiling VALUE, not its key');
         !css.includes('.usbee-pdo-max .usbee-detail-key'));
     check('the active PDO rule survives',
         css.includes('.usbee-pdo-active .usbee-detail-key'));
+}
+
+// --- Verdict colour classes (quick task 260917-i43) -------------------------
+// The daemon's verdict gains a pre-attentive channel. `verdictStyleClass()`
+// is a closed lookup: three known tokens map to three literal class names and
+// EVERYTHING else — absent, empty, a future daemon value, a non-string —
+// renders neutrally. The daemon's string never reaches the style engine, so a
+// hostile or buggy verdict cannot inject a class name or a selector.
+
+print('# verdictStyleClass — one daemon verdict, one colour class');
+{
+    check('AtCapability is the green class',
+        verdictStyleClass('AtCapability') === 'usbee-link-at-capability');
+    check('BelowCapability is the orange class',
+        verdictStyleClass('BelowCapability') === 'usbee-link-below-capability');
+    check('Degraded is the red class',
+        verdictStyleClass('Degraded') === 'usbee-link-degraded');
+
+    // '' is a first-class outcome and the COMMON one: 10 of 13 entries on the
+    // reporting machine carry no verdict at all, having no BOS descriptor.
+    check('an absent verdict says nothing', verdictStyleClass(null) === '');
+    check('an undefined verdict says nothing',
+        verdictStyleClass(undefined) === '');
+    check('an empty verdict says nothing', verdictStyleClass('') === '');
+    // BOS spec §3.2 lets the daemon add verdicts without an interface bump.
+    check('an unrecognised future verdict says nothing',
+        verdictStyleClass('Renegotiating') === '');
+    // This runs inside gnome-shell's own process: it must not be able to throw.
+    check('a number cannot throw and says nothing',
+        verdictStyleClass(5) === '');
+    check('an object cannot throw and says nothing',
+        verdictStyleClass({}) === '');
+
+    // Through deriveLinkInfo rather than a bare string, so the wiring is
+    // tested and not merely the lookup table.
+    check('a device with no capability data is uncoloured',
+        verdictStyleClass(deriveLinkInfo(noBos()).verdict) === '');
+    check('the LAN adapter below its capability is orange',
+        verdictStyleClass(deriveLinkInfo(belowCapability()).verdict)
+            === 'usbee-link-below-capability');
+    check('the hub with the dead companion is orange',
+        verdictStyleClass(deriveLinkInfo(hubWithDeadCompanion()).verdict)
+            === 'usbee-link-below-capability');
+    check('the degraded link is red',
+        verdictStyleClass(deriveLinkInfo(degraded()).verdict)
+            === 'usbee-link-degraded');
+
+    // Colour WITHOUT fault. Tier 0 is unchanged: BelowCapability gains a
+    // colour and still never becomes an issue (decision 260910-n10).
+    check('BelowCapability is coloured but still not a fault',
+        verdictStyleClass(deriveLinkInfo(belowCapability()).verdict) !== ''
+        && hasLinkIssue(belowCapability()) === false);
+}
+
+print('# every class the helper returns has a stylesheet rule behind it');
+{
+    const css = readSource('usbee@bitcreed.us/stylesheet.css');
+    check('stylesheet.css is readable', css.length > 0);
+    // Cross-file link: a typo on either side is a silent no-op, never an
+    // error, so the pairing is pinned here rather than left to the eye.
+    for (const cls of ['usbee-link-at-capability',
+        'usbee-link-below-capability', 'usbee-link-degraded']) {
+        check(`stylesheet.css declares a rule for .${cls}`,
+            css.includes(`.${cls}`));
+    }
+    for (const hex of ['#2ec27e', '#e5a50a', '#e01b24']) {
+        check(`stylesheet.css declares ${hex}`, css.includes(hex));
+    }
+
+    // Source order is load-bearing, not cosmetic. `.usbee-row-rate` and
+    // `.usbee-detail-value` both set `color` at the same single-class
+    // specificity, so a verdict rule placed EARLIER loses the cascade and
+    // renders nothing at all.
+    for (const cls of ['.usbee-link-at-capability',
+        '.usbee-link-below-capability', '.usbee-link-degraded']) {
+        check(`${cls} sits after .usbee-row-rate in source order`,
+            css.indexOf(cls) > css.indexOf('.usbee-row-rate'));
+        check(`${cls} sits after .usbee-detail-value in source order`,
+            css.indexOf(cls) > css.indexOf('.usbee-detail-value'));
+    }
 }
 
 // --- Structural guards over the Shell-only modules --------------------------

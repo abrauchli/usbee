@@ -199,3 +199,49 @@
     font-weight: bold;
     font-size: 0.9em;
 }
+
+/* Link-verdict colour scale (quick task 260917-i43).
+ *
+ * Set by verdictStyleClass() in src/link-verdict.js — a straight translation
+ * of the daemon's own `usb_link_verdict`, never a judgment derived here —
+ * and applied in src/popover.js to the collapsed row's rate caption and to
+ * the Link row's VALUE label in the detail panel. A verdict this build does
+ * not recognise, and the common no-BOS case, get NO class at all and keep
+ * the label's own neutral colour.
+ *
+ * Deliberately NOT folded into .usbee-detail-warning above, though it
+ * shares the orange: that class carries unrelated charging-warning
+ * semantics (charging diag, trust, alt-mode power) and widening it would
+ * make a BelowCapability link read as a charging fault. It is not a fault at
+ * all — Tier 0 (`hasLinkIssue()`) is untouched, so the amber left-border,
+ * the issue-first sort and the tile's issue tier never move.
+ *
+ * THESE RULES MUST STAY LAST IN THIS FILE. `.usbee-detail-value` (above) and
+ * `.usbee-row-rate` (above) both set `color` at the same single-class
+ * specificity, so an earlier verdict rule loses the cascade and renders
+ * nothing whatsoever — a silent no-op, never an error. A test in
+ * tests/forward-compat.test.js pins both the class names and this position.
+ *
+ * Each rule sets `color` and nothing else, so it composes with the caption's
+ * font-size/max-width and with the detail value's inherited metrics rather
+ * than disturbing either.
+ *
+ * Contrast is knowingly marginal for the green and the orange on a light
+ * theme (2.20 and 2.07 against the Shell's own #fafafb popover background,
+ * both below WCAG AA) and for the red on dark (2.49 against #36363a). The
+ * palette is fixed by the task spec and colour is never the sole cue: every
+ * row and the tile state the condition in words independently, unchanged.
+ * A theme-aware palette would need a light/dark branching mechanism this
+ * stylesheet does not have today — it hardcodes rgba(255,255,255,…) in five
+ * places, i.e. it assumes dark. */
+.usbee-link-at-capability {
+    color: #2ec27e;
+}
+
+.usbee-link-below-capability {
+    color: #e5a50a;
+}
+
+.usbee-link-degraded {
+    color: #e01b24;
+}

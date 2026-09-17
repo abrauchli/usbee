@@ -29,7 +29,8 @@ import {hasIssue, formatVolts, formatAmps, formatWatts} from './device-store.js'
 import {iconForDevice} from './device-icon.js';
 import {formatValueForKey, labelForKey} from './label-table.js';
 import {deriveAltMode, deriveHubInfo, deriveLinkInfo, isBuiltInDevice,
-    maxPdoIndex, propsOf, resolveHeadline, usbIdRowText} from './link-verdict.js';
+    maxPdoIndex, propsOf, resolveHeadline, usbIdRowText,
+    verdictStyleClass} from './link-verdict.js';
 import {isTechnicalKey, shouldRenderProperty} from './property-policy.js';
 
 /**
@@ -684,7 +685,17 @@ function buildDeviceRow(device, showTech) {
             y_align:     Clutter.ActorAlign.CENTER,
             style_class: 'usbee-row-rate',
         });
-        if (link.isWarning)
+        // The verdict colour and the amber are ALTERNATIVES, not additions
+        // (quick task 260917-i43). One `color` per label means no cascade
+        // race between two equally-specific rules, and the fallback is kept
+        // because `link.isWarning` is deliberately BROADER than
+        // `verdict === 'Degraded'`: it also fires on `usb_link_degraded`
+        // with an unrecognised verdict, as a forward-compat safety net
+        // (src/link-verdict.js, deriveLinkInfo).
+        const verdictClass = verdictStyleClass(link.verdict);
+        if (verdictClass !== '')
+            rateLabel.add_style_class_name(verdictClass);
+        else if (link.isWarning)
             rateLabel.add_style_class_name('usbee-detail-warning');
         const bin = row._triangleBin;
         const idx = bin ? row.get_children().indexOf(bin) : -1;

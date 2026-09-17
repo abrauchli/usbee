@@ -175,6 +175,57 @@ export function formatCapabilityBrand(mbps) {
     return '';
 }
 
+// The verdict → style-class table (quick task 260917-i43). It supplies the
+// NAME only; the recognised-set gate below is KNOWN_VERDICTS itself, so a
+// token this build does not understand collapses to '' here by exactly the
+// same rule it collapses to null in deriveLinkInfo(). The two cannot drift.
+const VERDICT_STYLE_CLASSES = new Map([
+    ['AtCapability',    'usbee-link-at-capability'],
+    ['BelowCapability', 'usbee-link-below-capability'],
+    ['Degraded',        'usbee-link-degraded'],
+]);
+
+/**
+ * Translate the daemon's own `usb_link_verdict` into the St style class that
+ * colours a speed label — green at capability, orange below it, red degraded.
+ *
+ * This is a STRAIGHT TRANSLATION and derives no judgment of its own. It never
+ * looks at `usb_capable_speed_mbps` against `link_speed_mbps`; that
+ * comparison is forbidden by BOS spec §6 and by the rule at the top of this
+ * file, and no ratio rule lives here or anywhere else.
+ *
+ * '' is a first-class outcome and the COMMON one: 10 of the 13 entries on the
+ * reporting machine carry no verdict at all, having no BOS descriptor, and
+ * they must render in the label's own neutral colour rather than being
+ * assigned a verdict nobody asserted. Same "nothing to say" convention
+ * `formatRate()` and `formatCapabilityBrand()` set above, so callers need no
+ * null-check discipline they do not already have. Anything unrecognised — a
+ * future daemon value, an empty string, a non-string — lands here too, which
+ * is also what keeps a hostile or buggy verdict away from the style engine:
+ * the token SELECTS one of three literal class names and is never itself
+ * interpolated into a class or a selector. Non-strings are handled by the Map
+ * lookup rather than by coercion, so this cannot throw — it runs inside
+ * gnome-shell's own process (same discipline `formatUsbId()` records below).
+ *
+ * The three returned strings are LOAD-BEARING: each is matched by a rule at
+ * the end of `stylesheet.css`, where a typo on either side would be a silent
+ * no-op rather than an error. A cross-file test in
+ * tests/forward-compat.test.js pins the pairing and the rules' source
+ * position.
+ *
+ * Returning a class for `BelowCapability` does NOT make it a fault. Tier 0 is
+ * untouched: `hasLinkIssue()` below still excludes it, so the amber
+ * left-border, the issue-first sort and the tile's issue tier all stay where
+ * decision 260910-n10 put them. This is a legibility change only.
+ *
+ * @param {?string} verdict  `deriveLinkInfo().verdict`, or the raw token.
+ * @returns {string}  '' when there is nothing to say.
+ */
+export function verdictStyleClass(verdict) {
+    if (!KNOWN_VERDICTS.has(verdict)) return '';
+    return VERDICT_STYLE_CLASSES.get(verdict) ?? '';
+}
+
 /**
  * Parse a daemon integer-in-a-string property. Every numeric value on this
  * wire is a decimal string; absence, emptiness and garbage all collapse to
