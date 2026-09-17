@@ -140,6 +140,21 @@ const hubWithDeadCompanion = () => device({
     ],
 });
 
+// The ICY BOX enclosure on the reporting machine: SuperSpeed-capable and
+// actually linked at 5000, so the daemon calls it AtCapability. The ONLY
+// live shape that renders green (quick task 260917-i43).
+const atCapability = () => device({
+    id: 'usb:2-1',
+    headline: 'ICY BOX IB-1817M-C31',
+    link_speed_mbps: 5000,
+    properties: [
+        ['usb_capable_speed_mbps', '5000'],
+        ['usb_capable_speed', 'SuperSpeed 5 Gbps'],
+        ['usb_link_verdict', 'AtCapability'],
+        ['power.source', 'self'],
+    ],
+});
+
 // The genuinely actionable case: linked below the device's own floor.
 const degraded = () => device({
     id: 'usb:3-1',
@@ -1231,6 +1246,36 @@ print('# verdictStyleClass — one daemon verdict, one colour class');
         && hasLinkIssue(belowCapability()) === false);
 }
 
+print('# the live device population, as the reporting machine presents it');
+{
+    // 13 entries attached at the time of the task. Three carry a verdict:
+    // the ICY BOX at capability, the RTS5411 hub and the RTL8153 LAN adapter
+    // below theirs. The other ten have no BOS descriptor, so the UNCOLOURED
+    // path is the majority path and is asserted as such, not as an edge case.
+    check('the ICY BOX at its capability is green',
+        verdictStyleClass(deriveLinkInfo(atCapability()).verdict)
+            === 'usbee-link-at-capability');
+    const live = [atCapability(), hubWithDeadCompanion(), belowCapability(),
+        noBos(), noBos(), noBos(), noBos(), noBos(), noBos(), noBos(),
+        noBos(), noBos(), noBos()];
+    const coloured = live
+        .map(d => verdictStyleClass(deriveLinkInfo(d).verdict))
+        .filter(c => c !== '');
+    check('exactly 3 of the 13 live entries are coloured',
+        live.length === 13 && coloured.length === 3);
+    check('the three live colours are one green and two orange',
+        coloured.filter(c => c === 'usbee-link-at-capability').length === 1
+        && coloured.filter(c => c === 'usbee-link-below-capability').length === 2);
+    // No live device reports Degraded, so the red path has no live example
+    // and is covered by the unit assertions above alone.
+    check('no live entry reports Degraded',
+        !live.some(d => deriveLinkInfo(d).verdict === 'Degraded'));
+    // Constraint 2 restated over the whole population: colour changed, the
+    // fault set did not.
+    check('colouring three entries promoted none of them to a fault',
+        live.filter(hasLinkIssue).length === 0);
+}
+
 print('# every class the helper returns has a stylesheet rule behind it');
 {
     const css = readSource('usbee@bitcreed.us/stylesheet.css');
@@ -1363,6 +1408,37 @@ print('# popover.js contains the property dump');
         src.includes("d.category !== 'Hub' || hasIssue(d)"));
     check('popover.js returns the issue count for the header',
         src.includes('issues: devices.filter(hasIssue).length'));
+
+    // Quick task 260917-i43 — popover.js RENDERS the verdict colour and
+    // DERIVES none of it. The decision stays in the zero-import module that
+    // CI can actually unit-test.
+    check('popover.js gets its verdict colour from the shared helper',
+        src.includes('verdictStyleClass('));
+    check('popover.js imports verdictStyleClass from link-verdict.js',
+        /import\s*\{[^}]*verdictStyleClass[^}]*\}\s*from\s*'\.\/link-verdict\.js'/s
+            .test(src));
+    // The palette lives in ONE file. A hex here would be a second source of
+    // truth that the cross-file stylesheet guard could not see.
+    for (const hex of ['#2ec27e', '#e5a50a', '#e01b24']) {
+        check(`popover.js hardcodes no ${hex}`, !src.includes(hex));
+    }
+    // The new colour must not have arrived by widening the charging-warning
+    // class's blast radius. `grep -o | wc -l` counts MATCHES (7 at the time
+    // of writing); `grep -c` counts lines and would read differently the
+    // moment two land together, so count matches here too.
+    check('.usbee-detail-warning still has exactly 7 uses in popover.js',
+        (src.match(/usbee-detail-warning/g) || []).length === 7);
+    // ID-03 — on the collapsed caption the verdict class and the amber are
+    // ALTERNATIVES. Additive would put two equally-specific `color` rules on
+    // one label and let the stylesheet's source order silently decide.
+    check('the collapsed caption treats the verdict and the amber as exclusive',
+        /if\s*\(verdictClass !== ''\)\s*\n\s*rateLabel\.add_style_class_name\(verdictClass\);\s*\n\s*else if\s*\(link\.isWarning\)/
+            .test(src));
+    // ID-02 — the key label keeps the panel-wide amber, the value takes the
+    // verdict scale, and the child index is guarded rather than assumed.
+    check('the Link row colours the VALUE column, guarded by child count',
+        src.includes('linkCells.length === 2')
+        && src.includes('linkCells[1].add_style_class_name(linkVerdictClass)'));
 }
 
 // --- Wrapping labels must clear St.Label's default ellipsize ----------------

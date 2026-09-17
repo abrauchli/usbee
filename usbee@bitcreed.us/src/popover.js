@@ -912,19 +912,28 @@ function populateDeviceRowMenu(row, device, showTech) {
  * the daemon's own `data_rate.summary` / `.detail` prose, because the
  * daemon's strings are English-only while these go through gettext.
  *
- * The verdict rules are not negotiable (BOS spec §6):
- *   AtCapability    — neutral confirmation.
+ * The verdict rules are not negotiable (BOS spec §6). Each names the colour
+ * the Link row's VALUE label carries as of quick task 260917-i43 — an
+ * ADDITIONAL channel over the prose, which is never removed or shortened to
+ * make room for it, because colour must never be the only cue:
+ *   AtCapability    — neutral confirmation. Value label GREEN.
  *   BelowCapability — informational: the bare rate on the Link row and the
  *                     device's own rating on the Capability row, with no
  *                     verdict prose joining them. On the daemon's reference
  *                     machine 2 of 2 BOS-bearing devices land here and both
  *                     are working exactly as intended, so this must never
  *                     look like a fault — and must never suggest a fix.
+ *                     Value label ORANGE; being coloured does NOT
+ *                     make it a fault, and `hasLinkIssue()` still excludes
+ *                     it, so no border, no sort change, no tile badge.
  *   Degraded        — the only warning. Amber Link row, and the Detail row
  *                     when the SuperSpeed shape applies. No Fix row: USBee
  *                     can see THAT the link fell short, never WHERE, so it
  *                     has no remedy to give (quick task 260910-o99).
- *   absent/unknown  — say nothing beyond the rate itself.
+ *                     Value label RED. The hex values live only in
+ *                     stylesheet.css — a test asserts none appears here.
+ *   absent/unknown  — say nothing beyond the rate itself, and carry NO
+ *                     colour class: the common case (10 of 13 live entries).
  *
  * @param {St.BoxLayout} detailBox
  * @param {object} device
@@ -962,6 +971,21 @@ function buildLinkBlock(detailBox, device, link) {
     const linkRow = buildPropertyRow(_('Link'), valueText, device.category);
     if (link.isWarning)
         linkRow.get_children()[0].add_style_class_name('usbee-detail-warning');
+    // The verdict colour takes the VALUE column, leaving the key label's
+    // amber above exactly as it was (quick task 260917-i43). The key is the
+    // panel-wide "this row is a warning" convention, shared with four other
+    // rows; the verdict is a different scale, so the two compose across
+    // COLUMNS instead of competing in one — the same principle the two PDO
+    // markers follow (stylesheet.css, .usbee-pdo-active / .usbee-pdo-max).
+    //
+    // buildPropertyRow returns [keyLbl, valLbl], but the index is guarded
+    // the way the collapsed caption guards _triangleBin: on an unexpected
+    // child list the styling is skipped silently rather than throwing inside
+    // the compositor.
+    const linkVerdictClass = verdictStyleClass(link.verdict);
+    const linkCells = linkRow.get_children();
+    if (linkVerdictClass !== '' && linkCells.length === 2)
+        linkCells[1].add_style_class_name(linkVerdictClass);
     detailBox.add_child(linkRow);
 
     // What the DEVICE can do, as its own BOS descriptor declares it — a fact
